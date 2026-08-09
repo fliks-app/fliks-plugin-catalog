@@ -1,0 +1,70 @@
+# Cheapest refusal first (plan, "Registry CI"): PR shape, then schema, then the
+# named compatibility checks, then determinism — all local, no network, no
+# archive. The two expensive jobs that need the actual plugin bytes are stubbed
+# below, deliberately not faked.
+name: Validate PR
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: PR shape — adds files only, never modifies a published version
+        run: node scripts/ci/check-pr-shape.mjs "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
+
+      - name: Schema validity (also builds catalog.json as a side effect)
+        run: node scripts/build-catalog.mjs
+
+      - name: pluginApi is declared in COMPATIBILITY.md
+        run: node scripts/ci/check-compatibility-table.mjs
+
+      - name: fliks range carries a mandatory upper bound
+        run: node scripts/ci/check-fliks-upper-bound.mjs
+
+      - name: Catalog regenerates deterministically
+        run: |
+          node scripts/build-catalog.mjs
+          sha256sum catalog.json > /tmp/catalog.sha256.1
+          rm catalog.json
+          node scripts/build-catalog.mjs
+          sha256sum catalog.json > /tmp/catalog.sha256.2
+          if ! diff -u /tmp/catalog.sha256.1 /tmp/catalog.sha256.2; then
+            echo "::error::catalog.json is not deterministic — two consecutive builds from the same input produced different bytes"
+            exit 1
+          fi
+
+      # --- TODO: not implemented, do not treat these as passing --------------
+      #
+      # TODO(archive-download + guard-suite): for every added versions/*.json,
+      # fetch zipUrl, verify sha256, then run the full V1-V9 archive guard suite
+      # (backend/src/modules/plugins/archive/{zip-inspector,extract,manifest-parser}.ts)
+      # against the bytes: entry-count/name/size caps, ZIP64 refusal, symlink/
+      # traversal refusal, the "entrySet === files{} keys" check, and Ed25519
+      # verification of the *manifest* (plugin.json) — a different signature
+      # than catalog.json.sig, made by the plugin author's own key, not this
+      # repo's. This repo has zero dependencies by design and does not vendor
+      # yauzl or the archive validator; the cheapest correct option is invoking
+      # the compiled fliks backend (a container image or a checked-out ref) as
+      # a subprocess/action rather than reimplementing ~500 lines of guard
+      # logic a second time in a second language-of-convenience.
+      #
+      # TODO(compat): docker run ghcr.io/fliks-app/fliks:<v> at the min and max
+      # of the submitted "fliks" range, install the plugin from a local catalog
+      # override pointed at this PR's zipUrl, and assert
+      # `GET /api/plugins` reports status=active for it. Needs Docker, a
+      # published fliks image for both endpoints of the range, and network
+      # egress to zipUrl from the runner — none of which this job has today.
+      # This is the expensive job (~4 min x 2) and the only one that actually
+      # proves installability; everything above it is refusing garbage cheaply
+      # before paying for this.
