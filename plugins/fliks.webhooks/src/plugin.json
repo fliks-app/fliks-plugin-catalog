@@ -3,7 +3,7 @@
   "pluginApi": 0,
   "name": "Webhook notifications",
   "version": "1.0.0",
-  "fliks": ">=2.1.0 <3.0.0",
+  "fliks": ">=2.0.0 <3.0.0",
   "author": "Fliks",
   "description": "Posts a JSON payload to a fixed HTTPS endpoint when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
   "license": "MIT",

@@ -49,11 +49,29 @@ jobs:
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
 
-      - name: Commit the archive under plugins/<id>/dist/
+      # An Ed25519 signature is key-dependent, so the archive's hash is only
+      # knowable once it has been signed with the real key. Writing it here is
+      # what keeps the catalog entry and the published bytes in agreement — a
+      # hand-copied hash is a checksum mismatch waiting to happen.
+      - name: Record the published hash on the catalog entry
+        run: |
+          node -e '
+            const fs = require("fs");
+            const [file, sha] = process.argv.slice(1);
+            const entry = JSON.parse(fs.readFileSync(file, "utf8"));
+            entry.sha256 = sha;
+            fs.writeFileSync(file, JSON.stringify(entry, null, 2) + "\n");
+          ' "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
+            "${{ steps.package.outputs.sha256 }}"
+          node scripts/build-catalog.mjs
+
+      - name: Commit the archive and the updated entry
         run: |
           git config user.name "fliks-catalog-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add "${{ steps.package.outputs.distPath }}"
+          git add "${{ steps.package.outputs.distPath }}" \
+                  "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
+                  catalog.json
           git commit -m "chore(${{ inputs.pluginId }}): publish ${{ steps.package.outputs.version }} archive"
           git push
 
