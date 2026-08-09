@@ -1,0 +1,82 @@
+# Regenerates catalog.json from plugins/*/versions/*.json, signs it, verifies the
+# signature independently, commits the result back to main, and republishes to
+# GitHub Pages. Push-triggered only — there is no separate release step, a merge
+# to main IS the release.
+name: Publish catalog
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: publish-catalog
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Regenerate catalog.json
+        run: node scripts/build-catalog.mjs
+
+      - name: Refuse to publish unsigned
+        run: |
+          if [ -z "${CATALOG_SIGNING_KEY}" ]; then
+            echo "::error::CATALOG_SIGNING_KEY is not set on this repository. Refusing to publish an unsigned catalog.json — see docs/key-rotation.md for how to generate and store one."
+            exit 1
+          fi
+        env:
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+
+      - name: Sign catalog.json
+        run: node scripts/sign-catalog.mjs
+        env:
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+
+      - name: Verify the signature independently
+        run: node scripts/verify-catalog.mjs "${CATALOG_KEY_ID}"
+        env:
+          CATALOG_KEY_ID: ${{ vars.CATALOG_KEY_ID }}
+
+      - name: Commit the regenerated, signed catalog
+        run: |
+          if git diff --quiet -- catalog.json catalog.json.sig; then
+            echo "catalog.json unchanged, nothing to commit"
+            exit 0
+          fi
+          git config user.name "fliks-catalog-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add catalog.json catalog.json.sig
+          git commit -m "chore: regenerate and sign catalog.json [skip ci]"
+          git push
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p _site
+          cp catalog.json catalog.json.sig _site/
+          cp -r schema _site/schema
+          cp -r keys _site/keys
+          cp COMPATIBILITY.md _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - uses: actions/deploy-pages@v4
+        id: deployment
