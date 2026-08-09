@@ -1,0 +1,77 @@
+# Builds and signs one plugin's .fkplugin from plugins/<id>/src/, attaches it to
+# a GitHub Release, and commits it under plugins/<id>/dist/ so publish.yml's next
+# Pages deploy serves it at a stable URL (Pages replaces its whole tree on every
+# deploy — the only way a plugin download URL survives that is to live in the
+# git tree, same as catalog.json). Signs with CATALOG_SIGNING_KEY, the same key
+# that signs catalog.json — see docs/key-rotation.md for what that buys.
+name: Package plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      pluginId:
+        description: 'Plugin id under plugins/<id>/src/ (matches its directory name)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  # Only needed to kick publish.yml after the commit below: a push made with the
+  # default GITHUB_TOKEN does not trigger other workflows' `on: push`.
+  actions: write
+
+concurrency:
+  group: package-plugin-${{ inputs.pluginId }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Refuse to package unsigned
+        run: |
+          if [ -z "${CATALOG_SIGNING_KEY}" ]; then
+            echo "::error::CATALOG_SIGNING_KEY is not set on this repository. A data plugin can install unsigned, but this repo's own plugin must be signed by the catalog key to resolve to 'official' — see docs/key-rotation.md."
+            exit 1
+          fi
+        env:
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+
+      - name: Build and sign
+        id: package
+        run: node scripts/package-plugin.mjs "${{ inputs.pluginId }}"
+        env:
+          CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+
+      - name: Commit the archive under plugins/<id>/dist/
+        run: |
+          git config user.name "fliks-catalog-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add "${{ steps.package.outputs.distPath }}"
+          git commit -m "chore(${{ inputs.pluginId }}): publish ${{ steps.package.outputs.version }} archive"
+          git push
+
+      - name: Attach to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.pluginId }}-v${{ steps.package.outputs.version }}" \
+            "${{ steps.package.outputs.distPath }}" \
+            --title "${{ inputs.pluginId }} ${{ steps.package.outputs.version }}" \
+            --notes "Signed .fkplugin archive. sha256: ${{ steps.package.outputs.sha256 }}"
+
+      - name: Republish the Pages site so it picks up the new archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish.yml --ref main
+
+      - name: Print what plugins/<id>/versions/<version>.json needs
+        run: |
+          echo "zipUrl: https://fliks-app.github.io/fliks-plugin-catalog/${{ steps.package.outputs.distPath }}"
+          echo "sha256: ${{ steps.package.outputs.sha256 }}"

@@ -77,6 +77,17 @@ jobs:
           cp -r schema _site/schema
           cp -r keys _site/keys
           cp COMPATIBILITY.md _site/
+          # Every committed plugin archive rides along on every deploy, from
+          # this run or package-plugin.yml's — Pages replaces the whole site
+          # each time, so an archive not in the git tree would vanish on the
+          # next unrelated publish.
+          mkdir -p _site/plugins
+          for dir in plugins/*/dist; do
+            [ -d "$dir" ] || continue
+            id=$(basename "$(dirname "$dir")")
+            mkdir -p "_site/plugins/$id"
+            cp -r "$dir" "_site/plugins/$id/dist"
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:
