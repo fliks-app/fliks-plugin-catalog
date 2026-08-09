@@ -7,6 +7,10 @@ name: Publish catalog
 on:
   push:
     branches: [main]
+  # Republish on demand: the catalog is regenerated from the tree, so a rerun
+  # after a Pages or key change needs no commit. Rerunning a *failed* job
+  # instead uploads a second artifact and the deploy refuses it.
+  workflow_dispatch:
 
 permissions:
   contents: write
