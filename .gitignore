@@ -1,0 +1,6 @@
+# A private signing key must never be committed, not even a test one. Generate
+# real keys outside the working tree (or into /tmp); anything under this path,
+# if used for local experimentation, is ignored as a second line of defence.
+.private/
+*.pem
+*_private.key
