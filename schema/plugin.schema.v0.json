@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fliks-app.github.io/fliks-plugin-catalog/schema/plugin.schema.v0.json",
+  "title": "Fliks plugin catalog submission (pluginApi 0)",
+  "description": "One plugins/<id>/versions/<version>.json file. Every field is required by either the consumer's CatalogDocument parser (backend/src/modules/plugins/catalog/catalog.ts) or the install pipeline that reads a catalog version entry (backend/src/modules/plugins/plugin-install.service.ts). name/description/author/kind are plugin-level and must be identical across every version of the same id; the catalog carries one of each per plugin.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description", "author", "kind", "version", "pluginApi", "fliks", "zipUrl", "sha256"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9]+)*$",
+      "description": "Reverse-DNS-style plugin id, e.g. \"fliks.download\". Required non-empty by CatalogPluginEntry.id."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name. CatalogPluginEntry.name (any string, but the catalog gains nothing from an empty one)."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "CatalogPluginEntry.description."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "CatalogPluginEntry.author."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["data", "process"],
+      "description": "CatalogPluginEntry.kind — must match the PluginKind declared inside the signed plugin.json this version points to."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "description": "CatalogVersionEntry.version. Required non-empty; must be valid semver."
+    },
+    "pluginApi": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (currently 0, see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not itself required to equal 0 here — an old version entry legitimately keeps whatever pluginApi it shipped with."
+    },
+    "fliks": {
+      "type": "string",
+      "minLength": 1,
+      "description": "CatalogVersionEntry.fliks — a semver range parsed with semver.validRange, and a mandatory upper bound (plan decision 16). e.g. \">=2.1.0 <3.0.0\", never \">=2.1.0\" alone."
+    },
+    "zipUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Install-pipeline field read by plugin-install.service.ts's installFromCatalog (A1: GET <zipUrl>). Not read by parseCatalogDocument itself, but required for the entry to be installable."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Lowercase hex sha256 of the exact .fkplugin archive bytes at zipUrl. Checked (A2) against the downloaded bytes before any archive guard runs — this is the value that makes the catalog itself part of the trust chain, not just a directory."
+    }
+  }
+}
