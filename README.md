@@ -23,6 +23,14 @@ inside Fliks itself it is only ever referred to as a **source**, and it holds a
 **catalog**. Using "repository" for all three would make "the plugin repository
 repository" a sentence someone eventually has to say out loud.
 
+**One exception to "no plugin code lives here":** a `kind: "data"` plugin has no
+code — its whole archive is a manifest and a logo. For a `data` plugin owned by
+this org, `fk-plugin-<name>` would be a second repository holding two files.
+`plugins/<id>/src/` keeps that source next to the entry that publishes it;
+`.github/workflows/package-plugin.yml` and `scripts/package-plugin.mjs` build
+and sign the archive from it. A `process` plugin (real code, its own release
+cycle) still gets its own `fk-plugin-<name>` repository.
+
 ## What's in here
 
 ```
@@ -33,6 +41,9 @@ COMPATIBILITY.md         pluginApi <-> Fliks core version table
 keys/                   published Ed25519 public keys, one file per key id, never deleted
 scripts/                the build/sign/verify pipeline (plain Node, no dependencies)
 plugins/<id>/versions/<version>.json   one file per published plugin version
+plugins/<id>/src/       source for a data-tier plugin owned by this org (see above)
+plugins/<id>/dist/      generated — that source's signed .fkplugin, committed so
+                        GitHub Pages serves it at a stable URL
 ```
 
 `catalog.json` and `catalog.json.sig` are build artifacts produced by CI
