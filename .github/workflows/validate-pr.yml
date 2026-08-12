@@ -20,7 +20,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: PR shape — adds files only, never modifies a published version
+      - name: Script tests — the shape gate and the archive writer
+        run: node --test scripts/*.test.mjs scripts/ci/*.test.mjs
+
+      - name: PR shape — a published version is immutable
         run: node scripts/ci/check-pr-shape.mjs "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
 
       - name: Schema validity (also builds catalog.json as a side effect)
