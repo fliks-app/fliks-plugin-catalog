@@ -87,6 +87,11 @@ jobs:
             id=$(basename "$(dirname "$dir")")
             mkdir -p "_site/plugins/$id"
             cp -r "$dir" "_site/plugins/$id/dist"
+            # The catalogue card renders a logo before anything is installed, so the only
+            # reachable copy is one published next to the archive.
+            for logo in "plugins/$id/src"/logo.*; do
+              [ -f "$logo" ] && cp "$logo" "_site/plugins/$id/"
+            done
           done
 
       - uses: actions/upload-pages-artifact@v3

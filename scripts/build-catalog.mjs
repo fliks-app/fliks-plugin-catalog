@@ -68,7 +68,7 @@ function main() {
 
   for (const id of pluginIds) {
     const entries = byId.get(id);
-    for (const field of ['name', 'description', 'author', 'kind']) {
+    for (const field of ['name', 'description', 'author', 'kind', 'logo']) {
       const values = new Set(entries.map((e) => e[field]));
       if (values.size > 1) {
         errors.push(`plugin "${id}": "${field}" differs across versions (${[...values].map((v) => JSON.stringify(v)).join(' vs ')})`);
@@ -86,6 +86,8 @@ function main() {
       description: entries[0].description,
       author: entries[0].author,
       kind: entries[0].kind,
+      // Plugin-level, not per-version: the card shows one logo whichever version it offers.
+      ...(entries[0].logo ? { logo: entries[0].logo } : {}),
       versions: sorted.map((e) => ({
         version: e.version,
         pluginApi: e.pluginApi,

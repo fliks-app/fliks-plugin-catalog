@@ -6,6 +6,7 @@
       "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
       "author": "Fliks",
       "kind": "process",
+      "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/logo.svg",
       "versions": [
         {
           "version": "0.1.0",
@@ -22,6 +23,7 @@
       "description": "Posts a JSON payload to the HTTPS endpoint you configure when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
       "author": "Fliks",
       "kind": "data",
+      "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/logo.svg",
       "versions": [
         {
           "version": "1.1.0",

@@ -19,6 +19,9 @@ export const REQUIRED_FIELDS = [
   'sha256',
 ];
 
+/** Accepted but not required — an entry without one simply renders no logo. */
+export const OPTIONAL_FIELDS = ['logo'];
+
 /** @returns {{ ok: true } | { ok: false, errors: string[] }} */
 export function validateEntry(entry) {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
@@ -27,7 +30,7 @@ export function validateEntry(entry) {
 
   const errors = [];
   for (const key of Object.keys(entry)) {
-    if (!REQUIRED_FIELDS.includes(key)) errors.push(`unknown field "${key}"`);
+    if (!REQUIRED_FIELDS.includes(key) && !OPTIONAL_FIELDS.includes(key)) errors.push(`unknown field "${key}"`);
   }
   for (const field of REQUIRED_FIELDS) {
     if (!(field in entry)) errors.push(`missing required field "${field}"`);
@@ -62,6 +65,9 @@ export function validateEntry(entry) {
   }
   if (typeof entry.zipUrl !== 'string' || !/^https:\/\//.test(entry.zipUrl)) {
     errors.push('"zipUrl" must be an https URL');
+  }
+  if ('logo' in entry && (typeof entry.logo !== 'string' || !/^https:\/\//.test(entry.logo))) {
+    errors.push('"logo" must be an https URL');
   }
   if (typeof entry.sha256 !== 'string' || !SHA256_PATTERN.test(entry.sha256)) {
     errors.push('"sha256" must be 64 lowercase hex characters');

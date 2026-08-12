@@ -5,7 +5,18 @@
   "description": "One plugins/<id>/versions/<version>.json file. Every field is required by either the consumer's CatalogDocument parser (backend/src/modules/plugins/catalog/catalog.ts) or the install pipeline that reads a catalog version entry (backend/src/modules/plugins/plugin-install.service.ts). name/description/author/kind are plugin-level and must be identical across every version of the same id; the catalog carries one of each per plugin.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "description", "author", "kind", "version", "pluginApi", "fliks", "zipUrl", "sha256"],
+  "required": [
+    "id",
+    "name",
+    "description",
+    "author",
+    "kind",
+    "version",
+    "pluginApi",
+    "fliks",
+    "zipUrl",
+    "sha256"
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -29,8 +40,11 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["data", "process"],
-      "description": "CatalogPluginEntry.kind — must match the PluginKind declared inside the signed plugin.json this version points to."
+      "enum": [
+        "data",
+        "process"
+      ],
+      "description": "CatalogPluginEntry.kind \u2014 must match the PluginKind declared inside the signed plugin.json this version points to."
     },
     "version": {
       "type": "string",
@@ -40,12 +54,12 @@
     "pluginApi": {
       "type": "integer",
       "minimum": 0,
-      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (currently 0, see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not itself required to equal 0 here — an old version entry legitimately keeps whatever pluginApi it shipped with."
+      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (currently 0, see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not itself required to equal 0 here \u2014 an old version entry legitimately keeps whatever pluginApi it shipped with."
     },
     "fliks": {
       "type": "string",
       "minLength": 1,
-      "description": "CatalogVersionEntry.fliks — a semver range parsed with semver.validRange, and a mandatory upper bound (plan decision 16). e.g. \">=2.1.0 <3.0.0\", never \">=2.1.0\" alone."
+      "description": "CatalogVersionEntry.fliks \u2014 a semver range parsed with semver.validRange, and a mandatory upper bound (plan decision 16). e.g. \">=2.1.0 <3.0.0\", never \">=2.1.0\" alone."
     },
     "zipUrl": {
       "type": "string",
@@ -56,7 +70,13 @@
     "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "description": "Lowercase hex sha256 of the exact .fkplugin archive bytes at zipUrl. Checked (A2) against the downloaded bytes before any archive guard runs — this is the value that makes the catalog itself part of the trust chain, not just a directory."
+      "description": "Lowercase hex sha256 of the exact .fkplugin archive bytes at zipUrl. Checked (A2) against the downloaded bytes before any archive guard runs \u2014 this is the value that makes the catalog itself part of the trust chain, not just a directory."
+    },
+    "logo": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Display-only, read by the client's catalogue card (CatalogPlugin.logo). Absolute https URL: the card renders it before anything is installed, so a path inside the archive is unreachable."
     }
   }
 }
