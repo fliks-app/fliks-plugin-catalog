@@ -72,7 +72,16 @@ jobs:
           git add "${{ steps.package.outputs.distPath }}" \
                   "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
                   catalog.json
+          # Re-running a signing that already landed is a legitimate operator action, and an
+          # Ed25519 signature over identical bytes is identical: nothing staged means nothing to do.
+          if git diff --cached --quiet; then
+            echo "already published — nothing to commit"
+            exit 0
+          fi
           git commit -m "chore(${{ inputs.pluginId }}): publish ${{ steps.package.outputs.version }} archive"
+          # Another id's run may have pushed between our checkout and here; its commit touches
+          # different files, so replaying ours on top is safe and beats failing the whole job.
+          git pull --rebase --autostash origin main
           git push
 
       - name: Attach to a GitHub Release
