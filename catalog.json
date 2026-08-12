@@ -1,18 +1,34 @@
 {
   "plugins": [
     {
+      "id": "fliks.download",
+      "name": "Download",
+      "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "pluginApi": 0,
+          "fliks": ">=2.0.0 <3.0.0",
+          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/dist/fliks.download-0.1.0.fkplugin",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
       "id": "fliks.webhooks",
       "name": "Webhook notifications",
-      "description": "Posts a JSON payload to a fixed HTTPS endpoint when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
+      "description": "Posts a JSON payload to the HTTPS endpoint you configure when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
       "author": "Fliks",
       "kind": "data",
       "versions": [
         {
-          "version": "1.0.0",
+          "version": "1.1.0",
           "pluginApi": 0,
           "fliks": ">=2.0.0 <3.0.0",
-          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-1.0.0.fkplugin",
-          "sha256": "a7265551bb9ba576c0a6971100f632e430819f1e137678112f81738a351adf76"
+          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-1.1.0.fkplugin",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
       ]
     }
