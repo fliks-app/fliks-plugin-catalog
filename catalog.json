@@ -30,7 +30,7 @@
           "pluginApi": 0,
           "fliks": ">=2.0.0 <3.0.0",
           "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-1.1.2.fkplugin",
-          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          "sha256": "c82749108a4b158718189daaa75389e67a7785990f5ed97464b68b138fddd75f"
         }
       ]
     }
