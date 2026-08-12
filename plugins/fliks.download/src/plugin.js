@@ -5999,6 +5999,18 @@ var DownloadHistoryRepository = class {
     );
     return rows;
   }
+  /** Newest first, one page at a time: the table is append-only and outlives every torrent in it,
+   *  so a history view can never read it whole. */
+  async listPage(limit, offset) {
+    const [page, count] = await Promise.all([
+      this.pool.query(
+        `SELECT ${COLUMNS4} FROM "download_history" ORDER BY "createdAt" DESC, "id" DESC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      ),
+      this.pool.query(`SELECT COUNT(*)::text AS "count" FROM "download_history"`)
+    ]);
+    return { rows: page.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
   /** `completion.service.ts:1145` — completed rows whose hash is among the ones a client currently holds. */
   async findCompletedByHashes(hashes) {
     const { rows } = await this.pool.query(
@@ -8710,6 +8722,7 @@ var ROUTES = [
     objectGuard: "mediaAccessible:id"
   },
   { method: "GET", path: "/queue", policy: POLICY.queueRead },
+  { method: "GET", path: "/history", policy: POLICY.queueRead },
   { method: "GET", path: "/indexers", policy: POLICY.indexersRead },
   { method: "POST", path: "/indexers", policy: POLICY.indexersManage },
   { method: "POST", path: "/indexers/test-connection", policy: POLICY.indexersManage },
@@ -8788,6 +8801,14 @@ var UI_CONTRIBUTIONS = [
     labelKey: "download.config.queue.title",
     icon: "download",
     action: { kind: "route", path: `/plugins/${PLUGIN_ID}/queue` }
+  },
+  {
+    id: "fliks-download.settings.history",
+    slot: "settings.page",
+    weight: 130,
+    labelKey: "download.config.history.title",
+    icon: "history",
+    action: { kind: "route", path: settingsPagePath("history") }
   },
   {
     // Core owns the release picker and declares these two action ids; this plugin only
@@ -8966,10 +8987,41 @@ var CONFIG_PAGES = [
     rowActions: [
       { kind: "action", labelKey: "download.config.queue.actions.open_media", actionId: "table.open-media" }
     ]
+  },
+  {
+    // The queue holds what is in flight; a row that completes or fails leaves it immediately.
+    // Without this page a failed grab is readable only in the logs.
+    id: "history",
+    kind: "table",
+    labelKey: "download.config.history.title",
+    icon: "history",
+    list: "/history",
+    paged: true,
+    pageSize: 25,
+    columns: [
+      { key: "date", labelKey: "download.config.history.columns.date", format: "date" },
+      { key: "title", labelKey: "download.config.history.columns.title" },
+      { key: "quality", labelKey: "download.config.history.columns.quality" },
+      { key: "source", labelKey: "download.config.history.columns.source" },
+      { key: "grabSource", labelKey: "download.config.history.columns.grab_source" },
+      { key: "status", labelKey: "download.config.history.columns.status" },
+      { key: "statusMessage", labelKey: "download.config.history.columns.detail" }
+    ],
+    rowActions: [
+      { kind: "action", labelKey: "download.config.queue.actions.open_media", actionId: "table.open-media" }
+    ]
   }
 ];
 var I18N = {
   en: {
+    "download.config.history.title": "Download history",
+    "download.config.history.columns.date": "Date",
+    "download.config.history.columns.title": "Release",
+    "download.config.history.columns.quality": "Quality",
+    "download.config.history.columns.source": "Tracker",
+    "download.config.history.columns.grab_source": "Grabbed",
+    "download.config.history.columns.status": "Status",
+    "download.config.history.columns.detail": "Detail",
     "download.config.indexers.fields.max_retention_days": "Maximum seeding days",
     "download.config.indexers.fields.max_retention_days_hint": "Remove a finished torrent this many days after it completed, even if the share ratio is not reached. Leave empty to wait for the ratio alone.",
     "download.config.indexers.labels.create_title": "New indexer",
@@ -9077,6 +9129,14 @@ var I18N = {
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
   // clé API, client de téléchargement, profil de qualité) rather than inventing new terms.
   fr: {
+    "download.config.history.title": "Historique des t\xE9l\xE9chargements",
+    "download.config.history.columns.date": "Date",
+    "download.config.history.columns.title": "Release",
+    "download.config.history.columns.quality": "Qualit\xE9",
+    "download.config.history.columns.source": "Tracker",
+    "download.config.history.columns.grab_source": "R\xE9cup\xE9r\xE9",
+    "download.config.history.columns.status": "Statut",
+    "download.config.history.columns.detail": "D\xE9tail",
     "download.config.indexers.fields.max_retention_days": "Jours de partage maximum",
     "download.config.indexers.fields.max_retention_days_hint": "Supprime un torrent termin\xE9 ce nombre de jours apr\xE8s sa fin, m\xEAme si le ratio de partage n'est pas atteint. Laisser vide pour n'attendre que le ratio.",
     "download.config.indexers.labels.create_title": "Nouvel indexeur",
@@ -9453,6 +9513,29 @@ async function attachMediaTypes(deps, pageItems) {
     return hit ? { ...item, mediaType: hit.kind } : item;
   });
 }
+async function handleHistory(deps, req) {
+  const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
+  const pageSize = Math.min(100, Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25));
+  const [{ rows, total }, indexers] = await Promise.all([
+    deps.downloadHistory.listPage(pageSize, (page - 1) * pageSize),
+    deps.indexerService.findAll()
+  ]);
+  const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
+  const items = rows.map((row) => ({
+    id: row.id,
+    date: row.createdAt,
+    title: row.sourceTitle,
+    quality: row.quality,
+    status: row.status,
+    statusMessage: row.statusMessage,
+    grabSource: row.grabSource,
+    source: (row.indexerId != null ? indexerNames.get(row.indexerId) : void 0) ?? "",
+    mediaId: row.mediaId,
+    mediaType: null
+  }));
+  const data = await attachMediaTypes(deps, items);
+  return jsonResponse(200, { data, total, page, pageSize });
+}
 async function handleQueue(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
   const pageSize = Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25);
@@ -9572,6 +9655,7 @@ function canonicalRoutes(deps) {
     { method: "GET", path: "/:id/episodes/:episodeId/releases", handler: releases },
     { method: "POST", path: "/:id/episodes/:episodeId/grab", handler: grab },
     { method: "GET", path: "/queue", handler: (req) => handleQueue(deps, req) },
+    { method: "GET", path: "/history", handler: (req) => handleHistory(deps, req) },
     { method: "GET", path: "/indexers", handler: () => handleListIndexers(deps) },
     { method: "POST", path: "/indexers", handler: (req) => handleCreateIndexer(deps, req) },
     { method: "POST", path: "/indexers/test-connection", handler: (req) => handleTestIndexerConnection(deps, req) },

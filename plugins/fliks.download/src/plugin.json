@@ -63,6 +63,11 @@
     },
     {
       "method": "GET",
+      "path": "/history",
+      "policy": "read:plugin:fliks.download:queue"
+    },
+    {
+      "method": "GET",
       "path": "/indexers",
       "policy": "read:plugin:fliks.download:indexers"
     },
@@ -248,6 +253,17 @@
         "action": {
           "kind": "route",
           "path": "/plugins/fliks.download/queue"
+        }
+      },
+      {
+        "id": "fliks-download.settings.history",
+        "slot": "settings.page",
+        "weight": 130,
+        "labelKey": "download.config.history.title",
+        "icon": "history",
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.download/history"
         }
       },
       {
@@ -481,6 +497,53 @@
             "actionId": "table.open-media"
           }
         ]
+      },
+      {
+        "id": "history",
+        "kind": "table",
+        "labelKey": "download.config.history.title",
+        "icon": "history",
+        "list": "/history",
+        "paged": true,
+        "pageSize": 25,
+        "columns": [
+          {
+            "key": "date",
+            "labelKey": "download.config.history.columns.date",
+            "format": "date"
+          },
+          {
+            "key": "title",
+            "labelKey": "download.config.history.columns.title"
+          },
+          {
+            "key": "quality",
+            "labelKey": "download.config.history.columns.quality"
+          },
+          {
+            "key": "source",
+            "labelKey": "download.config.history.columns.source"
+          },
+          {
+            "key": "grabSource",
+            "labelKey": "download.config.history.columns.grab_source"
+          },
+          {
+            "key": "status",
+            "labelKey": "download.config.history.columns.status"
+          },
+          {
+            "key": "statusMessage",
+            "labelKey": "download.config.history.columns.detail"
+          }
+        ],
+        "rowActions": [
+          {
+            "kind": "action",
+            "labelKey": "download.config.queue.actions.open_media",
+            "actionId": "table.open-media"
+          }
+        ]
       }
     ],
     "releasePicker": {
@@ -500,6 +563,14 @@
   },
   "i18n": {
     "en": {
+      "download.config.history.title": "Download history",
+      "download.config.history.columns.date": "Date",
+      "download.config.history.columns.title": "Release",
+      "download.config.history.columns.quality": "Quality",
+      "download.config.history.columns.source": "Tracker",
+      "download.config.history.columns.grab_source": "Grabbed",
+      "download.config.history.columns.status": "Status",
+      "download.config.history.columns.detail": "Detail",
       "download.config.indexers.fields.max_retention_days": "Maximum seeding days",
       "download.config.indexers.fields.max_retention_days_hint": "Remove a finished torrent this many days after it completed, even if the share ratio is not reached. Leave empty to wait for the ratio alone.",
       "download.config.indexers.labels.create_title": "New indexer",
@@ -597,6 +668,14 @@
       "download.config.queue.actions.open_media": "Open"
     },
     "fr": {
+      "download.config.history.title": "Historique des téléchargements",
+      "download.config.history.columns.date": "Date",
+      "download.config.history.columns.title": "Release",
+      "download.config.history.columns.quality": "Qualité",
+      "download.config.history.columns.source": "Tracker",
+      "download.config.history.columns.grab_source": "Récupéré",
+      "download.config.history.columns.status": "Statut",
+      "download.config.history.columns.detail": "Détail",
       "download.config.indexers.fields.max_retention_days": "Jours de partage maximum",
       "download.config.indexers.fields.max_retention_days_hint": "Supprime un torrent terminé ce nombre de jours après sa fin, même si le ratio de partage n'est pas atteint. Laisser vide pour n'attendre que le ratio.",
       "download.config.indexers.labels.create_title": "Nouvel indexeur",
@@ -694,9 +773,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.3",
+  "version": "0.1.4",
   "files": {
-    "plugin.js": "fb10dd6f610a771687946de7cb157f67449cfd3d0c6bbde1794d71beb9ab7aae",
+    "plugin.js": "1b5acbe2b6730bb9a60902b4b2f56ebc28c1c5c68688c41f441f1202d203f844",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
