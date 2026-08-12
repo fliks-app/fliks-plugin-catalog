@@ -2,7 +2,7 @@
   "id": "fliks.webhooks",
   "pluginApi": 0,
   "name": "Webhook notifications",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "fliks": ">=2.0.0 <3.0.0",
   "author": "Fliks",
   "description": "Posts a JSON payload to the HTTPS endpoint you configure when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
@@ -47,6 +47,13 @@
             "hint": "webhooks.config.endpoint_url_hint",
             "required": true
           }
+        ],
+        "actions": [
+          {
+            "id": "test-delivery",
+            "labelKey": "webhooks.config.test",
+            "actionId": "events.test-delivery"
+          }
         ]
       }
     ]
@@ -55,12 +62,14 @@
     "en": {
       "webhooks.config.title": "Webhook notifications",
       "webhooks.config.endpoint_url": "Endpoint URL",
-      "webhooks.config.endpoint_url_hint": "Fliks POSTs the event here over https. Nothing is sent while this is empty."
+      "webhooks.config.endpoint_url_hint": "Fliks POSTs the event here over https. Nothing is sent while this is empty.",
+      "webhooks.config.test": "Send a test event"
     },
     "fr": {
       "webhooks.config.title": "Notifications webhook",
       "webhooks.config.endpoint_url": "URL du point d'entrée",
-      "webhooks.config.endpoint_url_hint": "Fliks y envoie l'événement en POST via https. Rien n'est envoyé tant que ce champ est vide."
+      "webhooks.config.endpoint_url_hint": "Fliks y envoie l'événement en POST via https. Rien n'est envoyé tant que ce champ est vide.",
+      "webhooks.config.test": "Envoyer un événement de test"
     }
   }
 }
