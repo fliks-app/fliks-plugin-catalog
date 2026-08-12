@@ -5426,6 +5426,10 @@ var net = __toESM(require("net"));
 var DEFAULT_CALL_TIMEOUT_MS = 1e4;
 var MAX_OUTSTANDING_CALLS = 256;
 var HostCallError = class extends Error {
+  constructor(message, outcome) {
+    super(message);
+    this.outcome = outcome;
+  }
 };
 var HostClient = class {
   constructor(sockPath) {
@@ -5455,10 +5459,10 @@ var HostClient = class {
   /** Every call carries a deadline and rejects — never hangs — once it elapses. */
   call(method, payload, timeoutMs = DEFAULT_CALL_TIMEOUT_MS) {
     if (!this.socket || !this.connected) {
-      return Promise.reject(new HostCallError(`not connected to core (method "${method}")`));
+      return Promise.reject(new HostCallError(`not connected to core (method "${method}")`, "unknown"));
     }
     if (this.pending.size >= MAX_OUTSTANDING_CALLS) {
-      return Promise.reject(new HostCallError(`too many outstanding core calls (>= ${MAX_OUTSTANDING_CALLS})`));
+      return Promise.reject(new HostCallError(`too many outstanding core calls (>= ${MAX_OUTSTANDING_CALLS})`, "unknown"));
     }
     const i = this.nextId++;
     const req = { i, m: method, p: payload };
@@ -5466,7 +5470,7 @@ var HostClient = class {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(i);
-        reject(new HostCallError(`"${method}" timed out after ${timeoutMs}ms`));
+        reject(new HostCallError(`"${method}" timed out after ${timeoutMs}ms`, "unknown"));
       }, timeoutMs);
       this.pending.set(i, {
         resolve,
@@ -5504,19 +5508,20 @@ var HostClient = class {
       if (!pending) continue;
       this.pending.delete(res.i);
       clearTimeout(pending.timer);
-      if (res.e) pending.reject(new HostCallError(`${res.e.c}: ${res.e.m}`));
+      if (res.e) pending.reject(new HostCallError(`${res.e.c}: ${res.e.m}`, "rejected"));
       else pending.resolve(res.r);
     }
   }
-  /** A protocol violation or socket loss fails every outstanding call rather than
-   *  wedging the client — the caller gets a rejection, not a hang. */
+  /** Fails every outstanding call rather than wedging the client. Core may have processed
+   *  any of these before the connection dropped, so 'unknown', not 'rejected'. */
   onFatal(err) {
     if (this.connected) log.error(err.message);
     this.connected = false;
     this.socket?.destroy();
+    const rejection = new HostCallError(err.message, "unknown");
     for (const [id, pending] of this.pending) {
       clearTimeout(pending.timer);
-      pending.reject(err);
+      pending.reject(rejection);
       this.pending.delete(id);
     }
   }
@@ -5999,15 +6004,27 @@ var DownloadHistoryRepository = class {
     );
     return rows;
   }
-  /** Newest first, one page at a time: the table is append-only and outlives every torrent in it,
-   *  so a history view can never read it whole. */
-  async listPage(limit, offset) {
+  /** Newest first, one page at a time — the table is append-only and outlives every torrent in it.
+   *  Page and count share the same WHERE, so a filtered page never disagrees with an unfiltered total. */
+  async listPage(limit, offset, filter) {
+    const conditions = [];
+    const params = [];
+    if (filter?.q) {
+      params.push(filter.q);
+      conditions.push(`strpos(lower("sourceTitle"), lower($${params.length})) > 0`);
+    }
+    if (filter?.status) {
+      params.push(filter.status);
+      conditions.push(`"status" = $${params.length}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const [page, count] = await Promise.all([
       this.pool.query(
-        `SELECT ${COLUMNS4} FROM "download_history" ORDER BY "createdAt" DESC, "id" DESC LIMIT $1 OFFSET $2`,
-        [limit, offset]
+        `SELECT ${COLUMNS4} FROM "download_history" ${where}
+          ORDER BY "createdAt" DESC, "id" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
       ),
-      this.pool.query(`SELECT COUNT(*)::text AS "count" FROM "download_history"`)
+      this.pool.query(`SELECT COUNT(*)::text AS "count" FROM "download_history" ${where}`, params)
     ]);
     return { rows: page.rows, total: Number(count.rows[0]?.count ?? 0) };
   }
@@ -7370,15 +7387,16 @@ var QbittorrentDriver = class {
       return { ok: false, torrents: [] };
     }
   }
-  async getTorrentFiles(client, hash) {
+  async getTorrentFilesResult(client, hash) {
     const s = client.settings;
     const base = buildBaseUrl(s);
-    if (!base) return [];
+    if (!base) return { ok: false, files: [] };
     let cookie;
     try {
       cookie = await login(base, s, 15e3);
-    } catch {
-      return [];
+    } catch (e) {
+      log.warn(`getTorrentFilesResult: auth failed for client "${client.name}": ${e.message}`);
+      return { ok: false, files: [] };
     }
     try {
       const res = await httpRequest(`${base}/api/v2/torrents/files?hash=${encodeURIComponent(hash)}`, {
@@ -7386,10 +7404,14 @@ var QbittorrentDriver = class {
         timeoutMs: 15e3
       });
       const parsed = await parseJsonArray(res);
-      return parsed ?? [];
+      if (!parsed) {
+        log.warn(`getTorrentFilesResult: unexpected response for hash ${hash} (HTTP ${res.status})`);
+        return { ok: false, files: [] };
+      }
+      return { ok: true, files: parsed };
     } catch (e) {
-      log.warn(`getTorrentFiles: error for hash ${hash}: ${e.message}`);
-      return [];
+      log.warn(`getTorrentFilesResult: error for hash ${hash}: ${e.message}`);
+      return { ok: false, files: [] };
     }
   }
   async deleteTorrent(client, hash, deleteFiles = false) {
@@ -7763,14 +7785,14 @@ async function grabAndRecord(deps, args) {
       episodeId: args.episodeId
     })
   );
-  await deps.host.call("events.publish", [
+  void deps.host.call("events.publish", [
     {
       type: "acquisition.grabbed",
       mediaId: args.mediaId,
       seasonNumber: args.seasonNumber,
       episodeNumber: args.episodeNumber
     }
-  ]);
+  ]).catch((e) => log.warn(`AutoGrab: events.publish failed: ${e.message}`));
   void deps.host.call("notifications.dispatch", {
     event: "grab.started",
     payload: { title: args.label, quality: args.quality, sourceTitle: args.sourceTitle }
@@ -8263,17 +8285,26 @@ var DownloadCompletionPoller = class {
       if (history.status !== "grabbed" && history.status !== "failed" && history.status !== "warning") continue;
       const client = torrentClient.get(torrent._clientId);
       log.info(`Import: torrent "${torrent.name}" -> history #${history.id} (mediaId=${history.mediaId}, status=${history.status})`);
+      if (!client) {
+        const message = "download client for this torrent is no longer enabled";
+        log.warn(`Import: "${history.sourceTitle}" \u2014 ${message}; will retry`);
+        await this.deps.historyRepo.updateStatusByIds([history.id], "grabbed", message);
+        continue;
+      }
       try {
         await this.deps.historyRepo.markImporting(history.id);
-        if (!client) throw new Error("download client for this torrent is no longer enabled");
         await this.processOne(history, torrent, client);
         imported++;
       } catch (e) {
         const message = e.message;
+        if (e instanceof HostCallError && e.outcome === "unknown") {
+          log.warn(`Import: "${history.sourceTitle}" \u2014 core did not confirm (${message}); will retry`);
+          await this.deps.historyRepo.updateStatusByIds([history.id], "grabbed", message);
+          continue;
+        }
         log.error(`Import: FAILED for "${history.sourceTitle}": ${message}`);
         await this.deps.historyRepo.markFailed(history.id, message);
         await this.publishFailed(history, message);
-        await this.autoBlocklist(history, `Auto-blocklist: import failed \u2014 ${message}`);
       }
     }
     if (imported > 0) log.info(`Import: processed ${imported}/${completedTorrents.length} completed torrent(s)`);
@@ -8388,7 +8419,9 @@ var DownloadCompletionPoller = class {
       changed = true;
       log.warn(`Import: ${expired.length} grabbed/importing entries lost their torrent for > ${ORPHAN_GRACE_MS / 6e4}min \u2014 marked failed`);
     }
-    if (changed) await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]);
+    if (changed) {
+      await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]).catch((e) => log.warn(`Import: queue-changed publish failed: ${e.message}`));
+    }
   }
   /**
    * Ported from `emitDownloadProgress`. Season/episode number is omitted from
@@ -8414,7 +8447,7 @@ var DownloadCompletionPoller = class {
         bytesPerSecond: t.dlspeed,
         etaSeconds: t.eta > 0 && t.eta < 864e4 ? t.eta : void 0,
         state: torrentProgressState(t)
-      });
+      }).catch((e) => log.warn(`Import: progress publish failed: ${e.message}`));
     }
   }
   /**
@@ -8429,7 +8462,13 @@ var DownloadCompletionPoller = class {
    * against core source (out of scope, read-only).
    */
   async processOne(history, torrent, client) {
-    const files = await this.deps.driver.getTorrentFiles(client, torrent.hash);
+    const { ok, files } = await this.deps.driver.getTorrentFilesResult(client, torrent.hash);
+    if (!ok) {
+      const message = `could not list files for "${torrent.name}"`;
+      log.warn(`Import[${history.sourceTitle}]: ${message}; will retry`);
+      await this.deps.historyRepo.updateStatusByIds([history.id], "grabbed", message);
+      return;
+    }
     const videoFiles = files.filter((f) => f.progress >= 1 && VIDEO_EXTS.has(path.extname(f.name).toLowerCase())).map((f) => path.join(torrent.save_path ?? "", f.name));
     if (!videoFiles.length) {
       const statusMessage = `Import failed: no valid video file in the download "${torrent.name}"`;
@@ -8464,6 +8503,7 @@ var DownloadCompletionPoller = class {
     if (!result.imported.length && result.alreadyPresent.length) {
       log.info(`Import[${history.sourceTitle}]: already in the library \u2014 completing the row`);
       await this.deps.historyRepo.completeImport(history.id);
+      await this.publishImported(history, result);
       return;
     }
     if (!result.imported.length) {
@@ -8475,16 +8515,25 @@ var DownloadCompletionPoller = class {
     }
     await this.deps.historyRepo.completeImport(history.id);
     log.info(`Import[${history.sourceTitle}]: completed successfully (${result.imported.length} file(s))`);
-    await this.deps.host.call("events.publish", [
-      {
-        type: "acquisition.imported",
-        mediaId: history.mediaId,
-        seasonNumber: result.seasonNumber,
-        episodeNumber: result.episodeNumber,
-        quality: history.quality,
-        sourceTitle: history.sourceTitle
-      }
-    ]);
+    await this.publishImported(history, result);
+  }
+  /** Notify-only, same swallow as {@link publishFailed} — the row is already `completed`. */
+  async publishImported(history, result) {
+    if (history.mediaId == null) return;
+    try {
+      await this.deps.host.call("events.publish", [
+        {
+          type: "acquisition.imported",
+          mediaId: history.mediaId,
+          seasonNumber: result.seasonNumber,
+          episodeNumber: result.episodeNumber,
+          quality: history.quality,
+          sourceTitle: history.sourceTitle
+        }
+      ]);
+    } catch (e) {
+      log.warn(`Import[${history.sourceTitle}]: failed to publish acquisition.imported: ${e.message}`);
+    }
   }
   // ---------------------------------------------------------------------------
   // CleanStalled job
@@ -8526,9 +8575,11 @@ var DownloadCompletionPoller = class {
           continue;
         }
         await this.deps.stalledChecksRepo.deleteByHash(t.hash);
-        await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]);
         await this.autoBlocklist(history, "Auto-blocklist: stalled torrent");
         await this.deps.historyRepo.markFailed(history.id, "Stalled \u2014 removed by stalled-download cleanup");
+        await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]).catch(
+          (e) => log.warn(`StalledCleanup: failed to publish acquisition.queue.changed: ${e.message}`)
+        );
         const shouldRestart = stallConfig.autoRestart && (history.grabSource === "auto" || stallConfig.includeManualGrabs);
         if (shouldRestart && history.mediaId != null) mediaToResearch.add(history.mediaId);
       }
@@ -8613,11 +8664,17 @@ var DownloadCompletionPoller = class {
     return "";
   }
   // ---------------------------------------------------------------------------
+  /** Notify-only: the failure was already recorded locally, so a failed publish must
+   *  never abort the caller's remaining cleanup or read as a fresh, unresolved failure. */
   async publishFailed(history, reason) {
     if (history.mediaId == null) return;
-    await this.deps.host.call("events.publish", [
-      { type: "acquisition.failed", mediaId: history.mediaId, title: history.sourceTitle, reason }
-    ]);
+    try {
+      await this.deps.host.call("events.publish", [
+        { type: "acquisition.failed", mediaId: history.mediaId, title: history.sourceTitle, reason }
+      ]);
+    } catch (e) {
+      log.warn(`Import[${history.sourceTitle}]: failed to publish acquisition.failed: ${e.message}`);
+    }
   }
   /**
    * The plugin owns the `blocklist` table outright (`src/host-methods.ts` has
@@ -8998,13 +9055,39 @@ var CONFIG_PAGES = [
     list: "/history",
     paged: true,
     pageSize: 25,
+    filters: [
+      { kind: "search", key: "q", placeholderKey: "download.config.history.filters.search_placeholder" },
+      {
+        kind: "select",
+        key: "status",
+        labelKey: "download.config.history.filters.status_label",
+        options: [
+          { value: "", labelKey: "download.config.history.filters.status_all" },
+          { value: "grabbed", labelKey: "download.config.history.filters.status_grabbed" },
+          { value: "importing", labelKey: "download.config.history.filters.status_importing" },
+          { value: "completed", labelKey: "download.config.history.filters.status_completed" },
+          { value: "failed", labelKey: "download.config.history.filters.status_failed" },
+          { value: "warning", labelKey: "download.config.history.filters.status_warning" }
+        ]
+      }
+    ],
     columns: [
       { key: "date", labelKey: "download.config.history.columns.date", format: "date" },
       { key: "title", labelKey: "download.config.history.columns.title" },
       { key: "quality", labelKey: "download.config.history.columns.quality" },
       { key: "source", labelKey: "download.config.history.columns.source" },
       { key: "grabSource", labelKey: "download.config.history.columns.grab_source" },
-      { key: "status", labelKey: "download.config.history.columns.status" },
+      {
+        key: "status",
+        labelKey: "download.config.history.columns.status",
+        labelKeys: {
+          grabbed: "download.config.history.filters.status_grabbed",
+          importing: "download.config.history.filters.status_importing",
+          completed: "download.config.history.filters.status_completed",
+          failed: "download.config.history.filters.status_failed",
+          warning: "download.config.history.filters.status_warning"
+        }
+      },
       { key: "statusMessage", labelKey: "download.config.history.columns.detail" }
     ],
     rowActions: [
@@ -9022,6 +9105,14 @@ var I18N = {
     "download.config.history.columns.grab_source": "Grabbed",
     "download.config.history.columns.status": "Status",
     "download.config.history.columns.detail": "Detail",
+    "download.config.history.filters.search_placeholder": "Search releases",
+    "download.config.history.filters.status_label": "Status",
+    "download.config.history.filters.status_all": "All statuses",
+    "download.config.history.filters.status_grabbed": "Grabbed",
+    "download.config.history.filters.status_importing": "Importing",
+    "download.config.history.filters.status_completed": "Completed",
+    "download.config.history.filters.status_failed": "Failed",
+    "download.config.history.filters.status_warning": "Warning",
     "download.config.indexers.fields.max_retention_days": "Maximum seeding days",
     "download.config.indexers.fields.max_retention_days_hint": "Remove a finished torrent this many days after it completed, even if the share ratio is not reached. Leave empty to wait for the ratio alone.",
     "download.config.indexers.labels.create_title": "New indexer",
@@ -9137,6 +9228,14 @@ var I18N = {
     "download.config.history.columns.grab_source": "R\xE9cup\xE9r\xE9",
     "download.config.history.columns.status": "Statut",
     "download.config.history.columns.detail": "D\xE9tail",
+    "download.config.history.filters.search_placeholder": "Rechercher des releases",
+    "download.config.history.filters.status_label": "Statut",
+    "download.config.history.filters.status_all": "Tous les statuts",
+    "download.config.history.filters.status_grabbed": "R\xE9cup\xE9r\xE9",
+    "download.config.history.filters.status_importing": "Import en cours",
+    "download.config.history.filters.status_completed": "Termin\xE9",
+    "download.config.history.filters.status_failed": "\xC9chou\xE9",
+    "download.config.history.filters.status_warning": "Avertissement",
     "download.config.indexers.fields.max_retention_days": "Jours de partage maximum",
     "download.config.indexers.fields.max_retention_days_hint": "Supprime un torrent termin\xE9 ce nombre de jours apr\xE8s sa fin, m\xEAme si le ratio de partage n'est pas atteint. Laisser vide pour n'attendre que le ratio.",
     "download.config.indexers.labels.create_title": "Nouvel indexeur",
@@ -9467,6 +9566,7 @@ async function handleRemoveBlocklistEntry(deps, params) {
   return jsonResponse(200, {});
 }
 var QUEUE_STATUSES = ["grabbed", "importing"];
+var HISTORY_STATUSES = ["grabbed", "importing", "completed", "failed", "warning"];
 async function indexClientTorrents(deps) {
   const clients = await deps.downloadClientsRepo.listEnabled();
   const byClientId = /* @__PURE__ */ new Map();
@@ -9516,8 +9616,10 @@ async function attachMediaTypes(deps, pageItems) {
 async function handleHistory(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
   const pageSize = Math.min(100, Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25));
+  const q = typeof req.query["q"] === "string" ? req.query["q"].trim() : "";
+  const status = HISTORY_STATUSES.includes(req.query["status"]) ? req.query["status"] : void 0;
   const [{ rows, total }, indexers] = await Promise.all([
-    deps.downloadHistory.listPage(pageSize, (page - 1) * pageSize),
+    deps.downloadHistory.listPage(pageSize, (page - 1) * pageSize, { ...q ? { q } : {}, ...status ? { status } : {} }),
     deps.indexerService.findAll()
   ]);
   const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
