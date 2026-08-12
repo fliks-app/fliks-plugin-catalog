@@ -8198,6 +8198,7 @@ function torrentProgressState(t) {
 }
 
 // src/grab/completion-poller.ts
+var INGEST_CALL_TIMEOUT_MS = 31 * 6e4;
 var VIDEO_EXTS = /* @__PURE__ */ new Set([".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".wmv", ".flv"]);
 var ORPHAN_GRACE_MS = 5 * 6e4;
 var ORPHAN_STATUS_MESSAGE = "Torrent no longer present in download client";
@@ -8435,13 +8436,24 @@ var DownloadCompletionPoller = class {
       await this.deps.historyRepo.markFailed(history.id, "Import failed: no media linked to this download");
       return;
     }
-    const result = await this.deps.host.call("library.ingest", {
-      idempotencyKey: `download-history:${history.id}`,
-      mediaId: history.mediaId,
-      paths: videoFiles,
-      transfer: "copy",
-      sourceLabel: history.sourceTitle
-    });
+    const result = await this.deps.host.call(
+      "library.ingest",
+      {
+        idempotencyKey: `download-history:${history.id}`,
+        mediaId: history.mediaId,
+        paths: videoFiles,
+        transfer: "copy",
+        sourceLabel: history.sourceTitle
+      },
+      // Longer than core's own deadline for this method: copying a release is not a lookup, and
+      // giving up first would record a failure while core is still writing.
+      INGEST_CALL_TIMEOUT_MS
+    );
+    if (!result.imported.length && result.alreadyPresent.length) {
+      log.info(`Import[${history.sourceTitle}]: already in the library \u2014 completing the row`);
+      await this.deps.historyRepo.completeImport(history.id);
+      return;
+    }
     if (!result.imported.length) {
       const statusMessage = `Import failed: no file could be placed under the library root for "${torrent.name}"`;
       log.error(`Import[${history.sourceTitle}]: ${statusMessage}`);
