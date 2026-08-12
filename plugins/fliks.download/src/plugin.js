@@ -7697,6 +7697,7 @@ function joinScored(raw, scored) {
 }
 function pickRelease(sorted, want) {
   if (!want) return void 0;
+  if (want.decision === "skip") return void 0;
   return sorted.find((r) => {
     if (r.rejections.length > 0) return false;
     if (r.rank <= want.minRankExclusive || r.rank > want.maxRankInclusive) return false;
@@ -7875,8 +7876,11 @@ async function searchScored(deps, target, customQuery) {
 }
 async function searchReleases(deps, mediaId, seasonId, episodeId, customQuery) {
   const target = await loadTarget(deps, mediaId, seasonId, episodeId);
-  if (!target.want) return [];
-  return searchScored(deps, target, customQuery);
+  if (!target.want) throw new GrabError("download.grab.errors.unprofiled");
+  const scored = await searchScored(deps, target, customQuery);
+  const satisfied = target.want.decision === "skip" ? " (profile already satisfied)" : "";
+  log.info(`Search #${mediaId} "${target.title}"${satisfied} q="${searchQuery(target, customQuery)}" \u2192 ${scored.length} result(s)`);
+  return scored;
 }
 async function scoreSingleRelease(deps, target, sourceTitle, downloadUrl) {
   const fabricated = {
@@ -7920,8 +7924,8 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
     const sourceTitle = manual.sourceTitle?.trim() || inferTitleFromTorrentUrl(manual.downloadUrl);
     const scored2 = await scoreSingleRelease(deps, target, sourceTitle, manual.downloadUrl);
     if (scored2.blocklisted) throw new GrabError("download.grab.errors.blocklisted", sourceTitle);
-    if (!scored2.allowed) throw new GrabError("download.grab.errors.quality_not_allowed", scored2.qualityName);
-    log.info(`Grab #${mediaId} "${target.title}" \u2014 manual URL`);
+    if (!scored2.allowed && !manual.force) throw new GrabError("download.grab.errors.quality_not_allowed", scored2.qualityName);
+    log.info(`Grab #${mediaId} "${target.title}" \u2014 manual URL${!scored2.allowed ? " (forced)" : ""}`);
     return grabAndRecord(execDeps(deps), {
       ...grabCommon,
       sourceTitle,
@@ -7954,7 +7958,8 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
     log.info(`AutoGrab[${target.kind}]: "${target.title}" skipped \u2014 ${reason}`);
     return false;
   };
-  if (!target.want) return logSkip("no quality/language profile on media, or already satisfied");
+  if (!target.want) return logSkip("no quality/language profile on media");
+  if (target.want.decision === "skip") return logSkip("media already satisfies its profile");
   if (pendingCheck2 && await pendingCheck2()) return logSkip("a grab is already pending");
   const scored = await searchScored2(target);
   if (!scored.length) return logSkip("no releases returned by indexers");
@@ -8028,7 +8033,7 @@ async function searchMissing(deps, mediaIds) {
     const page = await deps.host.call("acquisition.candidates", { mediaIds, availableOn: today, limit: 200, cursor: cursor ?? void 0 });
     for (const target of page.items) {
       count++;
-      if (!target.want) continue;
+      if (!target.want || target.want.decision === "skip") continue;
       await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
     }
     cursor = page.cursor;
@@ -8074,7 +8079,7 @@ async function rssSync(deps) {
         limit: 100
       });
       const target = page.items.find((it) => (m.seasonNumber == null ? !it.season : it.season?.number === m.seasonNumber) && (m.episodeNumber == null ? !it.episode : it.episode?.number === m.episodeNumber));
-      if (!target || !target.want) continue;
+      if (!target || !target.want || target.want.decision === "skip") continue;
       await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
     }
   }
@@ -9470,7 +9475,8 @@ function readManualGrabInput(body) {
   return {
     downloadUrl,
     sourceTitle: typeof b["sourceTitle"] === "string" ? b["sourceTitle"] : void 0,
-    indexerId: typeof b["sourceId"] === "number" ? b["sourceId"] : void 0
+    indexerId: typeof b["sourceId"] === "number" ? b["sourceId"] : void 0,
+    force: b["force"] === true
   };
 }
 async function handleGrab(deps, params, req) {
