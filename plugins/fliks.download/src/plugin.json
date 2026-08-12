@@ -500,6 +500,8 @@
   },
   "i18n": {
     "en": {
+      "download.config.indexers.fields.max_retention_days": "Maximum seeding days",
+      "download.config.indexers.fields.max_retention_days_hint": "Remove a finished torrent this many days after it completed, even if the share ratio is not reached. Leave empty to wait for the ratio alone.",
       "download.config.indexers.labels.create_title": "New indexer",
       "download.config.indexers.labels.edit_title": "Edit indexer",
       "download.config.download_clients.labels.create_title": "New download client",
@@ -595,6 +597,8 @@
       "download.config.queue.actions.open_media": "Open"
     },
     "fr": {
+      "download.config.indexers.fields.max_retention_days": "Jours de partage maximum",
+      "download.config.indexers.fields.max_retention_days_hint": "Supprime un torrent terminé ce nombre de jours après sa fin, même si le ratio de partage n'est pas atteint. Laisser vide pour n'attendre que le ratio.",
       "download.config.indexers.labels.create_title": "Nouvel indexeur",
       "download.config.indexers.labels.edit_title": "Modifier l'indexeur",
       "download.config.download_clients.labels.create_title": "Nouveau client de téléchargement",
@@ -690,9 +694,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "files": {
-    "plugin.js": "7aaac021fabb0bac28fc9be81ed66a9c704e82c9a3767c41b29a4dccc37d92cb",
+    "plugin.js": "8c9d9e7b15ee634188abb2d773918844cb23730cd263856fcd8cab45ba05e83b",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }

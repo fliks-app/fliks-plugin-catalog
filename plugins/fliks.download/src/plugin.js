@@ -7347,7 +7347,11 @@ var QbittorrentDriver = class {
         log.warn(`getTorrentsResult: unexpected response from "${client.name}" (HTTP ${res.status})`);
         return { ok: false, torrents: [] };
       }
-      const torrents = parsed.map((t) => t.name ? { ...t, name: decodeHtmlEntities(t.name) } : t);
+      const torrents = parsed.map((t) => ({
+        ...t,
+        name: t.name ? decodeHtmlEntities(t.name) : t.name,
+        completion_on: Number.isFinite(Number(t.completion_on)) ? Number(t.completion_on) : void 0
+      }));
       return { ok: true, torrents };
     } catch (e) {
       log.warn(`getTorrentsResult: error fetching torrents from "${client.name}": ${e.message}`);
@@ -8531,12 +8535,10 @@ var DownloadCompletionPoller = class {
   // CleanSeeded job
   // ---------------------------------------------------------------------------
   /**
-   * Ported from `cleanSeededTorrents` — ratio-target path only. The
-   * `maxRetentionDays` path cannot be ported: it needs each torrent's
-   * completion timestamp, and `ClientTorrent` (`download-clients/contract.ts`,
-   * not owned here) carries no `completion_on`/finish-time field. Not
-   * substituted with `added_on` (a materially different clock) — dropped and
-   * flagged, not silently changed.
+   * Removes a finished torrent once its indexer's seed target is met: either
+   * `maxRetentionDays` since the download completed, or `seedRatio` reached. Retention is
+   * checked first so a long-seeding torrent leaves on time rather than waiting for a ratio
+   * it may never reach.
    */
   async cleanSeeded() {
     const clients = await this.deps.clientsRepo.listEnabled();
@@ -8561,9 +8563,9 @@ var DownloadCompletionPoller = class {
       const { client, torrent } = entry;
       const indexer = history.indexerId ? indexerMap.get(history.indexerId) : void 0;
       const settings = indexer?.settings ?? {};
-      const targetRatio = Number(settings["seedRatio"] ?? 1);
-      if (torrent.ratio < targetRatio) continue;
-      log.info(`SeedCleanup: removing "${torrent.name}" (ratio ${torrent.ratio.toFixed(2)} >= ${targetRatio})`);
+      const reason = this.seedCleanupReason(torrent, settings);
+      if (!reason) continue;
+      log.info(`SeedCleanup: removing "${torrent.name}" (${reason})`);
       try {
         await this.deps.driver.deleteTorrent(client, torrent.hash, true);
         deleted = true;
@@ -8572,6 +8574,19 @@ var DownloadCompletionPoller = class {
       }
     }
     if (deleted) await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]);
+  }
+  /** Empty means keep seeding. A torrent whose client reports no completion time is judged on
+   *  ratio alone: the age of an unknown finish is unknowable, not zero. */
+  seedCleanupReason(torrent, settings) {
+    const maxRetentionDays = settings["maxRetentionDays"] != null ? Number(settings["maxRetentionDays"]) : null;
+    const completedAt = Number(torrent.completion_on ?? 0);
+    if (maxRetentionDays != null && maxRetentionDays > 0 && completedAt > 0) {
+      const ageDays = (Date.now() / 1e3 - completedAt) / 86400;
+      if (ageDays >= maxRetentionDays) return `retention ${Math.round(ageDays)}d >= ${maxRetentionDays}d`;
+    }
+    const targetRatio = Number(settings["seedRatio"] ?? 1);
+    if (torrent.ratio >= targetRatio) return `ratio ${torrent.ratio.toFixed(2)} >= ${targetRatio}`;
+    return "";
   }
   // ---------------------------------------------------------------------------
   async publishFailed(history, reason) {
@@ -8943,6 +8958,8 @@ var CONFIG_PAGES = [
 ];
 var I18N = {
   en: {
+    "download.config.indexers.fields.max_retention_days": "Maximum seeding days",
+    "download.config.indexers.fields.max_retention_days_hint": "Remove a finished torrent this many days after it completed, even if the share ratio is not reached. Leave empty to wait for the ratio alone.",
     "download.config.indexers.labels.create_title": "New indexer",
     "download.config.indexers.labels.edit_title": "Edit indexer",
     "download.config.download_clients.labels.create_title": "New download client",
@@ -9048,6 +9065,8 @@ var I18N = {
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
   // clé API, client de téléchargement, profil de qualité) rather than inventing new terms.
   fr: {
+    "download.config.indexers.fields.max_retention_days": "Jours de partage maximum",
+    "download.config.indexers.fields.max_retention_days_hint": "Supprime un torrent termin\xE9 ce nombre de jours apr\xE8s sa fin, m\xEAme si le ratio de partage n'est pas atteint. Laisser vide pour n'attendre que le ratio.",
     "download.config.indexers.labels.create_title": "Nouvel indexeur",
     "download.config.indexers.labels.edit_title": "Modifier l'indexeur",
     "download.config.download_clients.labels.create_title": "Nouveau client de t\xE9l\xE9chargement",
@@ -9469,6 +9488,12 @@ var INDEXER_IMPLEMENTATIONS = [
         labelKey: "download.config.indexers.fields.seed_ratio",
         hint: "download.config.indexers.fields.seed_ratio_hint",
         default: 1
+      },
+      {
+        key: "maxRetentionDays",
+        type: "number",
+        labelKey: "download.config.indexers.fields.max_retention_days",
+        hint: "download.config.indexers.fields.max_retention_days_hint"
       },
       {
         key: "unknownLanguageIsoCode",
