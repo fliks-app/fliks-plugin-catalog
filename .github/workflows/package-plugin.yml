@@ -88,10 +88,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.pluginId }}-v${{ steps.package.outputs.version }}" \
-            "${{ steps.package.outputs.distPath }}" \
-            --title "${{ inputs.pluginId }} ${{ steps.package.outputs.version }}" \
-            --notes "Signed .fkplugin archive. sha256: ${{ steps.package.outputs.sha256 }}"
+          TAG="${{ inputs.pluginId }}-v${{ steps.package.outputs.version }}"
+          # A re-run must land on the release that already exists rather than fail on its tag.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${{ steps.package.outputs.distPath }}" --clobber
+          else
+            gh release create "$TAG" \
+              "${{ steps.package.outputs.distPath }}" \
+              --title "${{ inputs.pluginId }} ${{ steps.package.outputs.version }}" \
+              --notes "Signed .fkplugin archive. sha256: ${{ steps.package.outputs.sha256 }}"
+          fi
 
       - name: Republish the Pages site so it picks up the new archive
         env:
