@@ -8,6 +8,6 @@
   "pluginApi": 0,
   "fliks": ">=2.0.0 <3.0.0",
   "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-1.1.1.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sha256": "d93595d8b23ed735ab3e2a4ffc9eee40701995f7fcc9549fde533862b3f27e4b",
   "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/logo.svg"
 }
