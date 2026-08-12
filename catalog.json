@@ -9,11 +9,11 @@
       "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/logo.svg",
       "versions": [
         {
-          "version": "0.1.4",
+          "version": "0.1.5",
           "pluginApi": 0,
           "fliks": ">=2.0.0 <3.0.0",
-          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/dist/fliks.download-0.1.4.fkplugin",
-          "sha256": "a5f989e97ab784078d515702192d026b27668a1344692efc87eea87e07d034d3"
+          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/dist/fliks.download-0.1.5.fkplugin",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
       ]
     },
