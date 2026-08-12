@@ -5,7 +5,7 @@
   "fliks": ">=2.0.0 <3.0.0",
   "author": "Fliks",
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "logo": "logo.svg",
   "kind": "process",
   "runtime": "node",
@@ -690,9 +690,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "files": {
-    "plugin.js": "2f7620fced5a3a33239fc5725cd519aafa458fad0f2f0cce18dc65828a57f5ef",
+    "plugin.js": "7aaac021fabb0bac28fc9be81ed66a9c704e82c9a3767c41b29a4dccc37d92cb",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
