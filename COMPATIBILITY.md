@@ -5,11 +5,16 @@ filter Fliks applies to what it fetched), **install** (`POST /api/plugins/import
 and **handshake** (`hello`, for the `process` tier only, every time the plugin is
 spawned).
 
-- **`pluginApi` is an integer, checked for exact equality.** Not a range, not
-  a minimum. Within one `pluginApi` value the method set is **additive only** — a
-  new method or a new optional field can never break a plugin written against an
-  older minor of the same `pluginApi`. Any removal or change in existing behaviour
-  requires a new `pluginApi` value.
+- **`pluginApi` is an integer, and core accepts every value it still supports.** Not
+  a range and not a minimum: an explicit set, `SUPPORTED_PLUGIN_API_VERSIONS` in the
+  consumer. Within one `pluginApi` value the method set is **additive only** — a new
+  method or a new optional field can never break a plugin written against an older
+  minor of the same `pluginApi`. Any removal or change in existing behaviour requires
+  a new `pluginApi` value.
+- **A prerelease core matches as its own release.** `3.0.0-rc.1` is checked as
+  `3.0.0`, because a prerelease sorts *below* its release and would otherwise satisfy
+  no range that admits it — leaving a release candidate unable to run any plugin, and
+  a major upgrade impossible to rehearse.
 - **`fliks` is a semver range with a mandatory upper bound.** `">=2.1.0"` alone is
   refused by every validator in this repo and by the consumer's own parser
   (`semver.validRange` still accepts it, but `validate-pr.yml` and
@@ -22,9 +27,12 @@ spawned).
 
 | `pluginApi` | Compatible `fliks` core versions | Status |
 |---|---|---|
-| `0` | `>=2.1.0 <3.0.0` | current |
+| `0` | `>=2.0.0 <3.0.0` | current |
 
-Source of truth for the current value: `PLUGIN_API_VERSION` in
+Every manifest published here declares `>=2.0.0`, which is what this row records.
+
+Source of truth: `SUPPORTED_PLUGIN_API_VERSIONS` (what core accepts) and
+`PLUGIN_API_VERSION` (what core sends at `hello`) in
 `backend/src/common/plugin-contract/protocol.ts` in the `fliks-app/fliks` repo.
 
 ## When this table changes
@@ -34,7 +42,8 @@ Source of truth for the current value: `PLUGIN_API_VERSION` in
   it is — plugins built against it do not retroactively change what they support.
 - `validate-pr.yml` refuses any submitted `pluginApi` that has no row here. A plugin
   cannot be the first thing that tells this repo a new `pluginApi` exists.
-- Bumping `PLUGIN_API_VERSION` in core is a breaking change for every plugin on the
-  old value: they disappear from the catalog for users on the new core major (they
-  are not deleted, just no longer `installable` — see `filterCatalog` in the
-  consumer) until republished against the new `pluginApi`.
+- Bumping `PLUGIN_API_VERSION` in core does **not** immediately orphan plugins on the
+  old value: core keeps accepting every entry in `SUPPORTED_PLUGIN_API_VERSIONS`. They
+  stop being `installable` only once a later core release drops the old entry — and the
+  window between the two is when authors republish. Plan the drop as its own release,
+  and announce it with the bump.
