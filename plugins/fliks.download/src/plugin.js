@@ -9460,7 +9460,7 @@ var MANIFEST_TEMPLATE = {
   id: PLUGIN_ID,
   pluginApi: 0,
   name: "Download",
-  fliks: ">=2.0.0 <3.0.0",
+  fliks: ">=3.0.0 <4.0.0",
   author: "Fliks",
   description: "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   license: "AGPL-3.0-or-later",
