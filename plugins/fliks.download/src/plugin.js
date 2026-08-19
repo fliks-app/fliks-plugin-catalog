@@ -5324,8 +5324,19 @@ var ProtocolViolationError = class extends Error {
     this.name = "ProtocolViolationError";
   }
 };
+var FrameTooLargeError = class extends Error {
+  constructor(reason) {
+    super(reason);
+    this.name = "FrameTooLargeError";
+  }
+};
 function encodeFrame(frame) {
-  return Buffer.from(JSON.stringify(frame) + "\n", "utf8");
+  const json = JSON.stringify(frame);
+  const size = Buffer.byteLength(json, "utf8");
+  if (size > MAX_FRAME_BYTES) {
+    throw new FrameTooLargeError(`frame of ${size} bytes exceeds the ${MAX_FRAME_BYTES} byte limit`);
+  }
+  return Buffer.from(json + "\n", "utf8");
 }
 var FrameReader = class {
   pending = Buffer.alloc(0);
@@ -5410,7 +5421,10 @@ function attachDispatcher(socket, requestHandlers2, noteHandlers2) {
           socket.write(encodeFrame({ i: frame.i, e: { c: "ERR_NO_METHOD", m: `no handler for "${frame.m}"` } }));
           continue;
         }
-        handler(frame.p).then((r) => socket.write(encodeFrame({ i: frame.i, r }))).catch((err) => socket.write(encodeFrame({ i: frame.i, e: { c: "ERR", m: err.message } })));
+        handler(frame.p).then((r) => socket.write(encodeFrame({ i: frame.i, r }))).catch((err) => {
+          const c = err instanceof FrameTooLargeError ? "ERR_RESULT_TOO_LARGE" : "ERR";
+          socket.write(encodeFrame({ i: frame.i, e: { c, m: err.message.slice(0, 4096) } }));
+        });
       } else if (isNote(frame)) {
         const noteFrame = frame;
         noteHandlers2[noteFrame.m]?.(noteFrame.p);
@@ -5426,9 +5440,10 @@ var net = __toESM(require("net"));
 var DEFAULT_CALL_TIMEOUT_MS = 1e4;
 var MAX_OUTSTANDING_CALLS = 256;
 var HostCallError = class extends Error {
-  constructor(message, outcome) {
+  constructor(message, outcome, code) {
     super(message);
     this.outcome = outcome;
+    this.code = code;
   }
 };
 var HostClient = class {
@@ -5508,7 +5523,7 @@ var HostClient = class {
       if (!pending) continue;
       this.pending.delete(res.i);
       clearTimeout(pending.timer);
-      if (res.e) pending.reject(new HostCallError(`${res.e.c}: ${res.e.m}`, "rejected"));
+      if (res.e) pending.reject(new HostCallError(`${res.e.c}: ${res.e.m}`, "rejected", res.e.c));
       else pending.resolve(res.r);
     }
   }
@@ -7713,9 +7728,22 @@ function readyIndexersOrNone(indexer, indexers, context) {
   }
   return ready;
 }
+var INDEXER_BUDGET_MS = 12e4;
+function withinBudget(work, name) {
+  let timer;
+  const lapsed = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      log.warn(`[${name}] still searching after ${INDEXER_BUDGET_MS}ms \u2014 dropped from this round`);
+      resolve([]);
+    }, INDEXER_BUDGET_MS);
+  });
+  return Promise.race([work, lapsed]).finally(() => clearTimeout(timer));
+}
 async function fanOut(ready, run) {
-  const batches = await Promise.allSettled(ready.map(run));
-  return batches.flatMap((b) => b.status === "fulfilled" ? b.value : []);
+  const batches = await Promise.all(
+    ready.map((ix) => withinBudget(run(ix).catch(() => []), ix.name))
+  );
+  return batches.flat();
 }
 async function searchMovieAcrossIndexers(indexer, indexers, query, externalIds, context = "search") {
   const ready = readyIndexersOrNone(indexer, indexers, context);
@@ -8915,6 +8943,7 @@ var CONFIG_PAGES = [
   {
     id: "general",
     labelKey: "download.config.general.title",
+    subtitleKey: "download.config.general.subtitle",
     icon: "download",
     fields: [
       {
@@ -8959,6 +8988,7 @@ var CONFIG_PAGES = [
     id: "indexers",
     kind: "providers",
     labelKey: "download.config.indexers.title",
+    subtitleKey: "download.config.indexers.subtitle",
     icon: "search",
     list: "/indexers",
     implementations: "/indexers/implementations",
@@ -9013,6 +9043,7 @@ var CONFIG_PAGES = [
     id: "download-clients",
     kind: "providers",
     labelKey: "download.config.download_clients.title",
+    subtitleKey: "download.config.download_clients.subtitle",
     icon: "server",
     list: "/download-clients",
     implementations: "/download-clients/implementations",
@@ -9034,13 +9065,33 @@ var CONFIG_PAGES = [
     id: "queue",
     kind: "table",
     labelKey: "download.config.queue.title",
+    subtitleKey: "download.config.queue.subtitle",
     icon: "download",
     list: "/queue",
     paged: true,
     pageSize: 25,
     columns: [
       { key: "title", labelKey: "download.config.queue.columns.title" },
-      { key: "state", labelKey: "download.config.queue.columns.state" },
+      {
+        key: "state",
+        labelKey: "download.config.queue.columns.state",
+        // `handleQueue` answers one of five closed values; without these the cell printed the
+        // raw enum, in English, whatever the UI language.
+        labelKeys: {
+          queued: "download.config.queue.states.queued",
+          active: "download.config.queue.states.active",
+          stalled: "download.config.queue.states.stalled",
+          paused: "download.config.queue.states.paused",
+          importing: "download.config.queue.states.importing"
+        },
+        badges: {
+          queued: "neutral",
+          active: "info",
+          stalled: "warning",
+          paused: "ghost",
+          importing: "primary"
+        }
+      },
       { key: "progress", labelKey: "download.config.queue.columns.progress", format: "percent" },
       { key: "bytesPerSecond", labelKey: "download.config.queue.columns.speed", format: "bytes" }
     ],
@@ -9056,6 +9107,7 @@ var CONFIG_PAGES = [
     id: "history",
     kind: "table",
     labelKey: "download.config.history.title",
+    subtitleKey: "download.config.history.subtitle",
     icon: "history",
     list: "/history",
     paged: true,
@@ -9079,9 +9131,10 @@ var CONFIG_PAGES = [
     columns: [
       { key: "date", labelKey: "download.config.history.columns.date", format: "date" },
       { key: "title", labelKey: "download.config.history.columns.title" },
-      { key: "quality", labelKey: "download.config.history.columns.quality" },
-      { key: "source", labelKey: "download.config.history.columns.source" },
-      { key: "grabSource", labelKey: "download.config.history.columns.grab_source" },
+      // A quality name is one token and every value is worth badging, hence the `*` tone.
+      { key: "quality", labelKey: "download.config.history.columns.quality", badges: { "*": "ghost" } },
+      { key: "source", labelKey: "download.config.history.columns.source", nowrap: true },
+      { key: "grabSource", labelKey: "download.config.history.columns.grab_source", nowrap: true },
       {
         key: "status",
         labelKey: "download.config.history.columns.status",
@@ -9091,6 +9144,13 @@ var CONFIG_PAGES = [
           completed: "download.config.history.filters.status_completed",
           failed: "download.config.history.filters.status_failed",
           warning: "download.config.history.filters.status_warning"
+        },
+        badges: {
+          grabbed: "info",
+          importing: "primary",
+          completed: "success",
+          failed: "error",
+          warning: "warning"
         }
       },
       { key: "statusMessage", labelKey: "download.config.history.columns.detail" }
@@ -9102,6 +9162,16 @@ var CONFIG_PAGES = [
 ];
 var I18N = {
   en: {
+    "download.config.general.subtitle": "How this plugin grabs and imports what you ask for.",
+    "download.config.indexers.subtitle": "Torznab trackers searched when you look for a release.",
+    "download.config.download_clients.subtitle": "Where a grabbed release is handed off to be downloaded.",
+    "download.config.queue.subtitle": "What is downloading right now, across every client.",
+    "download.config.history.subtitle": "Every grab, and how it ended.",
+    "download.config.queue.states.queued": "Queued",
+    "download.config.queue.states.active": "Downloading",
+    "download.config.queue.states.stalled": "Stalled",
+    "download.config.queue.states.paused": "Paused",
+    "download.config.queue.states.importing": "Importing",
     "download.config.history.title": "Download history",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
@@ -9225,6 +9295,16 @@ var I18N = {
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
   // clé API, client de téléchargement, profil de qualité) rather than inventing new terms.
   fr: {
+    "download.config.general.subtitle": "Comment ce plugin r\xE9cup\xE8re et importe ce que vous demandez.",
+    "download.config.indexers.subtitle": "Les trackers Torznab interrog\xE9s lors d'une recherche de release.",
+    "download.config.download_clients.subtitle": "O\xF9 une release r\xE9cup\xE9r\xE9e est confi\xE9e pour t\xE9l\xE9chargement.",
+    "download.config.queue.subtitle": "Ce qui est en cours de t\xE9l\xE9chargement, tous clients confondus.",
+    "download.config.history.subtitle": "Chaque r\xE9cup\xE9ration, et comment elle s'est termin\xE9e.",
+    "download.config.queue.states.queued": "En file",
+    "download.config.queue.states.active": "T\xE9l\xE9chargement",
+    "download.config.queue.states.stalled": "Bloqu\xE9",
+    "download.config.queue.states.paused": "En pause",
+    "download.config.queue.states.importing": "Import",
     "download.config.history.title": "Historique des t\xE9l\xE9chargements",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
@@ -9365,6 +9445,10 @@ var MANIFEST_TEMPLATE = {
 };
 
 // src/seams/http-routes.ts
+var MAX_PAGE_SIZE = 100;
+function readPageSize(raw) {
+  return Math.min(MAX_PAGE_SIZE, Math.max(1, Math.trunc(Number(raw)) || 25));
+}
 function jsonResponse(status, body) {
   return { status, headers: { "content-type": "application/json" }, body };
 }
@@ -9555,7 +9639,7 @@ async function handleTestDownloadClientConnection(deps, req) {
 }
 async function handleListBlocklist(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
-  const pageSize = Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25);
+  const pageSize = readPageSize(req.query["pageSize"]);
   const { items, total } = await deps.blocklist.list(pageSize, (page - 1) * pageSize);
   return jsonResponse(200, { data: items, total, page, pageSize });
 }
@@ -9621,7 +9705,7 @@ async function attachMediaTypes(deps, pageItems) {
 }
 async function handleHistory(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
-  const pageSize = Math.min(100, Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25));
+  const pageSize = readPageSize(req.query["pageSize"]);
   const q = typeof req.query["q"] === "string" ? req.query["q"].trim() : "";
   const status = HISTORY_STATUSES.includes(req.query["status"]) ? req.query["status"] : void 0;
   const [{ rows, total }, indexers] = await Promise.all([
@@ -9646,7 +9730,7 @@ async function handleHistory(deps, req) {
 }
 async function handleQueue(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
-  const pageSize = Math.max(1, Math.trunc(Number(req.query["pageSize"])) || 25);
+  const pageSize = readPageSize(req.query["pageSize"]);
   const [rows, { byClientId, anyUnreachable }] = await Promise.all([
     deps.downloadHistory.findByStatuses(QUEUE_STATUSES),
     indexClientTorrents(deps)
@@ -9951,12 +10035,13 @@ function loadManifest() {
   const raw = fs.readFileSync(path2.join(__dirname, "plugin.json"), "utf8");
   return JSON.parse(raw);
 }
+var hello = async () => {
+  const db = await dbInit;
+  if (!db.ok) throw new Error(`database not ready: ${db.reason}`);
+  return { manifest: loadManifest(), token };
+};
 var requestHandlers = {
-  hello: async () => {
-    const db = await dbInit;
-    if (!db.ok) throw new Error(`database not ready: ${db.reason}`);
-    return { manifest: loadManifest(), token };
-  },
+  hello: (payload) => hello(payload),
   health: async () => {
     return { ok: true, detail: `core=${host?.isConnected ? "connected" : "disconnected"}` };
   },
