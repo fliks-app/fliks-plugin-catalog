@@ -9197,18 +9197,18 @@ var CONFIG_PAGES = [
 ];
 var I18N = {
   en: {
-    "download.config.general.subtitle": "How this plugin grabs and imports what you ask for.",
-    "download.config.indexers.subtitle": "Torznab trackers searched when you look for a release.",
-    "download.config.download_clients.subtitle": "Where a grabbed release is handed off to be downloaded.",
-    "download.config.queue.subtitle": "What is downloading right now, across every client.",
-    "download.config.history.subtitle": "Every grab, and how it ended.",
+    "download.config.general.subtitle": "Grab and import behaviour.",
+    "download.config.indexers.subtitle": "Torznab trackers queried when searching for a release.",
+    "download.config.download_clients.subtitle": "Clients a grabbed release is sent to.",
+    "download.config.queue.subtitle": "Downloads in progress, across every client.",
+    "download.config.history.subtitle": "Recorded grabs and their outcome.",
     "download.config.queue.states.queued": "Queued",
     "download.config.queue.states.active": "Downloading",
     "download.config.queue.states.stalled": "Stalled",
     "download.config.queue.states.paused": "Paused",
     "download.config.queue.states.importing": "Importing",
     "download.config.history.title": "Download history",
-    "download.config.history.detail_title": "What happened",
+    "download.config.history.detail_title": "Reason",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
     "download.config.history.columns.grab_source": "Grabbed",
@@ -9328,18 +9328,18 @@ var I18N = {
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
   // clé API, client de téléchargement, profil de qualité) rather than inventing new terms.
   fr: {
-    "download.config.general.subtitle": "Comment ce plugin r\xE9cup\xE8re et importe ce que vous demandez.",
-    "download.config.indexers.subtitle": "Les trackers Torznab interrog\xE9s lors d'une recherche de release.",
-    "download.config.download_clients.subtitle": "O\xF9 une release r\xE9cup\xE9r\xE9e est confi\xE9e pour t\xE9l\xE9chargement.",
-    "download.config.queue.subtitle": "Ce qui est en cours de t\xE9l\xE9chargement, tous clients confondus.",
-    "download.config.history.subtitle": "Chaque r\xE9cup\xE9ration, et comment elle s'est termin\xE9e.",
+    "download.config.general.subtitle": "Comportement de r\xE9cup\xE9ration et d'import.",
+    "download.config.indexers.subtitle": "Trackers Torznab interrog\xE9s lors d'une recherche de release.",
+    "download.config.download_clients.subtitle": "Clients auxquels une release r\xE9cup\xE9r\xE9e est transmise.",
+    "download.config.queue.subtitle": "T\xE9l\xE9chargements en cours, tous clients confondus.",
+    "download.config.history.subtitle": "R\xE9cup\xE9rations enregistr\xE9es et leur r\xE9sultat.",
     "download.config.queue.states.queued": "En file",
     "download.config.queue.states.active": "T\xE9l\xE9chargement",
     "download.config.queue.states.stalled": "Bloqu\xE9",
     "download.config.queue.states.paused": "En pause",
     "download.config.queue.states.importing": "Import",
     "download.config.history.title": "Historique des t\xE9l\xE9chargements",
-    "download.config.history.detail_title": "Ce qui s'est pass\xE9",
+    "download.config.history.detail_title": "Raison",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
     "download.config.history.columns.grab_source": "R\xE9cup\xE9r\xE9",
@@ -10040,6 +10040,43 @@ function createAppGraph(repositories2, host2) {
   };
 }
 
+// src/grab/on-acquisition-requested.ts
+var AUTO_GRAB_ON_APPROVAL_KEY = "requestsAutoGrabOnApproval";
+var ACQUISITION_REQUESTED = "media.acquisition.requested";
+async function autoGrabOnApprovalEnabled(host2) {
+  const values = await host2.call("config.get", { keys: [AUTO_GRAB_ON_APPROVAL_KEY] });
+  return values[AUTO_GRAB_ON_APPROVAL_KEY] !== "false";
+}
+function createAcquisitionRequestedHandler(deps) {
+  const inFlight = /* @__PURE__ */ new Set();
+  return function onEvent(name, payload) {
+    if (name !== ACQUISITION_REQUESTED) return;
+    const ids = payload?.mediaIds;
+    const mediaIds = Array.isArray(ids) ? [...new Set(ids.filter((id) => Number.isInteger(id)))] : [];
+    if (!mediaIds.length) return;
+    const fresh = mediaIds.filter((id) => !inFlight.has(id));
+    if (!fresh.length) {
+      log.info(`${name}: already searching ${mediaIds.join(", ")} \u2014 skipping`);
+      return;
+    }
+    void (async () => {
+      try {
+        if (!await autoGrabOnApprovalEnabled(deps.host)) {
+          log.info(`${name}: auto-grab on approval is off \u2014 not searching`);
+          return;
+        }
+        fresh.forEach((id) => inFlight.add(id));
+        log.info(`${name}: searching for media ${fresh.join(", ")}`);
+        await deps.searchMissing(fresh);
+      } catch (e) {
+        log.error(`${name}: search failed: ${e.message}`);
+      } finally {
+        fresh.forEach((id) => inFlight.delete(id));
+      }
+    })();
+  };
+}
+
 // src/plugin.ts
 var token = process.env.FLIKS_PLUGIN_TOKEN ?? "";
 var pluginSockPath = process.env.FLIKS_PLUGIN_SOCK;
@@ -10049,6 +10086,7 @@ var pluginId = process.env.FLIKS_PLUGIN_ID;
 var host = coreSockPath ? new HostClient(coreSockPath) : null;
 var repositories = null;
 var appGraph = null;
+var onAcquisitionRequested = null;
 async function initDb() {
   if (!dbUrl || !pluginId) {
     return { ok: false, reason: "FLIKS_DB_URL or FLIKS_PLUGIN_ID is not set" };
@@ -10062,6 +10100,11 @@ async function initDb() {
     await migrateUp(pool);
     repositories = createRepositories(pool);
     appGraph = createAppGraph(repositories, host);
+    const graph = appGraph;
+    onAcquisitionRequested = createAcquisitionRequestedHandler({
+      host,
+      searchMissing: (mediaIds) => graph.grabPipeline.searchMissing(mediaIds)
+    });
     await appGraph.completionPoller.init();
     return { ok: true };
   } catch (err) {
@@ -10111,7 +10154,11 @@ var requestHandlers = {
 var noteHandlers = {
   event: (payload) => {
     const p = payload;
-    log.info(`event "${p.name}" received (no subscriber registered yet)`);
+    if (!onAcquisitionRequested) {
+      log.info(`event "${p.name}" received before the plugin was ready \u2014 ignored`);
+      return;
+    }
+    onAcquisitionRequested(p.name, p.payload);
   },
   config: (payload) => {
     const p = payload;
