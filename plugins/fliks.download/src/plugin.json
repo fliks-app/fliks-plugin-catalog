@@ -571,19 +571,21 @@
           },
           {
             "key": "title",
-            "labelKey": "download.config.history.columns.title"
-          },
-          {
-            "key": "quality",
-            "labelKey": "download.config.history.columns.quality",
-            "badges": {
-              "*": "ghost"
-            }
-          },
-          {
-            "key": "source",
-            "labelKey": "download.config.history.columns.source",
-            "nowrap": true
+            "labelKey": "download.config.history.columns.title",
+            "subValues": [
+              {
+                "key": "quality",
+                "badges": {
+                  "*": "ghost"
+                }
+              },
+              {
+                "key": "source",
+                "badges": {
+                  "*": "neutral"
+                }
+              }
+            ]
           },
           {
             "key": "grabSource",
@@ -606,11 +608,9 @@
               "completed": "success",
               "failed": "error",
               "warning": "warning"
-            }
-          },
-          {
-            "key": "statusMessage",
-            "labelKey": "download.config.history.columns.detail"
+            },
+            "detailField": "statusMessage",
+            "detailTitleKey": "download.config.history.detail_title"
           }
         ],
         "rowActions": [
@@ -650,13 +650,11 @@
       "download.config.queue.states.paused": "Paused",
       "download.config.queue.states.importing": "Importing",
       "download.config.history.title": "Download history",
+      "download.config.history.detail_title": "What happened",
       "download.config.history.columns.date": "Date",
       "download.config.history.columns.title": "Release",
-      "download.config.history.columns.quality": "Quality",
-      "download.config.history.columns.source": "Tracker",
       "download.config.history.columns.grab_source": "Grabbed",
       "download.config.history.columns.status": "Status",
-      "download.config.history.columns.detail": "Detail",
       "download.config.history.filters.search_placeholder": "Search releases",
       "download.config.history.filters.status_label": "Status",
       "download.config.history.filters.status_all": "All statuses",
@@ -773,13 +771,11 @@
       "download.config.queue.states.paused": "En pause",
       "download.config.queue.states.importing": "Import",
       "download.config.history.title": "Historique des téléchargements",
+      "download.config.history.detail_title": "Ce qui s'est passé",
       "download.config.history.columns.date": "Date",
       "download.config.history.columns.title": "Release",
-      "download.config.history.columns.quality": "Qualité",
-      "download.config.history.columns.source": "Tracker",
       "download.config.history.columns.grab_source": "Récupéré",
       "download.config.history.columns.status": "Statut",
-      "download.config.history.columns.detail": "Détail",
       "download.config.history.filters.search_placeholder": "Rechercher des releases",
       "download.config.history.filters.status_label": "Statut",
       "download.config.history.filters.status_all": "Tous les statuts",
@@ -885,9 +881,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.7",
+  "version": "0.1.8",
   "files": {
-    "plugin.js": "b685ae9d0b0128ab9d26f3a555edec9ee693114932138b23f9fc6aee3c022aa9",
+    "plugin.js": "6fd1b64d1fddadd47718c85ab3b90e332faa95c18f3f0cc88073c7eb5f66fe02",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }

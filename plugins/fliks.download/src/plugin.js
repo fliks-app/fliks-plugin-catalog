@@ -7040,8 +7040,21 @@ var IndexerService = class {
       };
     }
     const baseUrl = String(input.settings?.baseUrl ?? "").trim();
-    const apiKey = String(input.settings?.apiKey ?? "").trim();
+    const apiKey = await this.apiKeyForTest(input);
     return this.deps.torznab.testConnection(baseUrl, apiKey);
+  }
+  /** A blank key on a saved row means "use the stored one". The client never receives the real
+   *  value on read, so demanding it here would make testing a saved indexer impossible without
+   *  retyping it. An unknown id tests what was submitted rather than failing. */
+  async apiKeyForTest(input) {
+    const submitted = String(input.settings?.apiKey ?? "").trim();
+    if (submitted || input.id === void 0) return submitted;
+    try {
+      const existing = await this.findOne(input.id);
+      return String(existing.settings?.apiKey ?? "").trim();
+    } catch {
+      return submitted;
+    }
   }
   sanitizeSettings(settings) {
     const out = { ...settings ?? {} };
@@ -7544,7 +7557,21 @@ var DownloadClientsService = class {
       const messageKey = "download.download_clients.test.unsupported_implementation";
       return { ok: false, messageKey, detail: input.implementation };
     }
-    return driver.testConnection(input.settings);
+    return driver.testConnection(await this.withStoredSecret(input));
+  }
+  /** A blank password on a saved row means "use the stored one", the same rule `update` applies.
+   *  The client never receives the real value on read, so demanding it here would make testing a
+   *  saved client impossible without retyping it. An unknown id tests what was submitted. */
+  async withStoredSecret(input) {
+    const settings = { ...input.settings ?? {} };
+    if (settings[SECRET_SETTING_KEY] || input.id === void 0) return settings;
+    try {
+      const existing = await this.findOne(input.id);
+      const stored = existing.settings?.[SECRET_SETTING_KEY];
+      if (stored) settings[SECRET_SETTING_KEY] = stored;
+    } catch {
+    }
+    return settings;
   }
   async create(input) {
     this.assertKnownImplementation(input.implementation);
@@ -9130,10 +9157,16 @@ var CONFIG_PAGES = [
     ],
     columns: [
       { key: "date", labelKey: "download.config.history.columns.date", format: "date" },
-      { key: "title", labelKey: "download.config.history.columns.title" },
-      // A quality name is one token and every value is worth badging, hence the `*` tone.
-      { key: "quality", labelKey: "download.config.history.columns.quality", badges: { "*": "ghost" } },
-      { key: "source", labelKey: "download.config.history.columns.source", nowrap: true },
+      {
+        key: "title",
+        labelKey: "download.config.history.columns.title",
+        // Quality and tracker belong with the release's name; as columns of their own they
+        // spent the width the title needed. Every quality value is worth badging: `*`.
+        subValues: [
+          { key: "quality", badges: { "*": "ghost" } },
+          { key: "source", badges: { "*": "neutral" } }
+        ]
+      },
       { key: "grabSource", labelKey: "download.config.history.columns.grab_source", nowrap: true },
       {
         key: "status",
@@ -9151,9 +9184,11 @@ var CONFIG_PAGES = [
           completed: "success",
           failed: "error",
           warning: "warning"
-        }
-      },
-      { key: "statusMessage", labelKey: "download.config.history.columns.detail" }
+        },
+        // The reason a grab failed reads in a dialog; as a column it stretched every row.
+        detailField: "statusMessage",
+        detailTitleKey: "download.config.history.detail_title"
+      }
     ],
     rowActions: [
       { kind: "action", labelKey: "download.config.queue.actions.open_media", actionId: "table.open-media" }
@@ -9173,13 +9208,11 @@ var I18N = {
     "download.config.queue.states.paused": "Paused",
     "download.config.queue.states.importing": "Importing",
     "download.config.history.title": "Download history",
+    "download.config.history.detail_title": "What happened",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
-    "download.config.history.columns.quality": "Quality",
-    "download.config.history.columns.source": "Tracker",
     "download.config.history.columns.grab_source": "Grabbed",
     "download.config.history.columns.status": "Status",
-    "download.config.history.columns.detail": "Detail",
     "download.config.history.filters.search_placeholder": "Search releases",
     "download.config.history.filters.status_label": "Status",
     "download.config.history.filters.status_all": "All statuses",
@@ -9306,13 +9339,11 @@ var I18N = {
     "download.config.queue.states.paused": "En pause",
     "download.config.queue.states.importing": "Import",
     "download.config.history.title": "Historique des t\xE9l\xE9chargements",
+    "download.config.history.detail_title": "Ce qui s'est pass\xE9",
     "download.config.history.columns.date": "Date",
     "download.config.history.columns.title": "Release",
-    "download.config.history.columns.quality": "Qualit\xE9",
-    "download.config.history.columns.source": "Tracker",
     "download.config.history.columns.grab_source": "R\xE9cup\xE9r\xE9",
     "download.config.history.columns.status": "Statut",
-    "download.config.history.columns.detail": "D\xE9tail",
     "download.config.history.filters.search_placeholder": "Rechercher des releases",
     "download.config.history.filters.status_label": "Statut",
     "download.config.history.filters.status_all": "Tous les statuts",
@@ -9508,7 +9539,11 @@ function readTestIndexerConnectionInput(body) {
   const b = body ?? {};
   if (typeof b.implementation !== "string") return null;
   const settings = typeof b.settings === "object" && b.settings !== null ? b.settings : {};
-  return { implementation: b.implementation, settings };
+  return {
+    implementation: b.implementation,
+    settings,
+    ...Number.isInteger(b.id) ? { id: b.id } : {}
+  };
 }
 function readCreateDownloadClientInput(body) {
   const b = body ?? {};
@@ -9536,7 +9571,11 @@ function readTestDownloadClientInput(body) {
   const b = body ?? {};
   if (typeof b.implementation !== "string") return null;
   const settings = typeof b.settings === "object" && b.settings !== null ? b.settings : {};
-  return { implementation: b.implementation, settings };
+  return {
+    implementation: b.implementation,
+    settings,
+    ...Number.isInteger(b.id) ? { id: b.id } : {}
+  };
 }
 async function handleSearchReleases(deps, params, req) {
   const mediaId = requireIntParam(params, "id");
