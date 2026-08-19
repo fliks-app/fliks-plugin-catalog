@@ -333,6 +333,7 @@
       {
         "id": "general",
         "labelKey": "download.config.general.title",
+        "subtitleKey": "download.config.general.subtitle",
         "icon": "download",
         "fields": [
           {
@@ -375,6 +376,7 @@
         "id": "indexers",
         "kind": "providers",
         "labelKey": "download.config.indexers.title",
+        "subtitleKey": "download.config.indexers.subtitle",
         "icon": "search",
         "list": "/indexers",
         "implementations": "/indexers/implementations",
@@ -445,6 +447,7 @@
         "id": "download-clients",
         "kind": "providers",
         "labelKey": "download.config.download_clients.title",
+        "subtitleKey": "download.config.download_clients.subtitle",
         "icon": "server",
         "list": "/download-clients",
         "implementations": "/download-clients/implementations",
@@ -466,6 +469,7 @@
         "id": "queue",
         "kind": "table",
         "labelKey": "download.config.queue.title",
+        "subtitleKey": "download.config.queue.subtitle",
         "icon": "download",
         "list": "/queue",
         "paged": true,
@@ -477,7 +481,21 @@
           },
           {
             "key": "state",
-            "labelKey": "download.config.queue.columns.state"
+            "labelKey": "download.config.queue.columns.state",
+            "labelKeys": {
+              "queued": "download.config.queue.states.queued",
+              "active": "download.config.queue.states.active",
+              "stalled": "download.config.queue.states.stalled",
+              "paused": "download.config.queue.states.paused",
+              "importing": "download.config.queue.states.importing"
+            },
+            "badges": {
+              "queued": "neutral",
+              "active": "info",
+              "stalled": "warning",
+              "paused": "ghost",
+              "importing": "primary"
+            }
           },
           {
             "key": "progress",
@@ -502,6 +520,7 @@
         "id": "history",
         "kind": "table",
         "labelKey": "download.config.history.title",
+        "subtitleKey": "download.config.history.subtitle",
         "icon": "history",
         "list": "/history",
         "paged": true,
@@ -556,15 +575,20 @@
           },
           {
             "key": "quality",
-            "labelKey": "download.config.history.columns.quality"
+            "labelKey": "download.config.history.columns.quality",
+            "badges": {
+              "*": "ghost"
+            }
           },
           {
             "key": "source",
-            "labelKey": "download.config.history.columns.source"
+            "labelKey": "download.config.history.columns.source",
+            "nowrap": true
           },
           {
             "key": "grabSource",
-            "labelKey": "download.config.history.columns.grab_source"
+            "labelKey": "download.config.history.columns.grab_source",
+            "nowrap": true
           },
           {
             "key": "status",
@@ -575,6 +599,13 @@
               "completed": "download.config.history.filters.status_completed",
               "failed": "download.config.history.filters.status_failed",
               "warning": "download.config.history.filters.status_warning"
+            },
+            "badges": {
+              "grabbed": "info",
+              "importing": "primary",
+              "completed": "success",
+              "failed": "error",
+              "warning": "warning"
             }
           },
           {
@@ -608,6 +639,16 @@
   },
   "i18n": {
     "en": {
+      "download.config.general.subtitle": "How this plugin grabs and imports what you ask for.",
+      "download.config.indexers.subtitle": "Torznab trackers searched when you look for a release.",
+      "download.config.download_clients.subtitle": "Where a grabbed release is handed off to be downloaded.",
+      "download.config.queue.subtitle": "What is downloading right now, across every client.",
+      "download.config.history.subtitle": "Every grab, and how it ended.",
+      "download.config.queue.states.queued": "Queued",
+      "download.config.queue.states.active": "Downloading",
+      "download.config.queue.states.stalled": "Stalled",
+      "download.config.queue.states.paused": "Paused",
+      "download.config.queue.states.importing": "Importing",
       "download.config.history.title": "Download history",
       "download.config.history.columns.date": "Date",
       "download.config.history.columns.title": "Release",
@@ -721,6 +762,16 @@
       "download.config.queue.actions.open_media": "Open"
     },
     "fr": {
+      "download.config.general.subtitle": "Comment ce plugin récupère et importe ce que vous demandez.",
+      "download.config.indexers.subtitle": "Les trackers Torznab interrogés lors d'une recherche de release.",
+      "download.config.download_clients.subtitle": "Où une release récupérée est confiée pour téléchargement.",
+      "download.config.queue.subtitle": "Ce qui est en cours de téléchargement, tous clients confondus.",
+      "download.config.history.subtitle": "Chaque récupération, et comment elle s'est terminée.",
+      "download.config.queue.states.queued": "En file",
+      "download.config.queue.states.active": "Téléchargement",
+      "download.config.queue.states.stalled": "Bloqué",
+      "download.config.queue.states.paused": "En pause",
+      "download.config.queue.states.importing": "Import",
       "download.config.history.title": "Historique des téléchargements",
       "download.config.history.columns.date": "Date",
       "download.config.history.columns.title": "Release",
@@ -834,9 +885,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.6",
+  "version": "0.1.7",
   "files": {
-    "plugin.js": "4b03aa799fd3b5551806eca107b0e427b832530e1e8d82386f7cf5679ce58b93",
+    "plugin.js": "b685ae9d0b0128ab9d26f3a555edec9ee693114932138b23f9fc6aee3c022aa9",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
