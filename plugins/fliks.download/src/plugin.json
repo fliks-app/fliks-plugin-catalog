@@ -477,7 +477,8 @@
         "columns": [
           {
             "key": "title",
-            "labelKey": "download.config.queue.columns.title"
+            "labelKey": "download.config.queue.columns.title",
+            "truncate": true
           },
           {
             "key": "state",
@@ -498,6 +499,11 @@
             }
           },
           {
+            "key": "size",
+            "labelKey": "download.config.queue.columns.size",
+            "format": "bytes"
+          },
+          {
             "key": "progress",
             "labelKey": "download.config.queue.columns.progress",
             "format": "percent"
@@ -505,9 +511,13 @@
           {
             "key": "bytesPerSecond",
             "labelKey": "download.config.queue.columns.speed",
-            "format": "bytes"
+            "format": "speed"
           }
         ],
+        "refreshOn": [
+          "queue.updated"
+        ],
+        "refreshMs": 10000,
         "rowActions": [
           {
             "kind": "action",
@@ -757,6 +767,7 @@
       "download.config.queue.columns.state": "State",
       "download.config.queue.columns.progress": "Progress",
       "download.config.queue.columns.speed": "Speed",
+      "download.config.queue.columns.size": "Size",
       "download.config.queue.actions.open_media": "Open"
     },
     "fr": {
@@ -878,12 +889,13 @@
       "download.config.queue.columns.state": "État",
       "download.config.queue.columns.progress": "Progression",
       "download.config.queue.columns.speed": "Vitesse",
+      "download.config.queue.columns.size": "Taille",
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.1.9",
+  "version": "0.1.10",
   "files": {
-    "plugin.js": "8ebea84c2d2528baf02fe7dc1c31fea3cdc2ba1a856c1d24a0f8295d77eec15d",
+    "plugin.js": "e6d533b0270ef59d2684642676fa2ffdc8841364edbff41bdb2b1299bbdac0d2",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
