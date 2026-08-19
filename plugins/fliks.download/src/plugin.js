@@ -9098,7 +9098,7 @@ var CONFIG_PAGES = [
     paged: true,
     pageSize: 25,
     columns: [
-      { key: "title", labelKey: "download.config.queue.columns.title" },
+      { key: "title", labelKey: "download.config.queue.columns.title", truncate: true },
       {
         key: "state",
         labelKey: "download.config.queue.columns.state",
@@ -9119,9 +9119,14 @@ var CONFIG_PAGES = [
           importing: "primary"
         }
       },
+      { key: "size", labelKey: "download.config.queue.columns.size", format: "bytes" },
       { key: "progress", labelKey: "download.config.queue.columns.progress", format: "percent" },
-      { key: "bytesPerSecond", labelKey: "download.config.queue.columns.speed", format: "bytes" }
+      { key: "bytesPerSecond", labelKey: "download.config.queue.columns.speed", format: "speed" }
     ],
+    // Rows enter and leave on `queue.updated`; the percentages and speeds between two such
+    // events answer to nothing, so those are the only reason this page polls at all.
+    refreshOn: ["queue.updated"],
+    refreshMs: 1e4,
     // Reads mediaId/mediaType straight off each row — core's own resolver renders no
     // button when either is null, so an unresolved row is simply inert, not broken.
     rowActions: [
@@ -9323,6 +9328,7 @@ var I18N = {
     "download.config.queue.columns.state": "State",
     "download.config.queue.columns.progress": "Progress",
     "download.config.queue.columns.speed": "Speed",
+    "download.config.queue.columns.size": "Size",
     "download.config.queue.actions.open_media": "Open"
   },
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
@@ -9446,6 +9452,7 @@ var I18N = {
     "download.config.queue.columns.state": "\xC9tat",
     "download.config.queue.columns.progress": "Progression",
     "download.config.queue.columns.speed": "Vitesse",
+    "download.config.queue.columns.size": "Taille",
     "download.config.queue.actions.open_media": "Ouvrir"
   }
 };
@@ -9717,7 +9724,7 @@ async function indexClientTorrents(deps) {
 function toQueueItem(row, byClientId) {
   const base = { id: row.id, title: row.sourceTitle, quality: row.quality, mediaId: row.mediaId, mediaType: null };
   if (row.status === "importing") {
-    return { ...base, state: "importing", progress: 1, bytesPerSecond: null, clientReachable: true };
+    return { ...base, state: "importing", progress: 100, bytesPerSecond: null, size: null, clientReachable: true };
   }
   const index = row.downloadClientId != null ? byClientId.get(row.downloadClientId) : void 0;
   const torrent = index && row.torrentHash ? index.byHash.get(row.torrentHash.toLowerCase()) : void 0;
@@ -9725,12 +9732,20 @@ function toQueueItem(row, byClientId) {
     return {
       ...base,
       state: torrentProgressState(torrent),
-      progress: torrent.progress,
+      progress: torrent.progress * 100,
       bytesPerSecond: torrent.dlspeed,
+      size: torrent.size,
       clientReachable: true
     };
   }
-  return { ...base, state: "queued", progress: null, bytesPerSecond: null, clientReachable: index?.ok ?? false };
+  return {
+    ...base,
+    state: "queued",
+    progress: null,
+    bytesPerSecond: null,
+    size: null,
+    clientReachable: index?.ok ?? false
+  };
 }
 async function attachMediaTypes(deps, pageItems) {
   const mediaIds = [...new Set(pageItems.map((item) => item.mediaId).filter((id) => id != null))];
