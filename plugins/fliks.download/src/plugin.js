@@ -6010,6 +6010,24 @@ var DownloadHistoryRepository = class {
     const { rows } = await this.pool.query(`SELECT ${COLUMNS4} FROM "download_history"`);
     return rows;
   }
+  /** Every row claiming one of these hashes — several can, so the caller still ranks them.
+   *  Served by `idx_download_history_torrent_hash_lower`. */
+  async findByTorrentHashes(hashes) {
+    if (!hashes.length) return [];
+    const { rows } = await this.pool.query(
+      `SELECT ${COLUMNS4} FROM "download_history" WHERE LOWER("torrentHash") = ANY($1::text[])`,
+      [hashes.map((h) => h.toLowerCase())]
+    );
+    return rows;
+  }
+  /** Titles of rows already bound to a media — all the auto-matcher compares against, and the
+   *  only column it reads. `sourceTitle` is `NOT NULL`, so `<> ''` is the whole emptiness test. */
+  async listLinkedSourceTitles() {
+    const { rows } = await this.pool.query(
+      `SELECT DISTINCT "sourceTitle" FROM "download_history" WHERE "mediaId" IS NOT NULL AND "sourceTitle" <> ''`
+    );
+    return rows.map((r) => r.sourceTitle);
+  }
   /** `completion.service.ts:330,340,444,959`, `download-clients.service.ts:398` — every
    *  "rows in status X or Y or Z" read collapses to one status-list filter. */
   async findByStatuses(statuses) {
@@ -8201,6 +8219,18 @@ var TorrentHistoryMatcher = class {
   constructor(repo) {
     this.repo = repo;
   }
+  /** Normalising candidate titles is this matcher's whole cost, and every
+   *  caller walks the same row array once per torrent. Keyed by row, so a
+   *  fresh query's rows drop out on their own. */
+  normalisedTitles = /* @__PURE__ */ new WeakMap();
+  titleOf(h) {
+    let title = this.normalisedTitles.get(h);
+    if (title === void 0) {
+      title = normaliseTorrentName(h.sourceTitle ?? "");
+      this.normalisedTitles.set(h, title);
+    }
+    return title;
+  }
   findMatch(torrent, histories) {
     const hash = torrent.hash?.toLowerCase() ?? null;
     const name = normaliseTorrentName(torrent.name);
@@ -8208,11 +8238,10 @@ var TorrentHistoryMatcher = class {
       const byHash = pickAuthoritative(histories.filter((h) => h.torrentHash && h.torrentHash.toLowerCase() === hash));
       if (byHash) return { history: byHash, matchedBy: "hash" };
     }
-    const byName = pickAuthoritative(histories.filter((h) => normaliseTorrentName(h.sourceTitle ?? "") === name));
+    const byName = pickAuthoritative(histories.filter((h) => this.titleOf(h) === name));
     if (byName) return { history: byName, matchedBy: "exact-name" };
     const prefix = histories.filter((h) => {
-      if (!h.sourceTitle) return false;
-      const s = normaliseTorrentName(h.sourceTitle);
+      const s = this.titleOf(h);
       if (!s) return false;
       return name.startsWith(s) || s.startsWith(name);
     });
@@ -8255,7 +8284,8 @@ async function getStallConfig(host2) {
   return {
     samples,
     intervalMinutes: Number.isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : 60,
-    autoRestart: values[STALL_AUTO_RESTART_KEY] === "true",
+    // Absent means unsaved, not off: the manifest field defaults this toggle to on.
+    autoRestart: values[STALL_AUTO_RESTART_KEY] !== "false",
     includeManualGrabs: values[STALL_INCLUDE_MANUAL_GRABS_KEY] === "true"
   };
 }
@@ -8377,15 +8407,16 @@ var DownloadCompletionPoller = class {
    */
   async autoMatchOrphanTorrents(allTorrents) {
     if (!allTorrents.length) return;
-    const allHistory = await this.deps.historyRepo.findAll();
+    const rowsForHashes = await this.deps.historyRepo.findByTorrentHashes(
+      allTorrents.map((t) => t.hash).filter((h) => !!h)
+    );
     const rowByHash = /* @__PURE__ */ new Map();
-    for (const h of allHistory) {
+    for (const h of rowsForHashes) {
       if (!h.torrentHash) continue;
       const key = h.torrentHash.toLowerCase();
       const kept = rowByHash.get(key);
       if (!kept || outranksForTorrent(h, kept)) rowByHash.set(key, h);
     }
-    const linkedTitles = new Set(allHistory.filter((h) => h.mediaId && h.sourceTitle).map((h) => normaliseTorrentName(h.sourceTitle)));
     const candidates = allTorrents.filter((t) => {
       if (!t.hash) return false;
       const existing = rowByHash.get(t.hash.toLowerCase());
@@ -8397,6 +8428,7 @@ var DownloadCompletionPoller = class {
       this.unidentifiedHashes = /* @__PURE__ */ new Set();
       return;
     }
+    const linkedTitles = new Set((await this.deps.historyRepo.listLinkedSourceTitles()).map(normaliseTorrentName));
     const toIdentify = candidates.filter((t) => !linkedTitles.has(normaliseTorrentName(t.name)));
     if (!toIdentify.length) return;
     const matches = await identifyOrphans(this.deps.host, toIdentify.map((t) => t.name));
@@ -8408,9 +8440,9 @@ var DownloadCompletionPoller = class {
       const match = matches.get(torrent.name);
       if (!match || match.mediaId == null) {
         stillUnidentified.add(hash);
-        const message = `Auto-match: "${torrent.name}" \u2014 releases.match found no media for it`;
-        if (this.unidentifiedHashes.has(hash)) log.info(message);
-        else log.info(message);
+        if (!this.unidentifiedHashes.has(hash)) {
+          log.info(`Auto-match: "${torrent.name}" \u2014 releases.match found no media for it`);
+        }
         continue;
       }
       const { seasonId, episodeId } = await resolveSeasonEpisodeIds(this.deps.host, match.mediaId, match.seasonNumber, match.episodeNumber);
@@ -8600,8 +8632,7 @@ var DownloadCompletionPoller = class {
   // ---------------------------------------------------------------------------
   /**
    * Ported from `cleanStalledTorrents`. Gated by {@link getStallConfig} —
-   * `samples` unset (every fresh install, and every install today: no
-   * manifest config field exists for it yet) returns before touching any
+   * `samples` unset (every fresh install) returns before touching any
    * client. Every `getTorrentsResult` call below is gated on `ok`: an
    * unreachable client must never be treated as "holds nothing", which is
    * exactly the destructive-path risk this job carries (it deletes torrents
@@ -9242,8 +9273,8 @@ var I18N = {
     "download.config.stall.interval_minutes_hint": "How long to wait before sampling a download\u2019s progress again.",
     "download.config.stall.auto_restart": "Search again after cleanup",
     "download.config.stall.auto_restart_hint": "Look for another release once a stalled download has been removed.",
-    "download.config.stall.include_manual_grabs": "Include downloads you started yourself",
-    "download.config.stall.include_manual_grabs_hint": "By default only downloads the scheduler grabbed are cleaned up.",
+    "download.config.stall.include_manual_grabs": "Search again for downloads you started yourself too",
+    "download.config.stall.include_manual_grabs_hint": "A stalled download is removed either way \u2014 this only decides whether a replacement is searched for.",
     "download.config.general.title": "General",
     "download.config.general.auto_grab_on_approval": "Auto-grab on request approval",
     "download.config.general.auto_grab_on_approval_hint": "Start a search automatically when an admin approves a request.",
@@ -9374,8 +9405,8 @@ var I18N = {
     "download.config.stall.interval_minutes_hint": "D\xE9lai d\u2019attente avant de v\xE9rifier \xE0 nouveau la progression d\u2019un t\xE9l\xE9chargement.",
     "download.config.stall.auto_restart": "Relancer une recherche apr\xE8s nettoyage",
     "download.config.stall.auto_restart_hint": "Cherche une autre release une fois le t\xE9l\xE9chargement bloqu\xE9 supprim\xE9.",
-    "download.config.stall.include_manual_grabs": "Inclure les t\xE9l\xE9chargements que vous avez lanc\xE9s vous-m\xEAme",
-    "download.config.stall.include_manual_grabs_hint": "Par d\xE9faut, seuls les t\xE9l\xE9chargements lanc\xE9s par la planification sont nettoy\xE9s.",
+    "download.config.stall.include_manual_grabs": "Relancer aussi une recherche pour les t\xE9l\xE9chargements lanc\xE9s manuellement",
+    "download.config.stall.include_manual_grabs_hint": "Un t\xE9l\xE9chargement bloqu\xE9 est supprim\xE9 dans tous les cas \u2014 ceci d\xE9cide seulement si une autre release est cherch\xE9e.",
     "download.config.general.title": "G\xE9n\xE9ral",
     "download.config.general.auto_grab_on_approval": "T\xE9l\xE9charger automatiquement apr\xE8s l\u2019approbation d\u2019une demande",
     "download.config.general.auto_grab_on_approval_hint": "Lance une recherche automatiquement quand un administrateur approuve une demande.",
