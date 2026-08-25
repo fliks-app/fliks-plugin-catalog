@@ -6542,6 +6542,14 @@ var TorznabHttpError = class extends Error {
     this.retryAfter = retryAfter;
   }
 };
+function describeFetchError(e, timeoutMs) {
+  const err = e;
+  if (err?.name === "AbortError" || err?.name === "TimeoutError") return `timed out after ${timeoutMs}ms`;
+  const cause = err?.cause;
+  if (!cause?.message) return err?.message ?? String(e);
+  const code = cause.code && !cause.message.includes(cause.code) ? ` (${cause.code})` : "";
+  return `${err.message ?? "request failed"}: ${cause.message}${code}`;
+}
 async function fetchText(url, opts) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
@@ -6552,6 +6560,9 @@ async function fetchText(url, opts) {
       throw new TorznabHttpError(res.status, res.headers.get("retry-after"));
     }
     return { status: res.status, body, headers: res.headers };
+  } catch (e) {
+    if (e instanceof TorznabHttpError) throw e;
+    throw new Error(describeFetchError(e, opts.timeoutMs), { cause: e });
   } finally {
     clearTimeout(timer);
   }
