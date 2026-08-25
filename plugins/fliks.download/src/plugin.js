@@ -6542,6 +6542,7 @@ var TorznabHttpError = class extends Error {
     this.retryAfter = retryAfter;
   }
 };
+var SEARCH_TIMEOUT_MS = 25e3;
 function describeFetchError(e, timeoutMs) {
   const err = e;
   if (err?.name === "AbortError" || err?.name === "TimeoutError") return `timed out after ${timeoutMs}ms`;
@@ -6694,7 +6695,7 @@ var TorznabClient = class {
     try {
       const res = await this.deps.throttle.run(
         indexer,
-        () => fetchText(url, { timeoutMs: 9e4, validateStatus: (s) => s >= 200 && s < 400 })
+        () => fetchText(url, { timeoutMs: SEARCH_TIMEOUT_MS, validateStatus: (s) => s >= 200 && s < 400 })
       );
       const torznabError = this.torznabError(res.body);
       if (torznabError) {
@@ -7811,7 +7812,7 @@ function readyIndexersOrNone(indexer, indexers, context) {
   }
   return ready;
 }
-var INDEXER_BUDGET_MS = 12e4;
+var INDEXER_BUDGET_MS = 3e4;
 function withinBudget(work, name) {
   let timer;
   const lapsed = new Promise((resolve) => {
