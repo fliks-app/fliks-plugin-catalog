@@ -7032,11 +7032,36 @@ var IndexerNotFoundError = class extends Error {
 var UnknownIndexerImplementationError = class extends Error {
 };
 
+// src/secret-settings.ts
+var SECRETS_SET_KEY = "secretsSet";
+function redactSecretSettings(settings, keys) {
+  const out = { ...settings ?? {} };
+  const set = [];
+  for (const key of keys) {
+    if (out[key]) set.push(key);
+    delete out[key];
+  }
+  out[SECRETS_SET_KEY] = set;
+  return out;
+}
+function mergeSecretSettings(existing, incoming, keys) {
+  const out = { ...incoming };
+  delete out[SECRETS_SET_KEY];
+  for (const key of keys) {
+    if (out[key] === null) delete out[key];
+    else if (!out[key]) {
+      const stored = (existing ?? {})[key];
+      if (stored) out[key] = stored;
+      else delete out[key];
+    }
+  }
+  return out;
+}
+
 // src/indexers/service.ts
+var SECRET_SETTING_KEYS = ["apiKey"];
 function redactApiKey(ix) {
-  const settings = { ...ix.settings ?? {} };
-  delete settings.apiKey;
-  return { ...ix, settings };
+  return { ...ix, settings: redactSecretSettings(ix.settings, SECRET_SETTING_KEYS) };
 }
 var IndexerService = class {
   constructor(deps) {
@@ -7063,8 +7088,10 @@ var IndexerService = class {
   }
   /** A blank key on a saved row means "use the stored one". The client never receives the real
    *  value on read, so demanding it here would make testing a saved indexer impossible without
-   *  retyping it. An unknown id tests what was submitted rather than failing. */
+   *  retyping it. An unknown id tests what was submitted rather than failing. A `null` is a
+   *  pending erase: it tests without a key, which is the row being saved. */
   async apiKeyForTest(input) {
+    if (input.settings?.apiKey === null) return "";
     const submitted = String(input.settings?.apiKey ?? "").trim();
     if (submitted || input.id === void 0) return submitted;
     try {
@@ -7086,7 +7113,7 @@ var IndexerService = class {
     const saved = await this.deps.repo.insert({
       name: input.name,
       implementation: input.implementation,
-      settings: this.sanitizeSettings(input.settings),
+      settings: mergeSecretSettings(void 0, this.sanitizeSettings(input.settings), SECRET_SETTING_KEYS),
       enableRss: input.enableRss ?? true,
       enableSearch: input.enableSearch ?? true,
       priority: input.priority ?? 25,
@@ -7148,9 +7175,7 @@ var IndexerService = class {
     if (input.requestDelay !== void 0) patch.requestDelay = input.requestDelay;
     if (input.enabled !== void 0) patch.enabled = input.enabled;
     if (input.settings !== void 0) {
-      const incoming = this.sanitizeSettings(input.settings);
-      const existingApiKey = existing.settings?.apiKey;
-      patch.settings = { ...incoming, apiKey: incoming.apiKey || existingApiKey };
+      patch.settings = mergeSecretSettings(existing.settings, this.sanitizeSettings(input.settings), SECRET_SETTING_KEYS);
     }
     const saved = await this.deps.repo.update(id, patch);
     void this.deps.torznab.refreshCaps(saved).catch((e) => log.warn(`caps refresh failed: ${String(e)}`));
@@ -7547,6 +7572,7 @@ function countStalledStrikes(samplesDescByCheckedAt) {
 
 // src/download-clients/service.ts
 var SECRET_SETTING_KEY = "password";
+var SECRET_SETTING_KEYS2 = [SECRET_SETTING_KEY];
 var DownloadClientsService = class {
   constructor(deps) {
     this.deps = deps;
@@ -7563,11 +7589,9 @@ var DownloadClientsService = class {
     }
     return driver;
   }
-  /** Strips the stored credential so it never reaches an HTTP response. */
+  /** Strips the stored credential so it never reaches an HTTP response, and reports that it is set. */
   redact(client) {
-    const settings = { ...client.settings ?? {} };
-    delete settings[SECRET_SETTING_KEY];
-    return { ...client, settings };
+    return { ...client, settings: redactSecretSettings(client.settings, SECRET_SETTING_KEYS2) };
   }
   async testConnection(input) {
     const driver = this.deps.drivers[input.implementation];
@@ -7579,9 +7603,14 @@ var DownloadClientsService = class {
   }
   /** A blank password on a saved row means "use the stored one", the same rule `update` applies.
    *  The client never receives the real value on read, so demanding it here would make testing a
-   *  saved client impossible without retyping it. An unknown id tests what was submitted. */
+   *  saved client impossible without retyping it. An unknown id tests what was submitted. A `null`
+   *  is a pending erase: it tests without a password, which is the row being saved. */
   async withStoredSecret(input) {
     const settings = { ...input.settings ?? {} };
+    if (settings[SECRET_SETTING_KEY] === null) {
+      delete settings[SECRET_SETTING_KEY];
+      return settings;
+    }
     if (settings[SECRET_SETTING_KEY] || input.id === void 0) return settings;
     try {
       const existing = await this.findOne(input.id);
@@ -7596,7 +7625,7 @@ var DownloadClientsService = class {
     const saved = await this.deps.repo.insert({
       name: input.name,
       implementation: input.implementation,
-      settings: input.settings ?? {},
+      settings: mergeSecretSettings(void 0, input.settings ?? {}, SECRET_SETTING_KEYS2),
       enabled: input.enabled ?? true,
       priority: input.priority ?? 1
     });
@@ -7619,9 +7648,7 @@ var DownloadClientsService = class {
     if (input.implementation !== void 0) this.assertKnownImplementation(input.implementation);
     let settings = existing.settings;
     if (input.settings !== void 0) {
-      const incoming = { ...input.settings };
-      const existingSecret = existing.settings?.[SECRET_SETTING_KEY];
-      settings = { ...incoming, [SECRET_SETTING_KEY]: incoming[SECRET_SETTING_KEY] || existingSecret };
+      settings = mergeSecretSettings(existing.settings, input.settings, SECRET_SETTING_KEYS2);
     }
     const saved = await this.deps.repo.update(id, {
       name: input.name ?? existing.name,
@@ -8011,6 +8038,9 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
   log.info(`Grab #${mediaId} "${target.title}" \u2014 auto-pick`);
   const scored = await searchScored(deps, target);
   const pick = pickRelease(scored, target.want);
+  if (target.season && !target.episode && !pick?.isFullSeason) {
+    return grabSeasonEpisodes(deps, target, pick ? "loose episodes outrank every pack" : "no eligible season release");
+  }
   if (!pick) throw new GrabError("download.grab.errors.no_eligible_release");
   return grabAndRecord(execDeps(deps), {
     ...grabCommon,
@@ -8020,6 +8050,41 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
     indexerId: pick.indexerId,
     grabSource: "auto"
   });
+}
+async function seasonEpisodeTargets(deps, target) {
+  const availableOn = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const out = [];
+  let cursor;
+  do {
+    const page = await deps.host.call("acquisition.candidates", {
+      mediaIds: [target.mediaId],
+      availableOn,
+      limit: 200,
+      cursor: cursor ?? void 0
+    });
+    for (const it of page.items) {
+      if (it.episode && it.season?.id === target.season?.id && it.want && it.want.decision !== "skip") out.push(it);
+    }
+    cursor = page.cursor;
+  } while (cursor);
+  return out.sort((a, b) => a.episode.number - b.episode.number);
+}
+async function grabSeasonEpisodes(deps, target, why) {
+  const seasonLabel = `S${String(target.season?.number ?? 0).padStart(2, "0")}`;
+  const episodes = await seasonEpisodeTargets(deps, target);
+  log.info(`Grab #${target.mediaId} "${target.title}" ${seasonLabel} \u2014 ${why}, grabbing ${episodes.length} episode(s) individually`);
+  const torrentHashes = [];
+  for (const ep of episodes) {
+    const epLabel = `${seasonLabel}E${String(ep.episode.number).padStart(2, "0")}`;
+    try {
+      const { torrentHash } = await grabRelease(deps, target.mediaId, target.season.id, ep.episode.id);
+      torrentHashes.push(torrentHash);
+    } catch (err) {
+      log.warn(`Grab #${target.mediaId} "${target.title}" ${epLabel} skipped \u2014 ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  if (!torrentHashes.length) throw new GrabError("download.grab.errors.no_eligible_release");
+  return { torrentHash: torrentHashes[0], torrentHashes };
 }
 
 // src/grab/auto-grab.ts
