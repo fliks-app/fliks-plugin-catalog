@@ -13,6 +13,20 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PLUGINS_DIR = join(ROOT, 'plugins');
 const OUT_FILE = join(ROOT, 'catalog.json');
 
+/**
+ * What a descriptor carries between being committed and the packaging workflow signing its
+ * archive. Publishing it anyway served an installable version whose checksum matched nothing,
+ * and an installer that cached the catalog in that window kept failing the check until its next
+ * refresh. It is a placeholder, not a checksum, so the version is held back until its archive
+ * exists.
+ */
+const PLACEHOLDER_SHA256 = '0'.repeat(64);
+
+/** Exported for `build-catalog.test.mjs`: the rule is the comparison, not the loop around it. */
+export function isPlaceholderChecksum(sha256) {
+  return sha256 === PLACEHOLDER_SHA256;
+}
+
 /** @returns {{ path: string, pluginDir: string }[]} */
 function listVersionFiles() {
   if (!existsSync(PLUGINS_DIR)) return [];
@@ -56,6 +70,10 @@ function main() {
     const expectedFile = `${parsed.version}.json`;
     if (path.split('/').pop() !== expectedFile) {
       errors.push(`${relPath}: "version" (${JSON.stringify(parsed.version)}) must match the filename "${expectedFile}"`);
+      continue;
+    }
+    if (isPlaceholderChecksum(parsed.sha256)) {
+      console.log(`${relPath}: held back — awaiting its signed archive`);
       continue;
     }
     const list = byId.get(parsed.id) ?? [];
@@ -105,7 +123,12 @@ function main() {
 
   const document = { plugins };
   writeFileSync(OUT_FILE, JSON.stringify(document, null, 2) + '\n', 'utf8');
-  console.log(`wrote ${OUT_FILE} (${plugins.length} plugin${plugins.length === 1 ? '' : 's'}, ${pluginIds.reduce((n, id) => n + byId.get(id).length, 0)} version(s))`);
+  const versionCount = plugins.reduce((n, p) => n + p.versions.length, 0);
+  console.log(`wrote ${OUT_FILE} (${plugins.length} plugin${plugins.length === 1 ? '' : 's'}, ${versionCount} version(s))`);
 }
 
-main();
+// Guarded so importing this module — `build-catalog.test.mjs` does — cannot rewrite catalog.json
+// as a side effect. Same shape as `check-pr-shape.mjs`.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
