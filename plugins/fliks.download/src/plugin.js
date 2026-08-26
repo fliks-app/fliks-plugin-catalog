@@ -8241,6 +8241,9 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
   const scored = await searchScored2(target);
   if (!scored.length) return logSkip("no releases returned by indexers");
   const pick = pickRelease(scored, target.want);
+  if (pick && target.season && !target.episode && !pick.isFullSeason) {
+    return logSkip(`no eligible season pack \u2014 best was "${pick.title}", left to the episode candidates`);
+  }
   if (!pick) {
     const sample = scored.slice(0, 3).map((r) => `"${r.title}" \u2192 rank ${r.rank}${r.rejections.length ? ` [${r.rejections.map((x) => x.code).join(", ")}]` : ""}`).join(" | ");
     return logSkip(`no eligible release (${scored.length} checked)${sample ? ` \u2014 top: ${sample}` : ""}`);
@@ -8306,12 +8309,15 @@ async function searchMissing(deps, mediaIds) {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   let cursor;
   let count = 0;
+  const seasonsGrabbedAsPack = /* @__PURE__ */ new Set();
   do {
     const page = await deps.host.call("acquisition.candidates", { mediaIds, availableOn: today, limit: 200, cursor: cursor ?? void 0 });
     for (const target of page.items) {
       count++;
       if (!target.want || target.want.decision === "skip") continue;
-      await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
+      if (target.episode && target.season && seasonsGrabbedAsPack.has(target.season.id)) continue;
+      const grabbed = await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
+      if (grabbed && target.season && !target.episode) seasonsGrabbedAsPack.add(target.season.id);
     }
     cursor = page.cursor;
   } while (cursor);
@@ -8323,6 +8329,7 @@ async function pendingCheck(historyRepo, target) {
     return !!pending2;
   }
   if (target.season && target.episode) {
+    if (await historyRepo.findPendingSeasonPackGrab(target.mediaId, target.season.id)) return true;
     const epLabel = `S${String(target.season.number).padStart(2, "0")}E${String(target.episode.number).padStart(2, "0")}`;
     const pending2 = await historyRepo.findPendingEpisodeGrab(target.mediaId, `%${epLabel}%`);
     return !!pending2;

@@ -910,9 +910,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.4.1",
+  "version": "0.4.2",
   "files": {
-    "plugin.js": "bff5a790710b313e24d3625c5b50641618884f67663a2272d5ff367cf8e99df7",
+    "plugin.js": "4e3484e26d3ac7d9dddab60b79afcbc25c4ed1e8ba70cbf645c7ebc6d65d64db",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
