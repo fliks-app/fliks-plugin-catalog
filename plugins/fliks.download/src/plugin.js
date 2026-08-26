@@ -6533,6 +6533,29 @@ function parseTorznabItems(xml, indexer) {
   return out;
 }
 
+// src/search-budget.ts
+var DEFAULT_SEARCH_BUDGET_MS = 3e4;
+var SEARCH_BUDGET_KEY = "search_budget_seconds";
+var MIN_MS = 5e3;
+var MAX_MS = 12e4;
+var budgetMs = DEFAULT_SEARCH_BUDGET_MS;
+function searchBudgetMs() {
+  return budgetMs;
+}
+function searchFetchTimeoutMs() {
+  return Math.round(budgetMs * 5 / 6);
+}
+async function refreshSearchBudget(host2) {
+  let seconds = NaN;
+  try {
+    const values = await host2.call("config.get", { keys: [SEARCH_BUDGET_KEY] });
+    seconds = parseInt(values[SEARCH_BUDGET_KEY] ?? "", 10);
+  } catch {
+  }
+  budgetMs = Number.isFinite(seconds) ? Math.min(MAX_MS, Math.max(MIN_MS, seconds * 1e3)) : DEFAULT_SEARCH_BUDGET_MS;
+  return budgetMs;
+}
+
 // src/indexers/torznab.ts
 var USER_AGENT = "Fliks/1.0";
 var TorznabHttpError = class extends Error {
@@ -6542,7 +6565,6 @@ var TorznabHttpError = class extends Error {
     this.retryAfter = retryAfter;
   }
 };
-var SEARCH_TIMEOUT_MS = 25e3;
 function describeFetchError(e, timeoutMs) {
   const err = e;
   if (err?.name === "AbortError" || err?.name === "TimeoutError") return `timed out after ${timeoutMs}ms`;
@@ -6695,7 +6717,7 @@ var TorznabClient = class {
     try {
       const res = await this.deps.throttle.run(
         indexer,
-        () => fetchText(url, { timeoutMs: SEARCH_TIMEOUT_MS, validateStatus: (s) => s >= 200 && s < 400 })
+        () => fetchText(url, { timeoutMs: searchFetchTimeoutMs(), validateStatus: (s) => s >= 200 && s < 400 })
       );
       const torznabError = this.torznabError(res.body);
       if (torznabError) {
@@ -7803,6 +7825,9 @@ function pickRelease(sorted, want) {
     return true;
   });
 }
+function toWireRelease({ indexerId, indexerName, ...rest }) {
+  return { ...rest, sourceId: indexerId, sourceName: indexerName };
+}
 
 // src/grab/release-search.ts
 function readyIndexersOrNone(indexer, indexers, context) {
@@ -7812,37 +7837,56 @@ function readyIndexersOrNone(indexer, indexers, context) {
   }
   return ready;
 }
-var INDEXER_BUDGET_MS = 3e4;
-function withinBudget(work, name) {
+function runOne(ix, run) {
+  const budgetMs2 = searchBudgetMs();
   let timer;
   const lapsed = new Promise((resolve) => {
     timer = setTimeout(() => {
-      log.warn(`[${name}] still searching after ${INDEXER_BUDGET_MS}ms \u2014 dropped from this round`);
-      resolve([]);
-    }, INDEXER_BUDGET_MS);
+      log.warn(`[${ix.name}] still searching after ${budgetMs2}ms \u2014 dropped from this round`);
+      resolve({ failed: "timeout" });
+    }, budgetMs2);
   });
+  const work = run(ix).then(
+    (releases) => ({ releases }),
+    () => ({ failed: "error" })
+  );
   return Promise.race([work, lapsed]).finally(() => clearTimeout(timer));
 }
-async function fanOut(ready, run) {
+async function fanOut(ready, run, hooks) {
   const batches = await Promise.all(
-    ready.map((ix) => withinBudget(run(ix).catch(() => []), ix.name))
+    ready.map(async (ix) => {
+      const outcome = await runOne(ix, run);
+      hooks?.onSettled?.(ix, outcome);
+      return "releases" in outcome ? outcome.releases : [];
+    })
   );
   return batches.flat();
 }
-async function searchMovieAcrossIndexers(indexer, indexers, query, externalIds, context = "search") {
+function openRound(indexer, indexers, context, hooks) {
   const ready = readyIndexersOrNone(indexer, indexers, context);
-  if (!ready.length) return [];
-  return fanOut(ready, (ix) => indexer.searchMovie(ix, query, externalIds));
+  if (hooks?.onRoster) {
+    const readyIds = new Set(ready.map((ix) => ix.id));
+    hooks.onRoster(
+      ready,
+      indexers.filter((ix) => !readyIds.has(ix.id))
+    );
+  }
+  return ready.length ? ready : null;
 }
-async function searchSeriesAcrossIndexers(indexer, indexers, query, season, episode, externalIds, context = "search") {
-  const ready = readyIndexersOrNone(indexer, indexers, context);
-  if (!ready.length) return [];
-  return fanOut(ready, (ix) => indexer.searchSeries(ix, query, season, episode, externalIds));
+async function searchMovieAcrossIndexers(indexer, indexers, query, externalIds, context = "search", hooks) {
+  const ready = openRound(indexer, indexers, context, hooks);
+  if (!ready) return [];
+  return fanOut(ready, (ix) => indexer.searchMovie(ix, query, externalIds), hooks);
 }
-async function searchSeasonPackAcrossIndexers(indexer, indexers, query, season, externalIds, context = "search") {
-  const ready = readyIndexersOrNone(indexer, indexers, context);
-  if (!ready.length) return [];
-  return fanOut(ready, (ix) => indexer.searchSeasonPack(ix, query, season, externalIds));
+async function searchSeriesAcrossIndexers(indexer, indexers, query, season, episode, externalIds, context = "search", hooks) {
+  const ready = openRound(indexer, indexers, context, hooks);
+  if (!ready) return [];
+  return fanOut(ready, (ix) => indexer.searchSeries(ix, query, season, episode, externalIds), hooks);
+}
+async function searchSeasonPackAcrossIndexers(indexer, indexers, query, season, externalIds, context = "search", hooks) {
+  const ready = openRound(indexer, indexers, context, hooks);
+  if (!ready) return [];
+  return fanOut(ready, (ix) => indexer.searchSeasonPack(ix, query, season, externalIds), hooks);
 }
 async function rssAcrossIndexers(indexer, indexers, context = "RssSync") {
   const ready = readyIndexersOrNone(indexer, indexers, context);
@@ -7855,6 +7899,67 @@ async function rssAcrossIndexers(indexer, indexers, context = "RssSync") {
     }
   }
   return out;
+}
+
+// src/grab/search-stream.ts
+function createSearchStreamer(deps) {
+  const entries = /* @__PURE__ */ new Map();
+  let ranking = false;
+  let again = false;
+  const snapshot = () => [...entries.values()];
+  async function emit(type, payload) {
+    try {
+      await deps.host.call("events.emitOwn", {
+        type,
+        payload: { searchId: deps.target.searchId, ...payload },
+        audience: { userId: deps.target.userId }
+      });
+    } catch (e) {
+      log.warn(`search stream ${type} dropped: ${e.message}`);
+    }
+  }
+  async function rankAndEmit() {
+    if (ranking) {
+      again = true;
+      return;
+    }
+    ranking = true;
+    try {
+      do {
+        again = false;
+        let releases;
+        try {
+          releases = await deps.rank();
+        } catch (e) {
+          log.warn(`search stream re-rank failed: ${e.message}`);
+          return;
+        }
+        await emit("search.partial", { indexers: snapshot(), releases });
+      } while (again);
+    } finally {
+      ranking = false;
+    }
+  }
+  return {
+    roster(ready, skipped) {
+      for (const ix of ready) entries.set(ix.id, { id: ix.id, name: ix.name, state: "pending" });
+      for (const ix of skipped) entries.set(ix.id, { id: ix.id, name: ix.name, state: "skipped" });
+      void emit("search.state", { indexers: snapshot() });
+    },
+    settled(indexer, outcome) {
+      const added = "releases" in outcome ? outcome.releases.length : 0;
+      entries.set(indexer.id, {
+        id: indexer.id,
+        name: indexer.name,
+        state: "releases" in outcome ? "done" : "failed"
+      });
+      if (added === 0) {
+        void emit("search.state", { indexers: snapshot() });
+        return;
+      }
+      void rankAndEmit();
+    }
+  };
 }
 
 // src/grab/grab-history.ts
@@ -7963,33 +8068,55 @@ function searchQuery(target, customQuery) {
   if (!target.season && !target.episode && target.year) return `${target.searchTitle} ${target.year}`;
   return target.searchTitle;
 }
-async function searchScored(deps, target, customQuery) {
+async function searchScored(deps, target, customQuery, stream) {
   const indexers = await deps.indexersRepo.listEnabled();
   if (!indexers.length) return [];
+  await refreshSearchBudget(deps.host);
   const externalIds = { imdbId: target.imdbId, tmdbId: target.tmdbId, tvdbId: target.tvdbId };
   const query = searchQuery(target, customQuery);
   const context = target.title;
+  const rank = (releases) => rankReleases(deps, target, indexers, releases);
+  let hooks;
+  if (stream) {
+    const seen = [];
+    const streamer = createSearchStreamer({
+      host: deps.host,
+      target: stream,
+      rank: async () => (await rank(seen)).map(toWireRelease)
+    });
+    hooks = {
+      onRoster: (ready, skipped) => streamer.roster(ready, skipped),
+      onSettled: (ix, outcome) => {
+        if ("releases" in outcome) seen.push(...outcome.releases);
+        streamer.settled(ix, outcome);
+      }
+    };
+  }
   let raw;
   if (target.episode) {
-    raw = await searchSeriesAcrossIndexers(deps.indexer, indexers, query, target.season.number, target.episode.number, externalIds, context);
+    raw = await searchSeriesAcrossIndexers(deps.indexer, indexers, query, target.season.number, target.episode.number, externalIds, context, hooks);
   } else if (target.season) {
-    raw = await searchSeasonPackAcrossIndexers(deps.indexer, indexers, query, target.season.number, externalIds, context);
+    raw = await searchSeasonPackAcrossIndexers(deps.indexer, indexers, query, target.season.number, externalIds, context, hooks);
   } else {
-    raw = await searchMovieAcrossIndexers(deps.indexer, indexers, query, externalIds, context);
+    raw = await searchMovieAcrossIndexers(deps.indexer, indexers, query, externalIds, context, hooks);
   }
   if (!raw.length) return [];
+  return rank(raw);
+}
+async function rankReleases(deps, target, indexers, releases) {
+  if (!releases.length) return [];
   const scored = await deps.host.call("releases.score", {
     mediaId: target.mediaId,
     seasonNumber: target.season?.number,
     episodeNumber: target.episode?.number,
-    releases: await buildScoreRequest(raw, indexers, deps.blocklistRepo)
+    releases: await buildScoreRequest(releases, indexers, deps.blocklistRepo)
   });
-  return joinScored(raw, scored);
+  return joinScored(releases, scored);
 }
-async function searchReleases(deps, mediaId, seasonId, episodeId, customQuery) {
+async function searchReleases(deps, mediaId, seasonId, episodeId, customQuery, stream) {
   const target = await loadTarget(deps, mediaId, seasonId, episodeId);
   if (!target.want) throw new GrabError("download.grab.errors.unprofiled");
-  const scored = await searchScored(deps, target, customQuery);
+  const scored = await searchScored(deps, target, customQuery, stream);
   const satisfied = target.want.decision === "skip" ? " (profile already satisfied)" : "";
   log.info(`Search #${mediaId} "${target.title}"${satisfied} q="${searchQuery(target, customQuery)}" \u2192 ${scored.length} result(s)`);
   return scored;
@@ -8240,8 +8367,8 @@ var DownloadGrabPipeline = class {
   constructor(deps) {
     this.deps = deps;
   }
-  searchReleases(mediaId, seasonId, episodeId, customQuery) {
-    return searchReleases(this.deps, mediaId, seasonId, episodeId, customQuery);
+  searchReleases(mediaId, seasonId, episodeId, customQuery, stream) {
+    return searchReleases(this.deps, mediaId, seasonId, episodeId, customQuery, stream);
   }
   grabRelease(mediaId, seasonId, episodeId, manual) {
     return grabRelease(this.deps, mediaId, seasonId, episodeId, manual);
@@ -9088,6 +9215,15 @@ var CONFIG_PAGES = [
         hint: "download.config.general.auto_grab_on_approval_hint",
         default: true
       },
+      {
+        key: "search_budget_seconds",
+        type: "number",
+        labelKey: "download.config.general.search_budget_seconds",
+        hint: "download.config.general.search_budget_seconds_hint",
+        default: 30,
+        min: 5,
+        max: 120
+      },
       // No default: an unset sample count means no cleanup, and this path deletes
       // torrents along with their files.
       {
@@ -9344,6 +9480,8 @@ var I18N = {
     "download.season.grab_best": "Download the season",
     "download.media.grab_best": "Grab the best release",
     "download.media.search_releases": "Search releases",
+    "download.config.general.search_budget_seconds": "Seconds allowed for a release search",
+    "download.config.general.search_budget_seconds_hint": "Indexers slower than this are dropped from the round and the results already returned are kept. Raise it for slow trackers; a reverse proxy in front of Fliks usually cuts the response at 60s.",
     "download.config.stall.samples": "Stalled-download checks before cleanup",
     "download.config.stall.samples_hint": "Leave empty to never clean up stalled downloads. Removing one deletes the torrent and its files.",
     "download.config.stall.interval_minutes": "Minutes between checks",
@@ -9476,6 +9614,8 @@ var I18N = {
     "download.season.grab_best": "T\xE9l\xE9charger la saison",
     "download.media.grab_best": "R\xE9cup\xE9rer la meilleure release",
     "download.media.search_releases": "Rechercher des releases",
+    "download.config.general.search_budget_seconds": "Secondes accord\xE9es \xE0 une recherche de release",
+    "download.config.general.search_budget_seconds_hint": "Les indexeurs plus lents sont \xE9cart\xE9s du tour et les r\xE9sultats d\xE9j\xE0 re\xE7us sont conserv\xE9s. \xC0 augmenter pour des trackers lents ; un reverse proxy devant Fliks coupe g\xE9n\xE9ralement la r\xE9ponse \xE0 60s.",
     "download.config.stall.samples": "V\xE9rifications avant nettoyage d\u2019un t\xE9l\xE9chargement bloqu\xE9",
     "download.config.stall.samples_hint": "Laissez vide pour ne jamais nettoyer les t\xE9l\xE9chargements bloqu\xE9s. Supprimer un torrent efface aussi ses fichiers.",
     "download.config.stall.interval_minutes": "Minutes entre deux v\xE9rifications",
@@ -9700,11 +9840,10 @@ async function handleSearchReleases(deps, params, req) {
   const episodeId = optionalIntParam(params, "episodeId");
   if (episodeId === null) return badRequest("episodeId");
   const customQuery = typeof req.query?.["q"] === "string" ? req.query["q"] : void 0;
-  const releases = await deps.grabPipeline.searchReleases(mediaId, seasonId, episodeId, customQuery);
+  const sid = req.query?.["sid"];
+  const stream = req.principal.kind === "delegated" && typeof sid === "string" && sid ? { userId: req.principal.userId, searchId: sid } : void 0;
+  const releases = await deps.grabPipeline.searchReleases(mediaId, seasonId, episodeId, customQuery, stream);
   return jsonResponse(200, releases.map(toWireRelease));
-}
-function toWireRelease({ indexerId, indexerName, ...rest }) {
-  return { ...rest, sourceId: indexerId, sourceName: indexerName };
 }
 function readManualGrabInput(body) {
   const b = body ?? {};
