@@ -441,7 +441,9 @@
             "labelKey": "download.config.indexers.actions.clear_cooldown",
             "method": "DELETE",
             "route": "/indexers/:id/cooldown",
-            "scope": "row"
+            "scope": "row",
+            "slot": "cooldown-reset",
+            "confirmKey": "download.config.indexers.actions.clear_cooldown_confirm"
           },
           {
             "id": "clear-all-cooldowns",
@@ -758,6 +760,7 @@
       "download.config.indexers.stats.errors": "Errors",
       "download.config.indexers.stats.empty": "No query recorded in the last 30 days.",
       "download.config.indexers.actions.clear_cooldown": "Clear cooldown",
+      "download.config.indexers.actions.clear_cooldown_confirm": "Query this indexer again right away? Its backoff is there because it failed or asked to be left alone.",
       "download.config.indexers.actions.clear_all_cooldowns": "Clear all cooldowns",
       "download.config.download_clients.title": "Download clients",
       "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
@@ -882,6 +885,7 @@
       "download.config.indexers.stats.errors": "Erreurs",
       "download.config.indexers.stats.empty": "Aucune requête enregistrée sur les 30 derniers jours.",
       "download.config.indexers.actions.clear_cooldown": "Réinitialiser le cooldown",
+      "download.config.indexers.actions.clear_cooldown_confirm": "Interroger de nouveau cet indexeur immédiatement ? Sa pause existe parce qu’il a échoué ou demandé à être laissé tranquille.",
       "download.config.indexers.actions.clear_all_cooldowns": "Réinitialiser tous les cooldowns",
       "download.config.download_clients.title": "Clients de téléchargement",
       "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
@@ -906,9 +910,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.4.0",
+  "version": "0.4.1",
   "files": {
-    "plugin.js": "facf5e73f0a23ed767c5f37e6fe22a82cc436b4d9498639143768935ef892bc1",
+    "plugin.js": "bff5a790710b313e24d3625c5b50641618884f67663a2272d5ff367cf8e99df7",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
