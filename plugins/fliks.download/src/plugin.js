@@ -5959,10 +5959,14 @@ var DownloadHistoryRepository = class {
     );
     return Number(rows[0]?.count ?? 0);
   }
-  /** `acquisition-scheduler.service.ts:257,544` — "is a grab already pending for this media". */
+  /** `acquisition-scheduler.service.ts:257,544` — "is a grab already pending for this media".
+   *  `importing` counts as pending here and below: `markImporting` runs before `library.ingest`,
+   *  which copies the release, so a row sits in that status for minutes with its download very
+   *  much still accounted for. Matching only `grabbed` stopped a pack blocking its own episodes
+   *  for exactly that window. */
   async findPendingGrabForMedia(mediaId) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" = 'grabbed' LIMIT 1`,
+      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') LIMIT 1`,
       [mediaId]
     );
     return rows[0] ?? null;
@@ -5972,7 +5976,7 @@ var DownloadHistoryRepository = class {
   async findPendingEpisodeGrab(mediaId, sourceTitlePattern) {
     const { rows } = await this.pool.query(
       `SELECT ${COLUMNS4} FROM "download_history"
-        WHERE "mediaId" = $1 AND "status" = 'grabbed' AND "sourceTitle" ILIKE $2
+        WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "sourceTitle" ILIKE $2
         LIMIT 1`,
       [mediaId, sourceTitlePattern]
     );
@@ -5982,7 +5986,7 @@ var DownloadHistoryRepository = class {
   async findPendingSeasonPackGrab(mediaId, seasonId) {
     const { rows } = await this.pool.query(
       `SELECT ${COLUMNS4} FROM "download_history"
-        WHERE "mediaId" = $1 AND "status" = 'grabbed' AND "seasonId" = $2 AND "episodeId" IS NULL
+        WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "seasonId" = $2 AND "episodeId" IS NULL
         LIMIT 1`,
       [mediaId, seasonId]
     );
@@ -6000,7 +6004,7 @@ var DownloadHistoryRepository = class {
    *  recent season-pack grab client-side. */
   async findRecentGrabbedForMedia(mediaId, since) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" = 'grabbed' AND "createdAt" >= $2`,
+      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "createdAt" >= $2`,
       [mediaId, since]
     );
     return rows;
@@ -6944,7 +6948,7 @@ var IndexerThrottle = class {
   async runOne(indexer, fn) {
     const delayMs = Math.max(0, indexer.requestDelay ?? 2) * 1e3;
     const earliest = this.nextAllowedAt.get(indexer.id) ?? 0;
-    const wait = earliest - Date.now();
+    const wait = Math.min(earliest - Date.now(), delayMs);
     if (wait > 0) await sleep(wait);
     try {
       const result = await fn();
@@ -8285,7 +8289,7 @@ async function identifyOrphans(host2, titles) {
 async function resolveSeasonEpisodeIds(host2, mediaId, seasonNumber, episodeNumber) {
   if (seasonNumber == null) return { seasonId: null, episodeId: null };
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const { items } = await host2.call("acquisition.candidates", { mediaIds: [mediaId], availableOn: today, limit: 100 });
+  const { items } = await host2.call("acquisition.candidates", { mediaIds: [mediaId], availableOn: today, limit: 500 });
   const bySeason = items.filter((it) => it.season?.number === seasonNumber);
   if (episodeNumber != null) {
     const withEpisode = bySeason.find((it) => it.episode?.number === episodeNumber);
@@ -8360,10 +8364,15 @@ async function rssSync(deps) {
       const page = await deps.host.call("acquisition.candidates", {
         mediaIds: [m.mediaId],
         availableOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
-        limit: 100
+        limit: 500
       });
       const target = page.items.find((it) => (m.seasonNumber == null ? !it.season : it.season?.number === m.seasonNumber) && (m.episodeNumber == null ? !it.episode : it.episode?.number === m.episodeNumber));
-      if (!target || !target.want || target.want.decision === "skip") continue;
+      if (!target || !target.want || target.want.decision === "skip") {
+        if (!target && page.cursor) {
+          log.warn(`RssSync: "${release.title}" matched #${m.mediaId} but its candidate was past the first page \u2014 skipped`);
+        }
+        continue;
+      }
       await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
     }
   }
@@ -8736,11 +8745,16 @@ var DownloadCompletionPoller = class {
    * granularity — flagged in the port report, not guessed at.
    */
   async emitDownloadProgress(allTorrents) {
-    const downloading = allTorrents.filter((t) => t.progress < 1);
-    if (!downloading.length) return;
     const rows = await this.deps.historyRepo.findByStatuses(["grabbed", "importing"]);
     if (!rows.length) return;
-    for (const t of downloading) {
+    const importingHashes = new Set(
+      rows.filter((r) => r.status === "importing" && r.torrentHash).map((r) => r.torrentHash.toLowerCase())
+    );
+    const reportable = allTorrents.filter(
+      (t) => t.progress < 1 || importingHashes.has(t.hash.toLowerCase())
+    );
+    if (!reportable.length) return;
+    for (const t of reportable) {
       const history = await this.deps.historyMatcher.matchAndHeal(t, rows);
       if (!history?.mediaId) continue;
       await this.deps.host.call("progress.set", {
@@ -8749,7 +8763,9 @@ var DownloadCompletionPoller = class {
         progress: t.progress,
         bytesPerSecond: t.dlspeed,
         etaSeconds: t.eta > 0 && t.eta < 864e4 ? t.eta : void 0,
-        state: torrentProgressState(t)
+        // The row is authoritative once it says importing: the client reports a finished
+        // torrent as seeding, which this mapping reads as `active`.
+        state: history.status === "importing" ? "importing" : torrentProgressState(t)
       }).catch((e) => log.warn(`Import: progress publish failed: ${e.message}`));
     }
   }
@@ -8850,9 +8866,9 @@ var DownloadCompletionPoller = class {
    * and their files).
    */
   async cleanStalled() {
-    await this.pruneOldStalledChecks();
     const stallConfig = await getStallConfig(this.deps.host);
     if (!stallConfig) return;
+    await this.pruneOldStalledChecks(stallConfig);
     const clients = await this.deps.clientsRepo.listEnabled();
     const qbitClients = clients.filter((c) => this.deps.driver.supports(c));
     if (!qbitClients.length) return;
@@ -8902,10 +8918,16 @@ var DownloadCompletionPoller = class {
     if (recent.length < config.samples) return false;
     return countStalledStrikes(recent) >= config.samples;
   }
-  /** Deletes stalled-check rows older than 24h. Assumes every profile's
-   *  detection window (`(samples - 1) x interval`) stays under 24h. */
-  async pruneOldStalledChecks() {
-    const cutoff = new Date(Date.now() - 24 * 60 * 6e4).toISOString();
+  /**
+   * Drops stalled-check rows the configured window can no longer reach. A fixed 24h horizon
+   * assumed a detection window under a day and enforced nothing: at one snapshot per interval,
+   * only `1440 / interval` rows survived, so `evaluateStalled`'s `recent.length >= samples` could
+   * never be met for a longer profile — 3 samples every 12h, or anything hourly past 24 samples,
+   * left cleanup permanently inert with no log, reading as "not stalled long enough yet".
+   */
+  async pruneOldStalledChecks(config) {
+    const windowMs = (config.samples + 1) * config.intervalMinutes * 6e4;
+    const cutoff = new Date(Date.now() - Math.max(24 * 60 * 6e4, windowMs)).toISOString();
     await this.deps.stalledChecksRepo.pruneOlderThan(cutoff);
   }
   // ---------------------------------------------------------------------------
@@ -9233,18 +9255,24 @@ var CONFIG_PAGES = [
       },
       // No default: an unset sample count means no cleanup, and this path deletes
       // torrents along with their files.
+      // Bounded, unlike before: the two multiply into the detection window, and an unbounded pair
+      // could ask for one longer than the retention that feeds it.
       {
         key: "stall_samples",
         type: "number",
         labelKey: "download.config.stall.samples",
-        hint: "download.config.stall.samples_hint"
+        hint: "download.config.stall.samples_hint",
+        min: 2,
+        max: 100
       },
       {
         key: "stall_interval_minutes",
         type: "number",
         labelKey: "download.config.stall.interval_minutes",
         hint: "download.config.stall.interval_minutes_hint",
-        default: 60
+        default: 60,
+        min: 5,
+        max: 1440
       },
       {
         key: "stall_auto_restart",
@@ -9363,7 +9391,7 @@ var CONFIG_PAGES = [
           active: "download.config.queue.states.active",
           stalled: "download.config.queue.states.stalled",
           paused: "download.config.queue.states.paused",
-          importing: "download.config.queue.states.importing"
+          importing: "download.status.importing"
         },
         badges: {
           queued: "neutral",
@@ -9407,7 +9435,7 @@ var CONFIG_PAGES = [
         options: [
           { value: "", labelKey: "download.config.history.filters.status_all" },
           { value: "grabbed", labelKey: "download.config.history.filters.status_grabbed" },
-          { value: "importing", labelKey: "download.config.history.filters.status_importing" },
+          { value: "importing", labelKey: "download.status.importing" },
           { value: "completed", labelKey: "download.config.history.filters.status_completed" },
           { value: "failed", labelKey: "download.config.history.filters.status_failed" },
           { value: "warning", labelKey: "download.config.history.filters.status_warning" }
@@ -9432,7 +9460,7 @@ var CONFIG_PAGES = [
         labelKey: "download.config.history.columns.status",
         labelKeys: {
           grabbed: "download.config.history.filters.status_grabbed",
-          importing: "download.config.history.filters.status_importing",
+          importing: "download.status.importing",
           completed: "download.config.history.filters.status_completed",
           failed: "download.config.history.filters.status_failed",
           warning: "download.config.history.filters.status_warning"
@@ -9465,7 +9493,7 @@ var I18N = {
     "download.config.queue.states.active": "Downloading",
     "download.config.queue.states.stalled": "Stalled",
     "download.config.queue.states.paused": "Paused",
-    "download.config.queue.states.importing": "Importing",
+    "download.status.importing": "Importing",
     "download.config.history.title": "Download history",
     "download.config.history.detail_title": "Reason",
     "download.config.history.columns.date": "Date",
@@ -9476,7 +9504,6 @@ var I18N = {
     "download.config.history.filters.status_label": "Status",
     "download.config.history.filters.status_all": "All statuses",
     "download.config.history.filters.status_grabbed": "Grabbed",
-    "download.config.history.filters.status_importing": "Importing",
     "download.config.history.filters.status_completed": "Completed",
     "download.config.history.filters.status_failed": "Failed",
     "download.config.history.filters.status_warning": "Warning",
@@ -9491,7 +9518,7 @@ var I18N = {
     "download.media.grab_best": "Grab the best release",
     "download.media.search_releases": "Search releases",
     "download.config.general.search_budget_seconds": "Seconds allowed for a release search",
-    "download.config.general.search_budget_seconds_hint": "Indexers slower than this are dropped from the round and the results already returned are kept. Raise it for slow trackers; a reverse proxy in front of Fliks usually cuts the response at 60s.",
+    "download.config.general.search_budget_seconds_hint": "Indexers slower than this are dropped from the round and the results already returned are kept. Raise it for slow trackers.",
     "download.config.stall.samples": "Stalled-download checks before cleanup",
     "download.config.stall.samples_hint": "Leave empty to never clean up stalled downloads. Removing one deletes the torrent and its files.",
     "download.config.stall.interval_minutes": "Minutes between checks",
@@ -9600,7 +9627,7 @@ var I18N = {
     "download.config.queue.states.active": "T\xE9l\xE9chargement",
     "download.config.queue.states.stalled": "Bloqu\xE9",
     "download.config.queue.states.paused": "En pause",
-    "download.config.queue.states.importing": "Import",
+    "download.status.importing": "Import en cours",
     "download.config.history.title": "Historique des t\xE9l\xE9chargements",
     "download.config.history.detail_title": "Raison",
     "download.config.history.columns.date": "Date",
@@ -9611,7 +9638,6 @@ var I18N = {
     "download.config.history.filters.status_label": "Statut",
     "download.config.history.filters.status_all": "Tous les statuts",
     "download.config.history.filters.status_grabbed": "R\xE9cup\xE9r\xE9",
-    "download.config.history.filters.status_importing": "Import en cours",
     "download.config.history.filters.status_completed": "Termin\xE9",
     "download.config.history.filters.status_failed": "\xC9chou\xE9",
     "download.config.history.filters.status_warning": "Avertissement",
@@ -9626,7 +9652,7 @@ var I18N = {
     "download.media.grab_best": "R\xE9cup\xE9rer la meilleure release",
     "download.media.search_releases": "Rechercher des releases",
     "download.config.general.search_budget_seconds": "Secondes accord\xE9es \xE0 une recherche de release",
-    "download.config.general.search_budget_seconds_hint": "Les indexeurs plus lents sont \xE9cart\xE9s du tour et les r\xE9sultats d\xE9j\xE0 re\xE7us sont conserv\xE9s. \xC0 augmenter pour des trackers lents ; un reverse proxy devant Fliks coupe g\xE9n\xE9ralement la r\xE9ponse \xE0 60s.",
+    "download.config.general.search_budget_seconds_hint": "Les indexeurs plus lents sont \xE9cart\xE9s du tour et les r\xE9sultats d\xE9j\xE0 re\xE7us sont conserv\xE9s. \xC0 augmenter pour des trackers lents.",
     "download.config.stall.samples": "V\xE9rifications avant nettoyage d\u2019un t\xE9l\xE9chargement bloqu\xE9",
     "download.config.stall.samples_hint": "Laissez vide pour ne jamais nettoyer les t\xE9l\xE9chargements bloqu\xE9s. Supprimer un torrent efface aussi ses fichiers.",
     "download.config.stall.interval_minutes": "Minutes entre deux v\xE9rifications",
