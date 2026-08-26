@@ -9299,7 +9299,10 @@ var CONFIG_PAGES = [
         labelKey: "download.config.indexers.actions.clear_cooldown",
         method: "DELETE",
         route: "/indexers/:id/cooldown",
-        scope: "row"
+        scope: "row",
+        // Renders beside the cooldown it clears rather than as a fourth button per row.
+        slot: "cooldown-reset",
+        confirmKey: "download.config.indexers.actions.clear_cooldown_confirm"
       },
       {
         id: "clear-all-cooldowns",
@@ -9554,6 +9557,7 @@ var I18N = {
     "download.config.indexers.stats.errors": "Errors",
     "download.config.indexers.stats.empty": "No query recorded in the last 30 days.",
     "download.config.indexers.actions.clear_cooldown": "Clear cooldown",
+    "download.config.indexers.actions.clear_cooldown_confirm": "Query this indexer again right away? Its backoff is there because it failed or asked to be left alone.",
     "download.config.indexers.actions.clear_all_cooldowns": "Clear all cooldowns",
     "download.config.download_clients.title": "Download clients",
     "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
@@ -9680,6 +9684,7 @@ var I18N = {
     "download.config.indexers.stats.errors": "Erreurs",
     "download.config.indexers.stats.empty": "Aucune requ\xEAte enregistr\xE9e sur les 30 derniers jours.",
     "download.config.indexers.actions.clear_cooldown": "R\xE9initialiser le cooldown",
+    "download.config.indexers.actions.clear_cooldown_confirm": "Interroger de nouveau cet indexeur imm\xE9diatement ? Sa pause existe parce qu\u2019il a \xE9chou\xE9 ou demand\xE9 \xE0 \xEAtre laiss\xE9 tranquille.",
     "download.config.indexers.actions.clear_all_cooldowns": "R\xE9initialiser tous les cooldowns",
     "download.config.download_clients.title": "Clients de t\xE9l\xE9chargement",
     "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
