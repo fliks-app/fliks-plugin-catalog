@@ -2,7 +2,7 @@
   "id": "fliks.download",
   "pluginApi": 0,
   "name": "Download",
-  "fliks": ">=3.0.0 <4.0.0",
+  "fliks": ">=3.4.0 <4.0.0",
   "author": "Fliks",
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "license": "AGPL-3.0-or-later",
@@ -267,10 +267,10 @@
         }
       },
       {
-        "id": "fliks-download.media.grab-best",
+        "id": "fliks-download.media.group",
         "slot": "media.actions",
-        "weight": 500,
-        "labelKey": "download.media.grab_best",
+        "weight": 1000,
+        "labelKey": "download.media.group",
         "icon": "download",
         "when": [
           "hasPermission:media.grab",
@@ -278,25 +278,32 @@
           "hasQualityProfile"
         ],
         "action": {
-          "kind": "action",
-          "actionId": "media.grab-best"
-        }
-      },
-      {
-        "id": "fliks-download.media.search-releases",
-        "slot": "media.actions",
-        "weight": 600,
-        "labelKey": "download.media.search_releases",
-        "icon": "search",
-        "when": [
-          "hasPermission:media.grab",
-          "!mediaType:series",
-          "hasQualityProfile"
-        ],
-        "action": {
-          "kind": "action",
-          "actionId": "media.search-releases"
-        }
+          "kind": "submenu"
+        },
+        "children": [
+          {
+            "id": "fliks-download.media.grab-best",
+            "slot": "media.actions",
+            "weight": 10,
+            "labelKey": "download.media.grab_best",
+            "icon": "download",
+            "action": {
+              "kind": "action",
+              "actionId": "media.grab-best"
+            }
+          },
+          {
+            "id": "fliks-download.media.search-releases",
+            "slot": "media.actions",
+            "weight": 20,
+            "labelKey": "download.media.search_releases",
+            "icon": "search",
+            "action": {
+              "kind": "action",
+              "actionId": "media.search-releases"
+            }
+          }
+        ]
       },
       {
         "id": "fliks-download.season.search-releases",
@@ -695,6 +702,7 @@
       "download.config.download_clients.labels.edit_title": "Edit download client",
       "download.season.search_releases": "View packs",
       "download.season.grab_best": "Download the season",
+      "download.media.group": "Downloads",
       "download.media.grab_best": "Grab the best release",
       "download.media.search_releases": "Search releases",
       "download.config.general.search_budget_seconds": "Seconds allowed for a release search",
@@ -819,6 +827,7 @@
       "download.config.download_clients.labels.edit_title": "Modifier le client de téléchargement",
       "download.season.search_releases": "Voir les packs",
       "download.season.grab_best": "Télécharger la saison",
+      "download.media.group": "Téléchargements",
       "download.media.grab_best": "Récupérer la meilleure release",
       "download.media.search_releases": "Rechercher des releases",
       "download.config.general.search_budget_seconds": "Secondes accordées à une recherche de release",
@@ -914,7 +923,7 @@
   },
   "version": "0.4.3",
   "files": {
-    "plugin.js": "c2b4ac9adce86f8d7063e71e1f545b133d0e994f27eb022ee817c3a59a09b9a4",
+    "plugin.js": "f9137bc61cec98dc98f7973025ae95dde3e8ea900d1a45b43c884b92cfe0f503",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
