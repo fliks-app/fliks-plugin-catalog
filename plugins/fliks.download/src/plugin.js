@@ -5691,8 +5691,25 @@ var migration_0002_indexer_caps_probed_at = {
   down: down2
 };
 
+// migrations/0003_download_history_size.ts
+var up3 = `
+  ALTER TABLE "download_history" ADD COLUMN IF NOT EXISTS "size" bigint
+`;
+var down3 = `
+  ALTER TABLE "download_history" DROP COLUMN IF EXISTS "size"
+`;
+var migration_0003_download_history_size = {
+  name: "0003_download_history_size",
+  up: up3,
+  down: down3
+};
+
 // migrations/index.ts
-var MIGRATIONS = [migration_0001_initial_schema, migration_0002_indexer_caps_probed_at];
+var MIGRATIONS = [
+  migration_0001_initial_schema,
+  migration_0002_indexer_caps_probed_at,
+  migration_0003_download_history_size
+];
 
 // src/db/migrate.ts
 var TRACKING_TABLE = "_migrations";
@@ -5946,7 +5963,7 @@ var DownloadClientsRepository = class {
 };
 
 // src/db/repositories/download-history.repository.ts
-var COLUMNS4 = `"id", "sourceTitle", "quality", "language", "torrentHash", "status", "statusMessage",
+var COLUMNS4 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "status", "statusMessage",
   "grabSource", "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId", "createdAt", "updatedAt"`;
 var DownloadHistoryRepository = class {
   constructor(pool) {
@@ -6096,15 +6113,16 @@ var DownloadHistoryRepository = class {
   async insertGrab(input) {
     const { rows } = await this.pool.query(
       `INSERT INTO "download_history"
-         ("sourceTitle", "quality", "language", "torrentHash", "grabSource",
+         ("sourceTitle", "quality", "language", "torrentHash", "size", "grabSource",
           "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING ${COLUMNS4}`,
       [
         input.sourceTitle,
         input.quality,
         input.language ?? null,
         input.torrentHash ?? null,
+        input.size ?? null,
         input.grabSource,
         input.mediaId,
         input.episodeId ?? null,
@@ -7977,6 +7995,7 @@ function buildGrabHistoryRow(args) {
     // eventually flips the row to failed.
     sourceTitle: decodeHtmlEntities(args.sourceTitle),
     torrentHash: args.torrentHash || null,
+    size: args.size || null,
     quality: args.quality,
     grabSource: args.grabSource,
     indexerId: args.indexerId ?? null,
@@ -8000,6 +8019,7 @@ async function grabAndRecord(deps, args) {
       downloadClientId: args.client.id,
       sourceTitle: args.sourceTitle,
       torrentHash,
+      size: args.size,
       quality: args.quality,
       grabSource: args.grabSource,
       indexerId: args.indexerId,
@@ -8174,6 +8194,7 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
       sourceTitle,
       downloadUrl: manual.downloadUrl,
       quality: scored2.qualityName,
+      size: scored2.size,
       indexerId: manual.indexerId,
       grabSource: "manual"
     });
@@ -8190,6 +8211,7 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
     sourceTitle: pick.title,
     downloadUrl: pick.downloadUrl,
     quality: pick.qualityName,
+    size: pick.size,
     indexerId: pick.indexerId,
     grabSource: "auto"
   });
@@ -8260,6 +8282,7 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
     sourceTitle: pick.title,
     downloadUrl: pick.downloadUrl,
     quality: pick.qualityName,
+    size: pick.size,
     indexerId: pick.indexerId,
     grabSource: "auto",
     seasonNumber: target.season?.number,
@@ -8682,6 +8705,7 @@ var DownloadCompletionPoller = class {
             downloadClientId: torrent._clientId,
             sourceTitle: torrent.name,
             torrentHash: torrent.hash,
+            size: torrent.size,
             // Orphan binding has no release object to derive a quality from —
             // flagged gap, see the port report.
             quality: "unknown",
@@ -9394,7 +9418,13 @@ var CONFIG_PAGES = [
     paged: true,
     pageSize: 25,
     columns: [
-      { key: "title", labelKey: "download.config.queue.columns.title", truncate: true },
+      {
+        key: "title",
+        labelKey: "download.config.queue.columns.title",
+        truncate: true,
+        // Which tracker the release came from, badged under the name rather than costing a column.
+        subValues: [{ key: "source", badges: { "*": "neutral" } }]
+      },
       {
         key: "state",
         labelKey: "download.config.queue.columns.state",
@@ -9465,7 +9495,8 @@ var CONFIG_PAGES = [
         // spent the width the title needed. Every quality value is worth badging: `*`.
         subValues: [
           { key: "quality", badges: { "*": "ghost" } },
-          { key: "source", badges: { "*": "neutral" } }
+          { key: "source", badges: { "*": "neutral" } },
+          { key: "size", format: "bytes", badges: { "*": "ghost" } }
         ]
       },
       { key: "grabSource", labelKey: "download.config.history.columns.grab_source", nowrap: true },
@@ -10022,8 +10053,15 @@ async function indexClientTorrents(deps) {
   );
   return { byClientId, anyUnreachable };
 }
-function toQueueItem(row, byClientId) {
-  const base = { id: row.id, title: row.sourceTitle, quality: row.quality, mediaId: row.mediaId, mediaType: null };
+function toQueueItem(row, byClientId, indexerNames) {
+  const base = {
+    id: row.id,
+    title: row.sourceTitle,
+    quality: row.quality,
+    source: (row.indexerId != null ? indexerNames.get(row.indexerId) : void 0) ?? "",
+    mediaId: row.mediaId,
+    mediaType: null
+  };
   if (row.status === "importing") {
     return { ...base, state: "importing", progress: 100, bytesPerSecond: null, size: null, clientReachable: true };
   }
@@ -10073,6 +10111,7 @@ async function handleHistory(deps, req) {
     date: row.createdAt,
     title: row.sourceTitle,
     quality: row.quality,
+    size: row.size,
     status: row.status,
     statusMessage: row.statusMessage,
     grabSource: row.grabSource,
@@ -10086,11 +10125,13 @@ async function handleHistory(deps, req) {
 async function handleQueue(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
   const pageSize = readPageSize(req.query["pageSize"]);
-  const [rows, { byClientId, anyUnreachable }] = await Promise.all([
+  const [rows, { byClientId, anyUnreachable }, indexers] = await Promise.all([
     deps.downloadHistory.findByStatuses(QUEUE_STATUSES),
-    indexClientTorrents(deps)
+    indexClientTorrents(deps),
+    deps.indexerService.findAll()
   ]);
-  const items = rows.map((row) => toQueueItem(row, byClientId)).sort((a, b) => b.id - a.id);
+  const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
+  const items = rows.map((row) => toQueueItem(row, byClientId, indexerNames)).sort((a, b) => b.id - a.id);
   const start = (page - 1) * pageSize;
   const data = await attachMediaTypes(deps, items.slice(start, start + pageSize));
   return jsonResponse(200, {
