@@ -6887,8 +6887,9 @@ var TorznabClient = class {
     if (!target) return [];
     const { baseUrl, apiKey } = target;
     if (!await this.ensureCapsProbed(indexer)) return [];
-    const useTvSearch = indexer.capsTvSearch && !indexer.capsSearchFallback;
-    const searchQ = useTvSearch ? showTitle : `${showTitle} S${String(season).padStart(2, "0")}`;
+    const isSpecial2 = season === 0;
+    const useTvSearch = indexer.capsTvSearch && !indexer.capsSearchFallback && !isSpecial2;
+    const searchQ = useTvSearch || isSpecial2 ? showTitle : `${showTitle} S${String(season).padStart(2, "0")}`;
     const typedUrl = `${baseUrl}?${buildTorznabQuery({
       t: useTvSearch ? "tvsearch" : "search",
       q: searchQ,
@@ -8090,7 +8091,12 @@ function searchQuery(target, customQuery) {
   const trimmed = customQuery?.trim();
   if (trimmed) return trimmed;
   if (!target.season && !target.episode && target.year) return `${target.searchTitle} ${target.year}`;
+  const specialTitle = isSpecial(target) ? target.episode?.title?.trim() : void 0;
+  if (specialTitle) return `${target.searchTitle} ${specialTitle}`;
   return target.searchTitle;
+}
+function isSpecial(target) {
+  return target.season?.number === 0;
 }
 async function searchScored(deps, target, customQuery, stream) {
   const indexers = await deps.indexersRepo.listEnabled();
@@ -8115,6 +8121,12 @@ async function searchScored(deps, target, customQuery, stream) {
         streamer.settled(ix, outcome);
       }
     };
+  }
+  if (isSpecial(target) && !target.episode?.title?.trim()) {
+    log.info(
+      `Search skipped for "${target.title}" ${target.episode ? `S00E${String(target.episode.number).padStart(2, "0")}` : "S00 pack"}: no episode title to search a special by`
+    );
+    return [];
   }
   let raw;
   if (target.episode) {
