@@ -9758,7 +9758,7 @@ var I18N = {
     "download.config.download_clients.subtitle": "Clients auxquels une release r\xE9cup\xE9r\xE9e est transmise.",
     "download.config.queue.subtitle": "T\xE9l\xE9chargements en cours, tous clients confondus.",
     "download.config.history.subtitle": "R\xE9cup\xE9rations enregistr\xE9es et leur r\xE9sultat.",
-    "download.config.queue.states.queued": "En file",
+    "download.config.queue.states.queued": "En file d'attente",
     "download.config.queue.states.active": "T\xE9l\xE9chargement",
     "download.config.queue.states.stalled": "Bloqu\xE9",
     "download.config.queue.states.paused": "En pause",
@@ -10166,13 +10166,14 @@ function toQueueItem(row, byClientId, indexerNames) {
       clientReachable: true
     };
   }
+  if (index?.ok) return null;
   return {
     ...base,
     state: "queued",
     progress: null,
     bytesPerSecond: null,
     size: null,
-    clientReachable: index?.ok ?? false
+    clientReachable: false
   };
 }
 async function attachMediaTypes(deps, pageItems) {
@@ -10220,7 +10221,7 @@ async function handleQueue(deps, req) {
     deps.indexerService.findAll()
   ]);
   const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
-  const items = rows.map((row) => toQueueItem(row, byClientId, indexerNames)).sort((a, b) => b.id - a.id);
+  const items = rows.map((row) => toQueueItem(row, byClientId, indexerNames)).filter((item) => item !== null).sort((a, b) => b.id - a.id);
   const start = (page - 1) * pageSize;
   const data = await attachMediaTypes(deps, items.slice(start, start + pageSize));
   return jsonResponse(200, {

@@ -816,7 +816,7 @@
       "download.config.download_clients.subtitle": "Clients auxquels une release récupérée est transmise.",
       "download.config.queue.subtitle": "Téléchargements en cours, tous clients confondus.",
       "download.config.history.subtitle": "Récupérations enregistrées et leur résultat.",
-      "download.config.queue.states.queued": "En file",
+      "download.config.queue.states.queued": "En file d'attente",
       "download.config.queue.states.active": "Téléchargement",
       "download.config.queue.states.stalled": "Bloqué",
       "download.config.queue.states.paused": "En pause",
@@ -936,9 +936,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.7.1",
+  "version": "0.7.2",
   "files": {
-    "plugin.js": "a9117bcb1ddc3882a2aaa8e2c5a98ff8c494700dd9162b68c3bca8b67a8558cb",
+    "plugin.js": "2b60533cc76be18456272fe26f117bb95908d42f1f110ea0492dc852b4a602fa",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
