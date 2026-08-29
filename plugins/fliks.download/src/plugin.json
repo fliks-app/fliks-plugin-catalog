@@ -936,9 +936,9 @@
       "download.config.queue.actions.open_media": "Ouvrir"
     }
   },
-  "version": "0.7.2",
+  "version": "0.7.3",
   "files": {
-    "plugin.js": "2b60533cc76be18456272fe26f117bb95908d42f1f110ea0492dc852b4a602fa",
+    "plugin.js": "32b8f8618d635527fecf37d7241af8c97ef017892d90adffbb78befc4fa01bd0",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
