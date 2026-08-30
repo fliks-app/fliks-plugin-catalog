@@ -2,7 +2,7 @@
   "id": "fliks.download",
   "pluginApi": 0,
   "name": "Download",
-  "fliks": ">=3.4.0 <4.0.0",
+  "fliks": ">=3.7.0 <4.0.0",
   "author": "Fliks",
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "license": "AGPL-3.0-or-later",
@@ -142,6 +142,31 @@
       "policy": "manage:plugin:fliks.download:download-clients"
     },
     {
+      "method": "POST",
+      "path": "/queue/:id/pause",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
+      "method": "POST",
+      "path": "/queue/:id/resume",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
+      "method": "DELETE",
+      "path": "/queue/:id",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
+      "method": "DELETE",
+      "path": "/history/all",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
+      "method": "DELETE",
+      "path": "/history/:id",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
       "method": "GET",
       "path": "/blocklist",
       "policy": "read:plugin:fliks.download:blocklist"
@@ -207,6 +232,7 @@
     "download-clients",
     "delay-profiles",
     "queue",
+    "queue-control",
     "blocklist"
   ],
   "ui": {
@@ -500,7 +526,7 @@
           {
             "key": "title",
             "labelKey": "download.config.queue.columns.title",
-            "truncate": true,
+            "linkActionId": "table.open-media",
             "subValues": [
               {
                 "key": "source",
@@ -526,17 +552,13 @@
               "stalled": "warning",
               "paused": "ghost",
               "importing": "primary"
-            }
+            },
+            "progressField": "progress"
           },
           {
             "key": "size",
             "labelKey": "download.config.queue.columns.size",
             "format": "bytes"
-          },
-          {
-            "key": "progress",
-            "labelKey": "download.config.queue.columns.progress",
-            "format": "percent"
           },
           {
             "key": "bytesPerSecond",
@@ -550,9 +572,104 @@
         "refreshMs": 10000,
         "rowActions": [
           {
-            "kind": "action",
-            "labelKey": "download.config.queue.actions.open_media",
-            "actionId": "table.open-media"
+            "kind": "detail",
+            "labelKey": "download.config.queue.actions.info",
+            "titleKey": "download.config.queue.detail_title",
+            "fields": [
+              {
+                "key": "sourceTitle",
+                "labelKey": "download.config.queue.detail.release"
+              },
+              {
+                "key": "quality",
+                "labelKey": "download.config.history.columns.quality"
+              },
+              {
+                "key": "size",
+                "labelKey": "download.config.queue.columns.size",
+                "format": "bytes"
+              },
+              {
+                "key": "source",
+                "labelKey": "download.config.queue.detail.indexer"
+              },
+              {
+                "key": "grabSource",
+                "labelKey": "download.config.queue.detail.grab_source",
+                "labelKeys": {
+                  "auto": "download.config.history.grab_source.auto",
+                  "manual": "download.config.history.grab_source.manual"
+                }
+              },
+              {
+                "key": "date",
+                "labelKey": "download.config.history.columns.date",
+                "format": "date"
+              },
+              {
+                "kind": "link",
+                "key": "infoUrl",
+                "labelKey": "download.config.queue.detail.indexer_page",
+                "textKey": "download.config.queue.detail.indexer_page_open"
+              }
+            ]
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.pause",
+            "method": "POST",
+            "path": "/queue/:id/pause",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "queued",
+                "active",
+                "stalled"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.resume",
+            "method": "POST",
+            "path": "/queue/:id/resume",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "paused"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.cancel",
+            "method": "DELETE",
+            "path": "/queue/:id",
+            "confirmKey": "download.config.queue.actions.cancel_confirm",
+            "confirmToggle": {
+              "labelKey": "download.config.queue.actions.cancel_delete_files",
+              "hintKey": "download.config.queue.actions.cancel_delete_files_hint",
+              "param": "deleteFiles"
+            },
+            "tone": "danger",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "queued",
+                "active",
+                "stalled",
+                "paused"
+              ]
+            }
           }
         ]
       },
@@ -612,6 +729,7 @@
           {
             "key": "title",
             "labelKey": "download.config.history.columns.title",
+            "linkActionId": "table.open-media",
             "subValues": [
               {
                 "key": "quality",
@@ -640,9 +758,13 @@
             "nowrap": true
           },
           {
-            "key": "status",
+            "key": "displayStatus",
             "labelKey": "download.config.history.columns.status",
             "labelKeys": {
+              "queued": "download.config.queue.states.queued",
+              "active": "download.config.queue.states.active",
+              "stalled": "download.config.queue.states.stalled",
+              "paused": "download.config.queue.states.paused",
               "grabbed": "download.config.history.filters.status_grabbed",
               "importing": "download.status.importing",
               "completed": "download.config.history.filters.status_completed",
@@ -650,6 +772,10 @@
               "warning": "download.config.history.filters.status_warning"
             },
             "badges": {
+              "queued": "neutral",
+              "active": "info",
+              "stalled": "warning",
+              "paused": "ghost",
               "grabbed": "info",
               "importing": "primary",
               "completed": "success",
@@ -657,14 +783,129 @@
               "warning": "warning"
             },
             "detailField": "statusMessage",
-            "detailTitleKey": "download.config.history.detail_title"
+            "detailTitleKey": "download.config.history.detail_title",
+            "progressField": "progress"
           }
         ],
         "rowActions": [
           {
-            "kind": "action",
-            "labelKey": "download.config.queue.actions.open_media",
-            "actionId": "table.open-media"
+            "kind": "detail",
+            "labelKey": "download.config.queue.actions.info",
+            "titleKey": "download.config.queue.detail_title",
+            "fields": [
+              {
+                "key": "sourceTitle",
+                "labelKey": "download.config.queue.detail.release"
+              },
+              {
+                "key": "quality",
+                "labelKey": "download.config.history.columns.quality"
+              },
+              {
+                "key": "size",
+                "labelKey": "download.config.queue.columns.size",
+                "format": "bytes"
+              },
+              {
+                "key": "source",
+                "labelKey": "download.config.queue.detail.indexer"
+              },
+              {
+                "key": "grabSource",
+                "labelKey": "download.config.queue.detail.grab_source",
+                "labelKeys": {
+                  "auto": "download.config.history.grab_source.auto",
+                  "manual": "download.config.history.grab_source.manual"
+                }
+              },
+              {
+                "key": "date",
+                "labelKey": "download.config.history.columns.date",
+                "format": "date"
+              },
+              {
+                "kind": "link",
+                "key": "infoUrl",
+                "labelKey": "download.config.queue.detail.indexer_page",
+                "textKey": "download.config.queue.detail.indexer_page_open"
+              }
+            ]
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.pause",
+            "method": "POST",
+            "path": "/queue/:id/pause",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "queued",
+                "active",
+                "stalled"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.resume",
+            "method": "POST",
+            "path": "/queue/:id/resume",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "paused"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.queue.actions.cancel",
+            "method": "DELETE",
+            "path": "/queue/:id",
+            "confirmKey": "download.config.queue.actions.cancel_confirm",
+            "confirmToggle": {
+              "labelKey": "download.config.queue.actions.cancel_delete_files",
+              "hintKey": "download.config.queue.actions.cancel_delete_files_hint",
+              "param": "deleteFiles"
+            },
+            "tone": "danger",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "queued",
+                "active",
+                "stalled",
+                "paused"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
+            "labelKey": "download.config.history.actions.delete",
+            "method": "DELETE",
+            "path": "/history/:id",
+            "confirmKey": "download.config.history.actions.delete_confirm",
+            "tone": "danger",
+            "when": [
+              "hasPermission:plugin:fliks.download:queue-control"
+            ]
+          }
+        ],
+        "listActions": [
+          {
+            "labelKey": "download.config.history.actions.clear",
+            "method": "DELETE",
+            "path": "/history/all",
+            "confirmKey": "download.config.history.actions.clear_confirm"
           }
         ]
       }
@@ -706,6 +947,7 @@
       "download.config.history.filters.status_label": "Status",
       "download.config.history.filters.status_all": "All statuses",
       "download.config.history.filters.status_grabbed": "Grabbed",
+      "download.config.history.states.missing": "Gone from the client",
       "download.config.history.filters.status_completed": "Completed",
       "download.config.history.filters.status_failed": "Failed",
       "download.config.history.filters.status_warning": "Warning",
@@ -755,13 +997,18 @@
       "download.grab.errors.no_download_client": "No enabled download client is configured",
       "download.grab.errors.unprofiled": "This title has no quality profile — nothing to grab",
       "download.grab.errors.blocklisted": "This release is blocklisted",
+      "download.grab.errors.releases_unobtainable": "No release could be fetched. Last reason: {{detail}}",
+      "download.queue.removed_by_user": "Removed from the queue by a user",
+      "download.queue.errors.not_controllable": "This download can no longer be controlled",
+      "download.queue.errors.no_torrent": "No download client holds this release yet",
       "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
       "download.grab.errors.no_eligible_release": "No eligible release was found",
       "download.http.errors.not_found": "Not found",
       "download.http.errors.not_ready": "The plugin is still starting up",
       "download.http.errors.bad_param": "Invalid or missing path parameter",
       "download.http.errors.bad_body": "Invalid or missing field in the request body",
-      "download.http.errors.internal": "Something went wrong handling this request",
+      "download.http.errors.internal": "Something went wrong handling this request: {{detail}}",
+      "download.http.errors.download_client": "The download client returned: {{detail}}",
       "download.config.indexers.title": "Indexers",
       "download.config.indexers.implementations.torznab": "Torznab",
       "download.config.indexers.fields.base_url": "Base URL",
@@ -805,10 +1052,29 @@
       "download.config.queue.title": "Queue",
       "download.config.queue.columns.title": "Title",
       "download.config.queue.columns.state": "State",
-      "download.config.queue.columns.progress": "Progress",
+      "download.config.queue.actions.info": "Info",
+      "download.config.queue.detail_title": "Download details",
+      "download.config.queue.detail.release": "Release",
+      "download.config.queue.detail.indexer": "Indexer",
+      "download.config.queue.detail.indexer_page": "Torrent page",
+      "download.config.queue.detail.indexer_page_open": "Open on the indexer",
+      "download.config.queue.detail.grab_source": "Grab method",
+      "download.config.history.columns.quality": "Quality",
+      "download.config.history.grab_source.auto": "Automatic",
+      "download.config.history.grab_source.manual": "Manual",
+      "download.config.queue.actions.pause": "Pause",
+      "download.config.queue.actions.resume": "Resume",
+      "download.config.queue.actions.cancel": "Cancel download",
+      "download.config.queue.actions.cancel_confirm": "Stop this download and remove it from its download client? It leaves the queue either way.",
+      "download.config.queue.actions.cancel_delete_files": "Also delete the files held by the download client",
+      "download.config.queue.actions.cancel_delete_files_hint": "Anything already imported into your library is kept.",
+      "download.config.history.actions.delete": "Delete entry",
+      "download.config.history.actions.delete_confirm": "Delete this entry? It only removes the record; no file is touched.",
+      "download.config.history.errors.still_running": "This grab is still running. Cancel it from the queue first.",
+      "download.config.history.actions.clear": "Clear history",
+      "download.config.history.actions.clear_confirm": "Delete every finished, failed and warned entry? Downloads still running are kept.",
       "download.config.queue.columns.speed": "Speed",
-      "download.config.queue.columns.size": "Size",
-      "download.config.queue.actions.open_media": "Open"
+      "download.config.queue.columns.size": "Size"
     },
     "fr": {
       "download.config.general.subtitle": "Comportement de récupération et d'import.",
@@ -831,6 +1097,7 @@
       "download.config.history.filters.status_label": "Statut",
       "download.config.history.filters.status_all": "Tous les statuts",
       "download.config.history.filters.status_grabbed": "Récupéré",
+      "download.config.history.states.missing": "Absent du client",
       "download.config.history.filters.status_completed": "Terminé",
       "download.config.history.filters.status_failed": "Échoué",
       "download.config.history.filters.status_warning": "Avertissement",
@@ -880,13 +1147,18 @@
       "download.grab.errors.no_download_client": "Aucun client de téléchargement actif n’est configuré",
       "download.grab.errors.unprofiled": "Ce titre n’a pas de profil de qualité — rien à télécharger",
       "download.grab.errors.blocklisted": "Cette release est sur liste de blocage",
+      "download.grab.errors.releases_unobtainable": "Aucune release n’a pu être récupérée. Dernière raison : {{detail}}",
+      "download.queue.removed_by_user": "Retiré de la file d'attente par un utilisateur",
+      "download.queue.errors.not_controllable": "Ce téléchargement ne peut plus être piloté",
+      "download.queue.errors.no_torrent": "Aucun client de téléchargement ne détient encore cette release",
       "download.grab.errors.quality_not_allowed": "La qualité de cette release n’est pas autorisée par le profil",
       "download.grab.errors.no_eligible_release": "Aucune release éligible n’a été trouvée",
       "download.http.errors.not_found": "Introuvable",
       "download.http.errors.not_ready": "Le plugin est encore en cours de démarrage",
       "download.http.errors.bad_param": "Paramètre d’URL invalide ou manquant",
       "download.http.errors.bad_body": "Champ invalide ou manquant dans le corps de la requête",
-      "download.http.errors.internal": "Une erreur est survenue lors du traitement de cette requête",
+      "download.http.errors.internal": "Une erreur est survenue lors du traitement de cette requête : {{detail}}",
+      "download.http.errors.download_client": "Le client de téléchargement a retourné : {{detail}}",
       "download.config.indexers.title": "Indexeurs",
       "download.config.indexers.implementations.torznab": "Torznab",
       "download.config.indexers.fields.base_url": "URL de base",
@@ -930,15 +1202,34 @@
       "download.config.queue.title": "File d’attente",
       "download.config.queue.columns.title": "Titre",
       "download.config.queue.columns.state": "État",
-      "download.config.queue.columns.progress": "Progression",
+      "download.config.queue.actions.info": "Info",
+      "download.config.queue.detail_title": "Détails du téléchargement",
+      "download.config.queue.detail.release": "Release",
+      "download.config.queue.detail.indexer": "Indexeur",
+      "download.config.queue.detail.indexer_page": "Page du torrent",
+      "download.config.queue.detail.indexer_page_open": "Ouvrir sur l'indexeur",
+      "download.config.queue.detail.grab_source": "Méthode de récupération",
+      "download.config.history.columns.quality": "Qualité",
+      "download.config.history.grab_source.auto": "Automatique",
+      "download.config.history.grab_source.manual": "Manuelle",
+      "download.config.queue.actions.pause": "Mettre en pause",
+      "download.config.queue.actions.resume": "Reprendre",
+      "download.config.queue.actions.cancel": "Annuler le téléchargement",
+      "download.config.queue.actions.cancel_confirm": "Arrêter ce téléchargement et le retirer de son client ? Il quitte la file d'attente dans tous les cas.",
+      "download.config.queue.actions.cancel_delete_files": "Supprimer aussi les fichiers détenus par le client de téléchargement",
+      "download.config.queue.actions.cancel_delete_files_hint": "Ce qui est déjà importé dans votre bibliothèque est conservé.",
+      "download.config.history.actions.delete": "Supprimer l'entrée",
+      "download.config.history.actions.delete_confirm": "Supprimer cette entrée ? Cela retire seulement l'enregistrement, aucun fichier n'est touché.",
+      "download.config.history.errors.still_running": "Ce téléchargement est encore en cours. Annulez-le depuis la file d'attente d'abord.",
+      "download.config.history.actions.clear": "Vider l’historique",
+      "download.config.history.actions.clear_confirm": "Supprimer toutes les entrées terminées, échouées et en avertissement ? Les téléchargements en cours sont conservés.",
       "download.config.queue.columns.speed": "Vitesse",
-      "download.config.queue.columns.size": "Taille",
-      "download.config.queue.actions.open_media": "Ouvrir"
+      "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.7.3",
+  "version": "0.8.0",
   "files": {
-    "plugin.js": "32b8f8618d635527fecf37d7241af8c97ef017892d90adffbb78befc4fa01bd0",
+    "plugin.js": "32a2fee3af68f3732fbda7397e5ceb4fd3093d16a52d48d71272bccbc1d7bef1",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
