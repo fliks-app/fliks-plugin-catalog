@@ -5704,11 +5704,25 @@ var migration_0003_download_history_size = {
   down: down3
 };
 
+// migrations/0004_download_history_info_url.ts
+var up4 = `
+  ALTER TABLE "download_history" ADD COLUMN IF NOT EXISTS "infoUrl" text
+`;
+var down4 = `
+  ALTER TABLE "download_history" DROP COLUMN IF EXISTS "infoUrl"
+`;
+var migration_0004_download_history_info_url = {
+  name: "0004_download_history_info_url",
+  up: up4,
+  down: down4
+};
+
 // migrations/index.ts
 var MIGRATIONS = [
   migration_0001_initial_schema,
   migration_0002_indexer_caps_probed_at,
-  migration_0003_download_history_size
+  migration_0003_download_history_size,
+  migration_0004_download_history_info_url
 ];
 
 // src/db/migrate.ts
@@ -5963,7 +5977,7 @@ var DownloadClientsRepository = class {
 };
 
 // src/db/repositories/download-history.repository.ts
-var COLUMNS4 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "status", "statusMessage",
+var COLUMNS4 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "status", "statusMessage",
   "grabSource", "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId", "createdAt", "updatedAt"`;
 var DownloadHistoryRepository = class {
   constructor(pool) {
@@ -6091,6 +6105,26 @@ var DownloadHistoryRepository = class {
     );
     return rows;
   }
+  /** The queue and history row actions address a row by its own id. */
+  async findById(id) {
+    const { rows } = await this.pool.query(
+      `SELECT ${COLUMNS4} FROM "download_history" WHERE "id" = $1`,
+      [id]
+    );
+    return rows[0] ?? null;
+  }
+  /** Operator-driven history pruning. Nothing else deletes from this table: every automatic
+   *  path marks a status instead, so the record of what was attempted survives. */
+  async remove(id) {
+    await this.pool.query(`DELETE FROM "download_history" WHERE "id" = $1`, [id]);
+  }
+  /** Terminal rows only — a row still in flight is in the queue, not in what "clear" means. */
+  async clearTerminal() {
+    const { rowCount } = await this.pool.query(
+      `DELETE FROM "download_history" WHERE "status" IN ('completed', 'failed', 'warning')`
+    );
+    return rowCount ?? 0;
+  }
   /** `download-clients.service.ts:245,327` — latest row for an exact hash. */
   async findLatestByTorrentHash(torrentHash) {
     const { rows } = await this.pool.query(
@@ -6113,9 +6147,9 @@ var DownloadHistoryRepository = class {
   async insertGrab(input) {
     const { rows } = await this.pool.query(
       `INSERT INTO "download_history"
-         ("sourceTitle", "quality", "language", "torrentHash", "size", "grabSource",
+         ("sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "grabSource",
           "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${COLUMNS4}`,
       [
         input.sourceTitle,
@@ -6123,6 +6157,7 @@ var DownloadHistoryRepository = class {
         input.language ?? null,
         input.torrentHash ?? null,
         input.size ?? null,
+        input.infoUrl ?? null,
         input.grabSource,
         input.mediaId,
         input.episodeId ?? null,
@@ -6533,6 +6568,10 @@ function parseTorznabItems(xml, indexer) {
     const dvfStr = torznabAttr(block, "downloadvolumefactor");
     const downloadVolumeFactor = dvfStr !== null ? parseFloat(dvfStr) : 1;
     const freeleech = downloadVolumeFactor === 0;
+    const commentsRaw = extractInnerXml(block, "comments");
+    const guidRaw = extractInnerXml(block, "guid");
+    const infoCandidate = commentsRaw || (guidRaw?.startsWith("http") ? guidRaw : void 0);
+    const infoUrl = infoCandidate ? decodeHtmlEntities(infoCandidate.trim()) : void 0;
     const pubDateRaw = extractInnerXml(block, "pubDate");
     let publishDate = null;
     if (pubDateRaw) {
@@ -6542,6 +6581,7 @@ function parseTorznabItems(xml, indexer) {
     out.push({
       title,
       downloadUrl: ensureApiKey(url, apiKey),
+      ...infoUrl ? { infoUrl } : {},
       indexerId: indexer.id,
       indexerName: indexer.name,
       size,
@@ -7318,6 +7358,8 @@ var DownloadClientHttpError = class extends Error {
     this.status = status;
   }
 };
+var ReleaseUnobtainableError = class extends Error {
+};
 var TorrentAlreadyPresentError = class extends Error {
 };
 var TorrentHashUnresolvedError = class extends Error {
@@ -7387,9 +7429,10 @@ async function parseJsonArray(res) {
   }
   return Array.isArray(parsed) ? parsed : null;
 }
-async function snapshotHashes(base, cookie) {
+async function snapshotHashes(base, cookie, category) {
   try {
-    const res = await httpRequest(`${base}/api/v2/torrents/info`, { headers: { Cookie: cookie }, timeoutMs: 6e4 });
+    const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+    const res = await httpRequest(`${base}/api/v2/torrents/info${qs}`, { headers: { Cookie: cookie }, timeoutMs: 6e4 });
     const parsed = await parseJsonArray(res);
     if (!parsed) return /* @__PURE__ */ new Set();
     return new Set(
@@ -7425,21 +7468,21 @@ async function fetchTorrentOrMagnet(startUrl, maxHops = 5) {
       res = await httpRequest(url, { timeoutMs: 3e4, redirect: "manual" });
     } catch (e) {
       const cause = e.cause;
-      throw new DownloadClientUnreachableError(`could not fetch the torrent from the indexer: ${cause?.message ?? e.message}`);
+      throw new ReleaseUnobtainableError(`could not fetch the torrent from the indexer: ${cause?.message ?? e.message}`);
     }
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
-      if (!location) throw new DownloadClientHttpError(res.status, `indexer redirected without a Location header (HTTP ${res.status})`);
+      if (!location) throw new ReleaseUnobtainableError(`the indexer redirected without a Location header (HTTP ${res.status})`);
       if (location.startsWith("magnet:")) return { magnet: location };
       url = new URL(location, url).toString();
       continue;
     }
     if (res.status !== 200) {
-      throw new DownloadClientHttpError(res.status, `indexer returned HTTP ${res.status} for the torrent download`);
+      throw new ReleaseUnobtainableError(`the indexer returned HTTP ${res.status} for this release's download`);
     }
     return { buffer: Buffer.from(await res.arrayBuffer()) };
   }
-  throw new Error(`indexer redirect chain exceeded ${maxHops} hops`);
+  throw new ReleaseUnobtainableError(`the indexer's redirect chain exceeded ${maxHops} hops`);
 }
 async function addMagnet(base, cookie, magnetUrl, category) {
   const form = new URLSearchParams({ urls: magnetUrl });
@@ -7542,6 +7585,35 @@ var QbittorrentDriver = class {
       return { ok: false, files: [] };
     }
   }
+  /**
+   * qBittorrent 5.x spells these `/stop` and `/start`; 4.x spells them `/pause` and `/resume`.
+   * Both are in the wild — `progress-state.ts` already maps both state vocabularies — so the
+   * modern name is tried first and the older one only on a refusal, which costs one extra
+   * round trip exactly once per 4.x client.
+   */
+  async pauseTorrent(client, hash) {
+    await this.command(client, hash, "stop", "pause");
+  }
+  async resumeTorrent(client, hash) {
+    await this.command(client, hash, "start", "resume");
+  }
+  async command(client, hash, action, legacyAction) {
+    const s = client.settings;
+    const base = buildBaseUrl(s);
+    if (!base) throw new DownloadClientUnreachableError("download client has no host configured");
+    const cookie = await login(base, s, 15e3);
+    const post = (name) => httpRequest(`${base}/api/v2/torrents/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: cookie },
+      body: new URLSearchParams({ hashes: hash }),
+      timeoutMs: 15e3
+    });
+    let res = await post(action);
+    if (res.status === 404) res = await post(legacyAction);
+    if (res.status !== 200) {
+      throw new DownloadClientHttpError(res.status, `the download client refused ${action} (HTTP ${res.status})`);
+    }
+  }
   async deleteTorrent(client, hash, deleteFiles = false) {
     const s = client.settings;
     const base = buildBaseUrl(s);
@@ -7567,21 +7639,39 @@ var QbittorrentDriver = class {
     if (mediaType === "movie" && s.movieCategory) category = String(s.movieCategory).trim();
     if (mediaType === "series" && s.seriesCategory) category = String(s.seriesCategory).trim();
     const cookie = await login(base, s, 6e4);
-    const beforeHashes = await snapshotHashes(base, cookie);
+    const beforeHashes = await snapshotHashes(base, cookie, category);
+    const alreadyHeld = async (hash) => {
+      if (!hash || !beforeHashes.has(hash.toLowerCase())) return void 0;
+      if (rejectIfAlreadyPresent) {
+        throw new TorrentAlreadyPresentError(`torrent ${hash} is already in the download client`);
+      }
+      return hash;
+    };
     let infoHash;
     let addRes;
     if (url.startsWith("magnet:")) {
       infoHash = extractMagnetInfoHash(url);
+      const held = await alreadyHeld(infoHash);
+      if (held) return held;
       addRes = await addMagnet(base, cookie, url, category);
     } else {
       const fetched = await fetchTorrentOrMagnet(url);
       if ("magnet" in fetched) {
         infoHash = extractMagnetInfoHash(fetched.magnet);
+        const held = await alreadyHeld(infoHash);
+        if (held) return held;
         addRes = await addMagnet(base, cookie, fetched.magnet, category);
       } else {
         infoHash = computeInfoHash(fetched.buffer);
+        const held = await alreadyHeld(infoHash);
+        if (held) return held;
         addRes = await addTorrentFile(base, cookie, fetched.buffer, category);
       }
+    }
+    if (addRes.status === 409) {
+      throw new ReleaseUnobtainableError(
+        "the download client already holds this torrent, outside the category Fliks manages"
+      );
     }
     if (addRes.status !== 200) {
       throw new DownloadClientHttpError(addRes.status, `the download client refused the torrent (HTTP ${addRes.status})`);
@@ -7725,6 +7815,14 @@ var DownloadClientsService = class {
     const driver = this.resolveDriver(client);
     await driver.deleteTorrent(client, hash, deleteFiles);
   }
+  async pauseTorrent(clientId, hash) {
+    const client = await this.findOne(clientId);
+    await this.resolveDriver(client).pauseTorrent(client, hash);
+  }
+  async resumeTorrent(clientId, hash) {
+    const client = await this.findOne(clientId);
+    await this.resolveDriver(client).resumeTorrent(client, hash);
+  }
   /**
    * Blocklist the release behind this torrent so it can't be grabbed again,
    * remove it (with its files) from the client, and mark the history row
@@ -7840,13 +7938,13 @@ function joinScored(raw, scored) {
   });
 }
 function pickRelease(sorted, want) {
-  if (!want) return void 0;
-  if (want.decision === "skip") return void 0;
-  return sorted.find((r) => {
-    if (r.rejections.length > 0) return false;
-    if (r.rank <= want.minRankExclusive || r.rank > want.maxRankInclusive) return false;
-    return true;
-  });
+  return pickReleases(sorted, want)[0];
+}
+var MAX_RELEASE_ATTEMPTS = 3;
+function pickReleases(sorted, want, limit = MAX_RELEASE_ATTEMPTS) {
+  if (!want) return [];
+  if (want.decision === "skip") return [];
+  return sorted.filter((r) => r.rejections.length === 0 && r.rank > want.minRankExclusive && r.rank <= want.maxRankInclusive).slice(0, limit);
 }
 function toWireRelease({ indexerId, indexerName, ...rest }) {
   return { ...rest, sourceId: indexerId, sourceName: indexerName };
@@ -7997,6 +8095,7 @@ function buildGrabHistoryRow(args) {
     sourceTitle: decodeHtmlEntities(args.sourceTitle),
     torrentHash: args.torrentHash || null,
     size: args.size || null,
+    infoUrl: args.infoUrl || null,
     quality: args.quality,
     grabSource: args.grabSource,
     indexerId: args.indexerId ?? null,
@@ -8014,6 +8113,11 @@ async function grabAndRecord(deps, args) {
     args.mediaType,
     args.rejectIfAlreadyPresent
   );
+  const existing = await deps.historyRepo.findLatestByTorrentHash(torrentHash);
+  if (existing && existing.mediaId === args.mediaId && (existing.status === "grabbed" || existing.status === "importing")) {
+    log.info(`AutoGrab[${args.mediaType}]: "${args.sourceTitle}" is already in flight as history #${existing.id}`);
+    return { torrentHash };
+  }
   await deps.historyRepo.insertGrab(
     buildGrabHistoryRow({
       mediaId: args.mediaId,
@@ -8021,6 +8125,7 @@ async function grabAndRecord(deps, args) {
       sourceTitle: args.sourceTitle,
       torrentHash,
       size: args.size,
+      infoUrl: args.infoUrl,
       quality: args.quality,
       grabSource: args.grabSource,
       indexerId: args.indexerId,
@@ -8207,6 +8312,7 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
       downloadUrl: manual.downloadUrl,
       quality: scored2.qualityName,
       size: scored2.size,
+      infoUrl: manual.infoUrl,
       indexerId: manual.indexerId,
       grabSource: "manual"
     });
@@ -8218,15 +8324,27 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
     return grabSeasonEpisodes(deps, target, pick ? "loose episodes outrank every pack" : "no eligible season release");
   }
   if (!pick) throw new GrabError("download.grab.errors.no_eligible_release");
-  return grabAndRecord(execDeps(deps), {
-    ...grabCommon,
-    sourceTitle: pick.title,
-    downloadUrl: pick.downloadUrl,
-    quality: pick.qualityName,
-    size: pick.size,
-    indexerId: pick.indexerId,
-    grabSource: "auto"
-  });
+  const candidates = pickReleases(scored, target.want);
+  let lastFailure;
+  for (const candidate of candidates) {
+    try {
+      return await grabAndRecord(execDeps(deps), {
+        ...grabCommon,
+        sourceTitle: candidate.title,
+        downloadUrl: candidate.downloadUrl,
+        quality: candidate.qualityName,
+        size: candidate.size,
+        infoUrl: candidate.infoUrl,
+        indexerId: candidate.indexerId,
+        grabSource: "auto"
+      });
+    } catch (e) {
+      if (!(e instanceof ReleaseUnobtainableError)) throw e;
+      lastFailure = e;
+      log.warn(`Grab #${mediaId}: "${candidate.title}" is unobtainable (${e.message}) \u2014 trying the next release`);
+    }
+  }
+  throw new GrabError("download.grab.errors.releases_unobtainable", lastFailure?.message);
 }
 async function seasonEpisodeTargets(deps, target) {
   const availableOn = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -8286,25 +8404,30 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
     const sample = scored.slice(0, 3).map((r) => `"${r.title}" \u2192 rank ${r.rank}${r.rejections.length ? ` [${r.rejections.map((x) => x.code).join(", ")}]` : ""}`).join(" | ");
     return logSkip(`no eligible release (${scored.length} checked)${sample ? ` \u2014 top: ${sample}` : ""}`);
   }
-  return tryGrabAndRecord(execDeps2(deps), {
-    mediaId: target.mediaId,
-    client,
-    mediaType: target.kind,
-    label: target.title,
-    sourceTitle: pick.title,
-    downloadUrl: pick.downloadUrl,
-    quality: pick.qualityName,
-    size: pick.size,
-    indexerId: pick.indexerId,
-    grabSource: "auto",
-    seasonNumber: target.season?.number,
-    episodeNumber: target.episode?.number,
-    seasonId: target.season?.id ?? null,
-    episodeId: target.episode?.id ?? null,
-    // Only the scheduler/RSS path rejects a hash the client already holds —
-    // interactive grabs (`release-pipeline.ts`) leave this off.
-    rejectIfAlreadyPresent: true
-  });
+  for (const candidate of pickReleases(scored, target.want)) {
+    const grabbed = await tryGrabAndRecord(execDeps2(deps), {
+      mediaId: target.mediaId,
+      client,
+      mediaType: target.kind,
+      label: target.title,
+      sourceTitle: candidate.title,
+      downloadUrl: candidate.downloadUrl,
+      quality: candidate.qualityName,
+      size: candidate.size,
+      infoUrl: candidate.infoUrl,
+      indexerId: candidate.indexerId,
+      grabSource: "auto",
+      seasonNumber: target.season?.number,
+      episodeNumber: target.episode?.number,
+      seasonId: target.season?.id ?? null,
+      episodeId: target.episode?.id ?? null,
+      // Only the scheduler/RSS path rejects a hash the client already holds —
+      // interactive grabs (`release-pipeline.ts`) leave this off.
+      rejectIfAlreadyPresent: true
+    });
+    if (grabbed) return true;
+  }
+  return logSkip("every eligible release was unobtainable");
 }
 
 // src/grab/orphan-matcher.ts
@@ -8577,6 +8700,8 @@ function torrentProgressState(t) {
 }
 
 // src/grab/completion-poller.ts
+var CONTROL_SETTLE_TIMEOUT_MS = 4e3;
+var CONTROL_SETTLE_INTERVAL_MS = 300;
 var INGEST_CALL_TIMEOUT_MS = 31 * 6e4;
 var VIDEO_EXTS = /* @__PURE__ */ new Set([".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".wmv", ".flv"]);
 var ORPHAN_GRACE_MS = 5 * 6e4;
@@ -8592,9 +8717,55 @@ var DownloadCompletionPoller = class {
   /** History-row id → season/episode numbers. Ids never change number, and
    *  this is read on every poll. */
   scopeCache = /* @__PURE__ */ new Map();
-  /** Rows whose progress has already been retired, so a torrent that stays
-   *  gone is not re-announced on every poll. */
-  retired = /* @__PURE__ */ new Set();
+  /** Media whose set was published on the previous tick. A media missing from the next one
+   *  needs an empty snapshot so its viewers stop holding the last set they saw. */
+  reportedMediaIds = /* @__PURE__ */ new Set();
+  /** Nothing was published yet this process, but a viewer may still hold a snapshot from
+   *  before a restart. The first tick therefore states every in-flight media's set, empty
+   *  included, which is what keeps the model from depending on a field that a restart clears. */
+  firstProgressTick = true;
+  /** Every enabled client's torrents in one read, with whether all of them answered. A failed
+   *  fetch yields an empty list indistinguishable from a client that genuinely holds nothing,
+   *  and several callers turn on telling those apart. */
+  async fetchAllTorrents() {
+    const clients = (await this.deps.clientsRepo.listEnabled()).filter((c) => this.deps.driver.supports(c));
+    const fetches = await Promise.all(
+      clients.map(async (c) => {
+        const { ok, torrents } = await this.deps.driver.getTorrentsResult(c);
+        return { ok, torrents: torrents.map((t) => ({ ...t, _clientId: c.id })) };
+      })
+    );
+    return { torrents: fetches.flatMap((f) => f.torrents), allOk: fetches.every((f) => f.ok) };
+  }
+  /** Whether the client now reflects the control that was issued. A torrent that is gone is
+   *  nothing to keep waiting on, whatever was expected of it. */
+  reached(torrents, hash, expect) {
+    const torrent = torrents.find((t) => t.hash.toLowerCase() === hash.toLowerCase());
+    if (!torrent) return true;
+    if (expect === "absent") return false;
+    const state = torrentProgressState(torrent);
+    return expect === "paused" ? state === "paused" : state !== "paused";
+  }
+  /**
+   * Wait for the client to reflect a control the operator just issued, then state that media's
+   * set from the same read. One loop, not a settle loop followed by a second fetch: the read
+   * that decides the wait is over is the read the snapshot is built from.
+   *
+   * The budget running out still publishes. The control itself succeeded, so a slow client
+   * delays the confirmation rather than turning it into an error.
+   */
+  async settleAndPublish(row, expect) {
+    if (row.mediaId == null || !row.torrentHash) return;
+    const deadline = Date.now() + CONTROL_SETTLE_TIMEOUT_MS;
+    for (; ; ) {
+      const { torrents, allOk } = await this.fetchAllTorrents();
+      if (this.reached(torrents, row.torrentHash, expect) || Date.now() >= deadline) {
+        await this.publishOne(row.mediaId, torrents, allOk);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, CONTROL_SETTLE_INTERVAL_MS));
+    }
+  }
   /** Boot re-arm of every stranded `importing` row — nothing is in flight
    *  right after a fresh process start. Call once at startup. */
   async init() {
@@ -8610,30 +8781,15 @@ var DownloadCompletionPoller = class {
       log.warn("Import: no enabled download client found");
       return;
     }
-    const fetches = await Promise.all(
-      qbitClients.map(async (c) => {
-        const { ok, torrents } = await this.deps.driver.getTorrentsResult(c);
-        return { ok, torrents: torrents.map((t) => ({ ...t, _clientId: c.id })) };
-      })
-    );
-    const allClientsResponded = fetches.every((f) => f.ok);
-    const allTorrents = fetches.flatMap((f) => f.torrents);
+    const { torrents: allTorrents, allOk: allClientsResponded } = await this.fetchAllTorrents();
     const torrentClient = new Map(qbitClients.map((c) => [c.id, c]));
     await this.autoMatchOrphanTorrents(allTorrents);
     const grabbed = await this.deps.historyRepo.findByStatuses(["grabbed", "failed", "warning"]);
     const importing = await this.deps.historyRepo.findByStatuses(["importing"]);
     if (allClientsResponded) {
       await this.reconcileOrphanHistory(allTorrents, grabbed, importing);
-      const inFlight = [...grabbed.filter((h) => h.status === "grabbed"), ...importing];
-      const present = new Set(
-        allTorrents.flatMap((t) => {
-          const m = this.deps.historyMatcher.findMatch(t, inFlight);
-          return m ? [m.history.id] : [];
-        })
-      );
-      await this.retireVanished(inFlight, present);
     }
-    await this.emitDownloadProgress(allTorrents);
+    await this.emitDownloadProgress(allTorrents, allClientsResponded);
     const completedTorrents = allTorrents.filter(
       (t) => t.progress >= 1 || t.state === "seeding" || t.state === "stalledUP" || t.state === "stoppedUP"
     );
@@ -8814,75 +8970,88 @@ var DownloadCompletionPoller = class {
     return out;
   }
   /**
-   * A `grabbed`/`importing` row whose torrent the client no longer reports has
-   * no progress to show. Without this its last tick stands for ever — the
-   * header badge freezes on a percentage from a torrent the user deleted
-   * minutes ago. `progress: 1` is core's retirement signal for a leaf (both its
-   * replay cache and the client drop the leaf at >= 1); the row itself keeps
-   * its orphan grace, so a torrent that comes back simply resumes ticking.
+   * Publish each media's complete set of in-flight downloads. A replacement, not a delta:
+   * whatever a media no longer has is retired by its absence, which is why no compensating
+   * "this one vanished" push is needed any more.
    *
-   * Only ever called when every client answered — an unreachable client's
-   * empty list is not evidence that a torrent is gone.
+   * Skipped outright when a client did not answer. Its empty list is indistinguishable from a
+   * client that genuinely holds nothing, and a snapshot built from it would assert that every
+   * torrent it holds is gone. A missed tick shows a stale percentage; a wrong snapshot erases
+   * live downloads from every viewer's screen.
+   *
+   * Season/episode numbers are resolved from the row's ids so a series download is attributed to
+   * the episode it belongs to: without them every download reads as whole-media progress, which
+   * shows the badge on every episode page of the show.
    */
-  async retireVanished(rows, present) {
-    const vanished = rows.filter((r) => r.mediaId != null && r.torrentHash && !present.has(r.id) && !this.retired.has(r.id));
-    if (!vanished.length) return;
-    const scopes = await this.scopeNumbers(vanished);
-    for (const r of vanished) {
-      const scope = scopes.get(r.id) ?? {};
-      await this.deps.host.call("progress.set", {
-        mediaId: r.mediaId,
-        seasonNumber: scope.seasonNumber,
-        episodeNumber: scope.episodeNumber,
-        ref: r.torrentHash,
-        progress: 1,
-        state: "stalled"
-      }).then(() => this.retired.add(r.id)).catch((e) => log.warn(`Import: progress retire failed: ${e.message}`));
-    }
-    log.info(`Import: ${vanished.length} entr(ies) lost their torrent \u2014 retired their progress`);
-  }
-  /**
-   * Push one progress tick per in-flight torrent. Season/episode numbers are
-   * resolved from the row's ids so a series leaf is attributed to the episode
-   * it belongs to: without them every tick reads as whole-media progress, which
-   * shows the badge on every episode page of the show and erases the episode
-   * the detail modal was naming.
-   */
-  async emitDownloadProgress(allTorrents) {
+  /** What every media currently has in flight, from one read of the clients. The one place that
+   *  answers "what is this media downloading": two builders drifting apart is the whole class of
+   *  bug the snapshot shape exists to close. */
+  async buildSets(allTorrents) {
     const rows = await this.deps.historyRepo.findByStatuses(["grabbed", "importing"]);
-    if (!rows.length) return;
     const importingHashes = new Set(
       rows.filter((r) => r.status === "importing" && r.torrentHash).map((r) => r.torrentHash.toLowerCase())
     );
-    const reportable = allTorrents.filter(
-      (t) => t.progress < 1 || importingHashes.has(t.hash.toLowerCase())
-    );
-    if (!reportable.length) return;
+    const reportable = allTorrents.filter((t) => t.progress < 1 || importingHashes.has(t.hash.toLowerCase()));
     const matched = [];
     for (const t of reportable) {
       const history = await this.deps.historyMatcher.matchAndHeal(t, rows);
       if (history?.mediaId) matched.push({ torrent: t, history });
     }
     const scopes = await this.scopeNumbers(matched.map((m) => m.history));
+    const byMedia = /* @__PURE__ */ new Map();
     for (const { torrent: t, history } of matched) {
-      this.retired.delete(history.id);
       const scope = scopes.get(history.id) ?? {};
-      await this.deps.host.call("progress.set", {
-        mediaId: history.mediaId,
+      const list = byMedia.get(history.mediaId) ?? [];
+      list.push({
+        ref: t.hash,
         seasonNumber: scope.seasonNumber,
         episodeNumber: scope.episodeNumber,
-        ref: t.hash,
-        // `progress >= 1` is the retirement signal on both consumers, so a
-        // finished torrent reporting its import would destroy the very leaf
-        // the tick exists to label.
-        progress: history.status === "importing" ? Math.min(t.progress, 0.999) : t.progress,
+        progress: t.progress,
         bytesPerSecond: t.dlspeed,
         etaSeconds: t.eta > 0 && t.eta < 864e4 ? t.eta : void 0,
         // The row is authoritative once it says importing: the client reports a finished
         // torrent as seeding, which this mapping reads as `active`.
         state: history.status === "importing" ? "importing" : torrentProgressState(t)
-      }).catch((e) => log.warn(`Import: progress publish failed: ${e.message}`));
+      });
+      byMedia.set(history.mediaId, list);
     }
+    return { byMedia, rows };
+  }
+  /**
+   * State one media's set. Not a tick: it says nothing about any other media, and touches none
+   * of the tick's bookkeeping. At worst the next tick re-states an empty set it already sent.
+   */
+  async publishOne(mediaId, allTorrents, allClientsResponded) {
+    if (!allClientsResponded) return;
+    const { byMedia } = await this.buildSets(allTorrents);
+    await this.publishSet(mediaId, byMedia.get(mediaId) ?? []);
+  }
+  /**
+   * State every media's complete set. A replacement, not a delta: whatever a media no longer has
+   * is retired by its absence, which is why no compensating "this one vanished" push exists.
+   *
+   * Skipped outright when a client did not answer. A snapshot built from a partial read would
+   * assert that every torrent that client holds is gone. A missed tick shows a stale percentage;
+   * a wrong snapshot erases live downloads from every viewer's screen.
+   *
+   * Season/episode numbers come from the row's ids so a series download is attributed to the
+   * episode it belongs to: without them every download reads as whole-media progress, which
+   * shows the badge on every episode page of the show.
+   */
+  async emitDownloadProgress(allTorrents, allClientsResponded) {
+    if (!allClientsResponded) return;
+    const { byMedia, rows } = await this.buildSets(allTorrents);
+    const owed = this.firstProgressTick ? rows.flatMap((r) => r.mediaId != null ? [r.mediaId] : []) : [...this.reportedMediaIds];
+    for (const mediaId of owed) {
+      if (!byMedia.has(mediaId)) byMedia.set(mediaId, []);
+    }
+    this.firstProgressTick = false;
+    this.reportedMediaIds = new Set([...byMedia].filter(([, list]) => list.length).map(([id]) => id));
+    for (const [mediaId, downloads] of byMedia) await this.publishSet(mediaId, downloads);
+  }
+  /** A progress push is cosmetic; the import hand-off runs after it and must not be lost with it. */
+  async publishSet(mediaId, downloads) {
+    await this.deps.host.call("progress.set", { mediaId, downloads }).catch((e) => log.warn(`Import: progress publish failed: ${e.message}`));
   }
   /**
    * Ported from `processOne`. Everything past "which files are video" —
@@ -9173,11 +9342,75 @@ var PERMISSIONS = {
   downloadClients: "download-clients",
   delayProfiles: "delay-profiles",
   queue: "queue",
+  /** Separate from `queue`: reading what is downloading and reaching into the download client
+   *  to stop or delete it are different powers, and core grants `Manage` on any plugin
+   *  permission a user holds — so sharing one name would hand control to every queue viewer. */
+  queueControl: "queue-control",
   blocklist: "blocklist"
 };
 function subjectFor(name) {
   return `plugin:${PLUGIN_ID}:${name}`;
 }
+var WHEN_QUEUE_CONTROL = [`hasPermission:${subjectFor(PERMISSIONS.queueControl)}`];
+var DETAIL_ACTION = {
+  kind: "detail",
+  labelKey: "download.config.queue.actions.info",
+  titleKey: "download.config.queue.detail_title",
+  fields: [
+    { key: "sourceTitle", labelKey: "download.config.queue.detail.release" },
+    { key: "quality", labelKey: "download.config.history.columns.quality" },
+    { key: "size", labelKey: "download.config.queue.columns.size", format: "bytes" },
+    { key: "source", labelKey: "download.config.queue.detail.indexer" },
+    {
+      key: "grabSource",
+      labelKey: "download.config.queue.detail.grab_source",
+      labelKeys: {
+        auto: "download.config.history.grab_source.auto",
+        manual: "download.config.history.grab_source.manual"
+      }
+    },
+    { key: "date", labelKey: "download.config.history.columns.date", format: "date" },
+    {
+      kind: "link",
+      key: "infoUrl",
+      labelKey: "download.config.queue.detail.indexer_page",
+      textKey: "download.config.queue.detail.indexer_page_open"
+    }
+  ]
+};
+var QUEUE_CONTROL_ACTIONS = (stateKey) => [
+  {
+    kind: "proxy",
+    labelKey: "download.config.queue.actions.pause",
+    method: "POST",
+    path: "/queue/:id/pause",
+    when: WHEN_QUEUE_CONTROL,
+    visibleWhen: { key: stateKey, in: ["queued", "active", "stalled"] }
+  },
+  {
+    kind: "proxy",
+    labelKey: "download.config.queue.actions.resume",
+    method: "POST",
+    path: "/queue/:id/resume",
+    when: WHEN_QUEUE_CONTROL,
+    visibleWhen: { key: stateKey, in: ["paused"] }
+  },
+  {
+    kind: "proxy",
+    labelKey: "download.config.queue.actions.cancel",
+    method: "DELETE",
+    path: "/queue/:id",
+    confirmKey: "download.config.queue.actions.cancel_confirm",
+    confirmToggle: {
+      labelKey: "download.config.queue.actions.cancel_delete_files",
+      hintKey: "download.config.queue.actions.cancel_delete_files_hint",
+      param: "deleteFiles"
+    },
+    tone: "danger",
+    when: WHEN_QUEUE_CONTROL,
+    visibleWhen: { key: stateKey, in: ["queued", "active", "stalled", "paused"] }
+  }
+];
 var POLICY = {
   releasesRead: `read:${subjectFor(PERMISSIONS.releases)}`,
   releasesGrab: `grab:${subjectFor(PERMISSIONS.releases)}`,
@@ -9187,6 +9420,7 @@ var POLICY = {
   downloadClientsManage: `manage:${subjectFor(PERMISSIONS.downloadClients)}`,
   delayProfilesRead: `read:${subjectFor(PERMISSIONS.delayProfiles)}`,
   queueRead: `read:${subjectFor(PERMISSIONS.queue)}`,
+  queueControl: `manage:${subjectFor(PERMISSIONS.queueControl)}`,
   blocklistRead: `read:${subjectFor(PERMISSIONS.blocklist)}`,
   blocklistManage: `manage:${subjectFor(PERMISSIONS.blocklist)}`
 };
@@ -9234,6 +9468,11 @@ var ROUTES = [
   { method: "GET", path: "/download-clients/implementations", policy: POLICY.downloadClientsRead },
   { method: "PUT", path: "/download-clients/:id", policy: POLICY.downloadClientsManage },
   { method: "DELETE", path: "/download-clients/:id", policy: POLICY.downloadClientsManage },
+  { method: "POST", path: "/queue/:id/pause", policy: POLICY.queueControl },
+  { method: "POST", path: "/queue/:id/resume", policy: POLICY.queueControl },
+  { method: "DELETE", path: "/queue/:id", policy: POLICY.queueControl },
+  { method: "DELETE", path: "/history/all", policy: POLICY.queueControl },
+  { method: "DELETE", path: "/history/:id", policy: POLICY.queueControl },
   { method: "GET", path: "/blocklist", policy: POLICY.blocklistRead },
   { method: "DELETE", path: "/blocklist/all", policy: POLICY.blocklistManage },
   { method: "DELETE", path: "/blocklist/:id", policy: POLICY.blocklistManage }
@@ -9512,7 +9751,10 @@ var CONFIG_PAGES = [
       {
         key: "title",
         labelKey: "download.config.queue.columns.title",
-        truncate: true,
+        // The media, not the release name: the queue is read to see which film is downloading,
+        // and the title is what you click to reach it. Everything else about the row, the
+        // release name included, is one button away in the detail dialog.
+        linkActionId: "table.open-media",
         // Which tracker the release came from, badged under the name rather than costing a column.
         subValues: [{ key: "source", badges: { "*": "neutral" } }]
       },
@@ -9534,10 +9776,12 @@ var CONFIG_PAGES = [
           stalled: "warning",
           paused: "ghost",
           importing: "primary"
-        }
+        },
+        // The percentage fills this badge instead of holding a column of its own: it says what
+        // the state beside it is doing, and a column of bare numbers read as unrelated to it.
+        progressField: "progress"
       },
       { key: "size", labelKey: "download.config.queue.columns.size", format: "bytes" },
-      { key: "progress", labelKey: "download.config.queue.columns.progress", format: "percent" },
       { key: "bytesPerSecond", labelKey: "download.config.queue.columns.speed", format: "speed" }
     ],
     // Rows enter and leave on `queue.updated`; the percentages and speeds between two such
@@ -9546,9 +9790,7 @@ var CONFIG_PAGES = [
     refreshMs: 1e4,
     // Reads mediaId/mediaType straight off each row — core's own resolver renders no
     // button when either is null, so an unresolved row is simply inert, not broken.
-    rowActions: [
-      { kind: "action", labelKey: "download.config.queue.actions.open_media", actionId: "table.open-media" }
-    ]
+    rowActions: [DETAIL_ACTION, ...QUEUE_CONTROL_ACTIONS("state")]
   },
   {
     // The queue holds what is in flight; a row that completes or fails leaves it immediately.
@@ -9582,6 +9824,8 @@ var CONFIG_PAGES = [
       {
         key: "title",
         labelKey: "download.config.history.columns.title",
+        // Same as the queue: the media, and the title is the way to it.
+        linkActionId: "table.open-media",
         // Quality and tracker belong with the release's name; as columns of their own they
         // spent the width the title needed. Every quality value is worth badging: `*`.
         subValues: [
@@ -9592,9 +9836,15 @@ var CONFIG_PAGES = [
       },
       { key: "grabSource", labelKey: "download.config.history.columns.grab_source", nowrap: true },
       {
-        key: "status",
+        key: "displayStatus",
         labelKey: "download.config.history.columns.status",
+        // Both vocabularies: a running row reads exactly as it does in the queue, a finished one
+        // reads as what was recorded.
         labelKeys: {
+          queued: "download.config.queue.states.queued",
+          active: "download.config.queue.states.active",
+          stalled: "download.config.queue.states.stalled",
+          paused: "download.config.queue.states.paused",
           grabbed: "download.config.history.filters.status_grabbed",
           importing: "download.status.importing",
           completed: "download.config.history.filters.status_completed",
@@ -9602,6 +9852,10 @@ var CONFIG_PAGES = [
           warning: "download.config.history.filters.status_warning"
         },
         badges: {
+          queued: "neutral",
+          active: "info",
+          stalled: "warning",
+          paused: "ghost",
           grabbed: "info",
           importing: "primary",
           completed: "success",
@@ -9610,11 +9864,38 @@ var CONFIG_PAGES = [
         },
         // The reason a grab failed reads in a dialog; as a column it stretched every row.
         detailField: "statusMessage",
-        detailTitleKey: "download.config.history.detail_title"
+        detailTitleKey: "download.config.history.detail_title",
+        // A row still running carries its live percentage; a terminal one reports none and
+        // the badge stays flat.
+        progressField: "progress"
       }
     ],
+    // The same controls as the queue, gated on the live `state` this view now resolves too —
+    // a row read here is often the one an operator wants to stop, and sending them to another
+    // page to do it is the kind of gap that makes a feature go unused.
     rowActions: [
-      { kind: "action", labelKey: "download.config.queue.actions.open_media", actionId: "table.open-media" }
+      DETAIL_ACTION,
+      ...QUEUE_CONTROL_ACTIONS("state"),
+      {
+        kind: "proxy",
+        labelKey: "download.config.history.actions.delete",
+        method: "DELETE",
+        path: "/history/:id",
+        confirmKey: "download.config.history.actions.delete_confirm",
+        tone: "danger",
+        when: WHEN_QUEUE_CONTROL
+        // Not gated on the status: a row can read `grabbed` with no torrent behind it, and
+        // hiding the button then left it with no way out at all. The route refuses on a
+        // sighting instead.
+      }
+    ],
+    listActions: [
+      {
+        labelKey: "download.config.history.actions.clear",
+        method: "DELETE",
+        path: "/history/all",
+        confirmKey: "download.config.history.actions.clear_confirm"
+      }
     ]
   }
 ];
@@ -9640,6 +9921,7 @@ var I18N = {
     "download.config.history.filters.status_label": "Status",
     "download.config.history.filters.status_all": "All statuses",
     "download.config.history.filters.status_grabbed": "Grabbed",
+    "download.config.history.states.missing": "Gone from the client",
     "download.config.history.filters.status_completed": "Completed",
     "download.config.history.filters.status_failed": "Failed",
     "download.config.history.filters.status_warning": "Warning",
@@ -9695,6 +9977,10 @@ var I18N = {
     "download.grab.errors.no_download_client": "No enabled download client is configured",
     "download.grab.errors.unprofiled": "This title has no quality profile \u2014 nothing to grab",
     "download.grab.errors.blocklisted": "This release is blocklisted",
+    "download.grab.errors.releases_unobtainable": "No release could be fetched. Last reason: {{detail}}",
+    "download.queue.removed_by_user": "Removed from the queue by a user",
+    "download.queue.errors.not_controllable": "This download can no longer be controlled",
+    "download.queue.errors.no_torrent": "No download client holds this release yet",
     "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
     "download.grab.errors.no_eligible_release": "No eligible release was found",
     // The HTTP route table's own errors — unmatched path/resource, a malformed param or
@@ -9703,7 +9989,8 @@ var I18N = {
     "download.http.errors.not_ready": "The plugin is still starting up",
     "download.http.errors.bad_param": "Invalid or missing path parameter",
     "download.http.errors.bad_body": "Invalid or missing field in the request body",
-    "download.http.errors.internal": "Something went wrong handling this request",
+    "download.http.errors.internal": "Something went wrong handling this request: {{detail}}",
+    "download.http.errors.download_client": "The download client returned: {{detail}}",
     "download.config.indexers.title": "Indexers",
     "download.config.indexers.implementations.torznab": "Torznab",
     "download.config.indexers.fields.base_url": "Base URL",
@@ -9747,10 +10034,29 @@ var I18N = {
     "download.config.queue.title": "Queue",
     "download.config.queue.columns.title": "Title",
     "download.config.queue.columns.state": "State",
-    "download.config.queue.columns.progress": "Progress",
+    "download.config.queue.actions.info": "Info",
+    "download.config.queue.detail_title": "Download details",
+    "download.config.queue.detail.release": "Release",
+    "download.config.queue.detail.indexer": "Indexer",
+    "download.config.queue.detail.indexer_page": "Torrent page",
+    "download.config.queue.detail.indexer_page_open": "Open on the indexer",
+    "download.config.queue.detail.grab_source": "Grab method",
+    "download.config.history.columns.quality": "Quality",
+    "download.config.history.grab_source.auto": "Automatic",
+    "download.config.history.grab_source.manual": "Manual",
+    "download.config.queue.actions.pause": "Pause",
+    "download.config.queue.actions.resume": "Resume",
+    "download.config.queue.actions.cancel": "Cancel download",
+    "download.config.queue.actions.cancel_confirm": "Stop this download and remove it from its download client? It leaves the queue either way.",
+    "download.config.queue.actions.cancel_delete_files": "Also delete the files held by the download client",
+    "download.config.queue.actions.cancel_delete_files_hint": "Anything already imported into your library is kept.",
+    "download.config.history.actions.delete": "Delete entry",
+    "download.config.history.actions.delete_confirm": "Delete this entry? It only removes the record; no file is touched.",
+    "download.config.history.errors.still_running": "This grab is still running. Cancel it from the queue first.",
+    "download.config.history.actions.clear": "Clear history",
+    "download.config.history.actions.clear_confirm": "Delete every finished, failed and warned entry? Downloads still running are kept.",
     "download.config.queue.columns.speed": "Speed",
-    "download.config.queue.columns.size": "Size",
-    "download.config.queue.actions.open_media": "Open"
+    "download.config.queue.columns.size": "Size"
   },
   // Vocabulary matches Fliks' own fr.json for the same ideas (priorité, tester la connexion,
   // clé API, client de téléchargement, profil de qualité) rather than inventing new terms.
@@ -9775,6 +10081,7 @@ var I18N = {
     "download.config.history.filters.status_label": "Statut",
     "download.config.history.filters.status_all": "Tous les statuts",
     "download.config.history.filters.status_grabbed": "R\xE9cup\xE9r\xE9",
+    "download.config.history.states.missing": "Absent du client",
     "download.config.history.filters.status_completed": "Termin\xE9",
     "download.config.history.filters.status_failed": "\xC9chou\xE9",
     "download.config.history.filters.status_warning": "Avertissement",
@@ -9824,13 +10131,18 @@ var I18N = {
     "download.grab.errors.no_download_client": "Aucun client de t\xE9l\xE9chargement actif n\u2019est configur\xE9",
     "download.grab.errors.unprofiled": "Ce titre n\u2019a pas de profil de qualit\xE9 \u2014 rien \xE0 t\xE9l\xE9charger",
     "download.grab.errors.blocklisted": "Cette release est sur liste de blocage",
+    "download.grab.errors.releases_unobtainable": "Aucune release n\u2019a pu \xEAtre r\xE9cup\xE9r\xE9e. Derni\xE8re raison : {{detail}}",
+    "download.queue.removed_by_user": "Retir\xE9 de la file d'attente par un utilisateur",
+    "download.queue.errors.not_controllable": "Ce t\xE9l\xE9chargement ne peut plus \xEAtre pilot\xE9",
+    "download.queue.errors.no_torrent": "Aucun client de t\xE9l\xE9chargement ne d\xE9tient encore cette release",
     "download.grab.errors.quality_not_allowed": "La qualit\xE9 de cette release n\u2019est pas autoris\xE9e par le profil",
     "download.grab.errors.no_eligible_release": "Aucune release \xE9ligible n\u2019a \xE9t\xE9 trouv\xE9e",
     "download.http.errors.not_found": "Introuvable",
     "download.http.errors.not_ready": "Le plugin est encore en cours de d\xE9marrage",
     "download.http.errors.bad_param": "Param\xE8tre d\u2019URL invalide ou manquant",
     "download.http.errors.bad_body": "Champ invalide ou manquant dans le corps de la requ\xEAte",
-    "download.http.errors.internal": "Une erreur est survenue lors du traitement de cette requ\xEAte",
+    "download.http.errors.internal": "Une erreur est survenue lors du traitement de cette requ\xEAte : {{detail}}",
+    "download.http.errors.download_client": "Le client de t\xE9l\xE9chargement a retourn\xE9 : {{detail}}",
     "download.config.indexers.title": "Indexeurs",
     "download.config.indexers.implementations.torznab": "Torznab",
     "download.config.indexers.fields.base_url": "URL de base",
@@ -9874,17 +10186,40 @@ var I18N = {
     "download.config.queue.title": "File d\u2019attente",
     "download.config.queue.columns.title": "Titre",
     "download.config.queue.columns.state": "\xC9tat",
-    "download.config.queue.columns.progress": "Progression",
+    "download.config.queue.actions.info": "Info",
+    "download.config.queue.detail_title": "D\xE9tails du t\xE9l\xE9chargement",
+    "download.config.queue.detail.release": "Release",
+    "download.config.queue.detail.indexer": "Indexeur",
+    "download.config.queue.detail.indexer_page": "Page du torrent",
+    "download.config.queue.detail.indexer_page_open": "Ouvrir sur l'indexeur",
+    "download.config.queue.detail.grab_source": "M\xE9thode de r\xE9cup\xE9ration",
+    "download.config.history.columns.quality": "Qualit\xE9",
+    "download.config.history.grab_source.auto": "Automatique",
+    "download.config.history.grab_source.manual": "Manuelle",
+    "download.config.queue.actions.pause": "Mettre en pause",
+    "download.config.queue.actions.resume": "Reprendre",
+    "download.config.queue.actions.cancel": "Annuler le t\xE9l\xE9chargement",
+    "download.config.queue.actions.cancel_confirm": "Arr\xEAter ce t\xE9l\xE9chargement et le retirer de son client ? Il quitte la file d'attente dans tous les cas.",
+    "download.config.queue.actions.cancel_delete_files": "Supprimer aussi les fichiers d\xE9tenus par le client de t\xE9l\xE9chargement",
+    "download.config.queue.actions.cancel_delete_files_hint": "Ce qui est d\xE9j\xE0 import\xE9 dans votre biblioth\xE8que est conserv\xE9.",
+    "download.config.history.actions.delete": "Supprimer l'entr\xE9e",
+    "download.config.history.actions.delete_confirm": "Supprimer cette entr\xE9e ? Cela retire seulement l'enregistrement, aucun fichier n'est touch\xE9.",
+    "download.config.history.errors.still_running": "Ce t\xE9l\xE9chargement est encore en cours. Annulez-le depuis la file d'attente d'abord.",
+    "download.config.history.actions.clear": "Vider l\u2019historique",
+    "download.config.history.actions.clear_confirm": "Supprimer toutes les entr\xE9es termin\xE9es, \xE9chou\xE9es et en avertissement ? Les t\xE9l\xE9chargements en cours sont conserv\xE9s.",
     "download.config.queue.columns.speed": "Vitesse",
-    "download.config.queue.columns.size": "Taille",
-    "download.config.queue.actions.open_media": "Ouvrir"
+    "download.config.queue.columns.size": "Taille"
   }
 };
 var MANIFEST_TEMPLATE = {
   id: PLUGIN_ID,
   pluginApi: 0,
   name: "Download",
-  fliks: ">=3.4.0 <4.0.0",
+  // 3.7.0 is the first core that reads `visibleWhen`, `confirmToggle` and `progressField`, and
+  // the first whose data table substitutes `:id` into a proxy row action. An older client ignores
+  // all four in silence — which would render every control unconditionally and drop the
+  // "delete the files" answer, so the floor is a correctness bound, not a courtesy.
+  fliks: ">=3.7.0 <4.0.0",
   author: "Fliks",
   description: "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   license: "AGPL-3.0-or-later",
@@ -10021,6 +10356,15 @@ async function handleSearchReleases(deps, params, req) {
   const releases = await deps.grabPipeline.searchReleases(mediaId, seasonId, episodeId, customQuery, stream);
   return jsonResponse(200, releases.map(toWireRelease));
 }
+function readInfoUrl(raw) {
+  if (typeof raw !== "string" || !raw) return void 0;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "http:" || url.protocol === "https:" ? raw : void 0;
+  } catch {
+    return void 0;
+  }
+}
 function readManualGrabInput(body) {
   const b = body ?? {};
   const downloadUrl = b["downloadUrl"];
@@ -10029,6 +10373,7 @@ function readManualGrabInput(body) {
     downloadUrl,
     sourceTitle: typeof b["sourceTitle"] === "string" ? b["sourceTitle"] : void 0,
     indexerId: typeof b["sourceId"] === "number" ? b["sourceId"] : void 0,
+    infoUrl: readInfoUrl(b["infoUrl"]),
     force: b["force"] === true
   };
 }
@@ -10124,6 +10469,89 @@ async function handleRemoveBlocklistEntry(deps, params) {
   await deps.blocklist.remove(id);
   return jsonResponse(200, {});
 }
+var REMOVED_BY_USER_KEY = "download.queue.removed_by_user";
+var CONTROLLABLE_STATUSES = ["grabbed"];
+async function resolveControllable(deps, params) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  const row = await deps.downloadHistory.findById(id);
+  if (!row) return notFoundResponse(String(id));
+  if (!CONTROLLABLE_STATUSES.includes(row.status)) {
+    return jsonResponse(409, { error: { key: "download.queue.errors.not_controllable", detail: row.status } });
+  }
+  if (row.downloadClientId == null || !row.torrentHash) {
+    return jsonResponse(409, { error: { key: "download.queue.errors.no_torrent", detail: String(id) } });
+  }
+  return { row, clientId: row.downloadClientId, hash: row.torrentHash };
+}
+function isHttpResponse(v) {
+  return typeof v === "object" && v !== null && "status" in v && "headers" in v;
+}
+async function settleAndPublish(deps, row, expect) {
+  await deps.settleAndPublish(row, expect).catch((e) => log.warn(`progress publish failed: ${e.message}`));
+}
+async function handleQueueControl(deps, params, action) {
+  const resolved = await resolveControllable(deps, params);
+  if (isHttpResponse(resolved)) return resolved;
+  if (action === "pause") await deps.downloadClientsService.pauseTorrent(resolved.clientId, resolved.hash);
+  else await deps.downloadClientsService.resumeTorrent(resolved.clientId, resolved.hash);
+  await settleAndPublish(deps, resolved.row, action === "pause" ? "paused" : "running");
+  return jsonResponse(200, {});
+}
+async function handleQueueRemove(deps, req, params) {
+  const resolved = await resolveControllable(deps, params);
+  if (isHttpResponse(resolved)) return resolved;
+  await deps.downloadClientsService.removeTorrent(resolved.clientId, resolved.hash, req.query["deleteFiles"] === "true");
+  await deps.downloadHistory.markFailed(resolved.row.id, REMOVED_BY_USER_KEY);
+  await settleAndPublish(deps, resolved.row, "absent");
+  return jsonResponse(200, {});
+}
+async function handleDeleteHistoryEntry(deps, params) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  const row = await deps.downloadHistory.findById(id);
+  if (!row) return notFoundResponse(String(id));
+  if (row.torrentHash) {
+    const { byClientId } = await indexClientTorrents(deps);
+    if (liveTorrentFor(row, byClientId)) {
+      return jsonResponse(409, { error: { key: "download.config.history.errors.still_running", detail: row.status } });
+    }
+  }
+  await deps.downloadHistory.remove(id);
+  return jsonResponse(200, {});
+}
+async function handleClearHistory(deps) {
+  return jsonResponse(200, { removed: await deps.downloadHistory.clearTerminal() });
+}
+function seasonEpisodeLabel(seasonNumber, episodeNumber) {
+  if (seasonNumber == null) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return episodeNumber == null ? `S${pad(seasonNumber)}` : `S${pad(seasonNumber)}E${pad(episodeNumber)}`;
+}
+function resolveKeyFor(item) {
+  if (item.episodeId != null) return { kind: "episode", id: item.episodeId };
+  if (item.seasonId != null) return { kind: "season", id: item.seasonId };
+  if (item.mediaId != null) return { kind: "media", id: item.mediaId };
+  return null;
+}
+async function attachMediaLabels(deps, items) {
+  const keys = items.map(resolveKeyFor);
+  const ids = { episode: /* @__PURE__ */ new Set(), season: /* @__PURE__ */ new Set(), media: /* @__PURE__ */ new Set() };
+  for (const key of keys) if (key) ids[key.kind].add(key.id);
+  if (!ids.episode.size && !ids.season.size && !ids.media.size) return items;
+  const resolved = await deps.host.call("media.resolve", {
+    mediaIds: [...ids.media],
+    seasonIds: [...ids.season],
+    episodeIds: [...ids.episode]
+  });
+  return items.map((item, i) => {
+    const key = keys[i];
+    const hit = key ? resolved[`${key.kind}:${key.id}`] : void 0;
+    if (!hit) return item;
+    const suffix = seasonEpisodeLabel(hit.seasonNumber, hit.episodeNumber);
+    return { ...item, title: suffix ? `${hit.title} - ${suffix}` : hit.title, mediaType: hit.kind };
+  });
+}
 var QUEUE_STATUSES = ["grabbed", "importing"];
 var HISTORY_STATUSES = ["grabbed", "importing", "completed", "failed", "warning"];
 async function indexClientTorrents(deps) {
@@ -10144,27 +10572,39 @@ async function indexClientTorrents(deps) {
   );
   return { byClientId, anyUnreachable };
 }
+function liveTorrentFor(row, byClientId) {
+  const index = row.downloadClientId != null ? byClientId.get(row.downloadClientId) : void 0;
+  return index && row.torrentHash ? index.byHash.get(row.torrentHash.toLowerCase()) : void 0;
+}
 function toQueueItem(row, byClientId, indexerNames) {
   const base = {
     id: row.id,
     title: row.sourceTitle,
+    sourceTitle: row.sourceTitle,
     quality: row.quality,
+    grabSource: row.grabSource,
+    date: row.createdAt,
+    infoUrl: row.infoUrl,
     source: (row.indexerId != null ? indexerNames.get(row.indexerId) : void 0) ?? "",
     mediaId: row.mediaId,
+    seasonId: row.seasonId,
+    episodeId: row.episodeId,
     mediaType: null
   };
   if (row.status === "importing") {
     return { ...base, state: "importing", progress: 100, bytesPerSecond: null, size: null, clientReachable: true };
   }
   const index = row.downloadClientId != null ? byClientId.get(row.downloadClientId) : void 0;
-  const torrent = index && row.torrentHash ? index.byHash.get(row.torrentHash.toLowerCase()) : void 0;
+  const torrent = liveTorrentFor(row, byClientId);
   if (torrent) {
     return {
       ...base,
       state: torrentProgressState(torrent),
       progress: torrent.progress * 100,
       bytesPerSecond: torrent.dlspeed,
-      size: torrent.size,
+      // A client reports 0 until it has the torrent's metadata. That is "not known yet",
+      // not an empty file, and the detail dialog renders a 0 as "0 B".
+      size: torrent.size || null,
       clientReachable: true
     };
   }
@@ -10178,40 +10618,49 @@ function toQueueItem(row, byClientId, indexerNames) {
     clientReachable: false
   };
 }
-async function attachMediaTypes(deps, pageItems) {
-  const mediaIds = [...new Set(pageItems.map((item) => item.mediaId).filter((id) => id != null))];
-  if (!mediaIds.length) return pageItems;
-  const resolved = await deps.host.call("media.resolve", { mediaIds });
-  return pageItems.map((item) => {
-    if (item.mediaId == null) return item;
-    const hit = resolved[`media:${item.mediaId}`];
-    return hit ? { ...item, mediaType: hit.kind } : item;
-  });
+function displayStatusOf(row, live, anyUnreachable) {
+  if (row.status === "importing") return "importing";
+  if (live) return torrentProgressState(live);
+  if (!QUEUE_STATUSES.includes(row.status)) return row.status;
+  return !anyUnreachable && row.torrentHash ? "missing" : row.status;
 }
 async function handleHistory(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
   const pageSize = readPageSize(req.query["pageSize"]);
   const q = typeof req.query["q"] === "string" ? req.query["q"].trim() : "";
   const status = HISTORY_STATUSES.includes(req.query["status"]) ? req.query["status"] : void 0;
-  const [{ rows, total }, indexers] = await Promise.all([
+  const [{ rows, total }, indexers, { byClientId, anyUnreachable }] = await Promise.all([
     deps.downloadHistory.listPage(pageSize, (page - 1) * pageSize, { ...q ? { q } : {}, ...status ? { status } : {} }),
-    deps.indexerService.findAll()
+    deps.indexerService.findAll(),
+    indexClientTorrents(deps)
   ]);
   const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
-  const items = rows.map((row) => ({
-    id: row.id,
-    date: row.createdAt,
-    title: row.sourceTitle,
-    quality: row.quality,
-    size: row.size,
-    status: row.status,
-    statusMessage: row.statusMessage,
-    grabSource: row.grabSource,
-    source: (row.indexerId != null ? indexerNames.get(row.indexerId) : void 0) ?? "",
-    mediaId: row.mediaId,
-    mediaType: null
-  }));
-  const data = await attachMediaTypes(deps, items);
+  const items = rows.map((row) => {
+    const live = QUEUE_STATUSES.includes(row.status) ? liveTorrentFor(row, byClientId) : void 0;
+    return {
+      id: row.id,
+      date: row.createdAt,
+      title: row.sourceTitle,
+      sourceTitle: row.sourceTitle,
+      quality: row.quality,
+      size: row.size || null,
+      status: row.status,
+      displayStatus: displayStatusOf(row, live, anyUnreachable),
+      statusMessage: row.statusMessage,
+      grabSource: row.grabSource,
+      source: (row.indexerId != null ? indexerNames.get(row.indexerId) : void 0) ?? "",
+      infoUrl: row.infoUrl,
+      // `importing` is definitive whatever the client says: the download is done, the files
+      // are being moved. Same rule as the queue's own `toQueueItem`.
+      state: row.status === "importing" ? "importing" : live ? torrentProgressState(live) : null,
+      progress: row.status === "importing" ? 100 : live ? live.progress * 100 : null,
+      mediaId: row.mediaId,
+      seasonId: row.seasonId,
+      episodeId: row.episodeId,
+      mediaType: null
+    };
+  });
+  const data = await attachMediaLabels(deps, items);
   return jsonResponse(200, { data, total, page, pageSize });
 }
 async function handleQueue(deps, req) {
@@ -10225,7 +10674,7 @@ async function handleQueue(deps, req) {
   const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
   const items = rows.map((row) => toQueueItem(row, byClientId, indexerNames)).filter((item) => item !== null).sort((a, b) => b.id - a.id);
   const start = (page - 1) * pageSize;
-  const data = await attachMediaTypes(deps, items.slice(start, start + pageSize));
+  const data = await attachMediaLabels(deps, items.slice(start, start + pageSize));
   return jsonResponse(200, {
     data,
     total: items.length,
@@ -10319,6 +10768,12 @@ function wrap(handler) {
       if (err instanceof UnknownIndexerImplementationError || err instanceof UnsupportedDownloadClientError) {
         return badBody("implementation");
       }
+      if (err instanceof DownloadClientHttpError || err instanceof DownloadClientUnreachableError || err instanceof DownloadClientAuthError) {
+        log.error(`download client refused the request: ${err.message}`);
+        return jsonResponse(502, {
+          error: { key: "download.http.errors.download_client", detail: err.message }
+        });
+      }
       log.error(`http handler failed: ${err.message}`);
       return jsonResponse(500, { error: { key: "download.http.errors.internal", detail: err.message } });
     }
@@ -10355,6 +10810,11 @@ function canonicalRoutes(deps) {
     { method: "GET", path: "/download-clients/implementations", handler: () => handleDownloadClientImplementations() },
     { method: "PUT", path: "/download-clients/:id", handler: (req, params) => handleUpdateDownloadClient(deps, params, req) },
     { method: "DELETE", path: "/download-clients/:id", handler: (_req, params) => handleDeleteDownloadClient(deps, params) },
+    { method: "POST", path: "/queue/:id/pause", handler: (_req, params) => handleQueueControl(deps, params, "pause") },
+    { method: "POST", path: "/queue/:id/resume", handler: (_req, params) => handleQueueControl(deps, params, "resume") },
+    { method: "DELETE", path: "/queue/:id", handler: (req, params) => handleQueueRemove(deps, req, params) },
+    { method: "DELETE", path: "/history/all", handler: () => handleClearHistory(deps) },
+    { method: "DELETE", path: "/history/:id", handler: (_req, params) => handleDeleteHistoryEntry(deps, params) },
     { method: "GET", path: "/blocklist", handler: (req) => handleListBlocklist(deps, req) },
     { method: "DELETE", path: "/blocklist/all", handler: () => handleClearBlocklist(deps) },
     { method: "DELETE", path: "/blocklist/:id", handler: (_req, params) => handleRemoveBlocklistEntry(deps, params) }
@@ -10484,6 +10944,7 @@ function createAppGraph(repositories2, host2) {
       downloadHistory: repositories2.downloadHistory,
       downloadClientsRepo: repositories2.downloadClients,
       downloadClientDrivers: DOWNLOAD_CLIENT_DRIVERS,
+      settleAndPublish: (row, expect) => completionPoller.settleAndPublish(row, expect),
       host: host2
     })
   };
