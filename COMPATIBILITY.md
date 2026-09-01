@@ -27,9 +27,15 @@ spawned).
 
 | `pluginApi` | Compatible `fliks` core versions | Status |
 |---|---|---|
-| `0` | `>=2.0.0 <3.0.0` | current |
+| `0` | `>=2.0.0 <3.0.0` | retired: core 3.8.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
+| `1` | `>=3.8.0 <4.0.0` | current |
 
-Every manifest published here declares `>=2.0.0`, which is what this row records.
+The `0` row records the range its first manifests declared; later `0` submissions raised
+their own floor into the 3.x line without changing the revision, which stayed additive
+throughout. It ends at core 3.8.0: the upgrade window left `AcquisitionTarget.want` so that
+core applies the whole quality profile itself, and a removal inside one revision would have
+handed an acquisition plugin an absent bound it filtered releases on. A `0` plugin is refused
+with `incompatible-api` from that release, which is the loud form of the same news.
 
 Source of truth: `SUPPORTED_PLUGIN_API_VERSIONS` (what core accepts) and
 `PLUGIN_API_VERSION` (what core sends at `hello`) in
