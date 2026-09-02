@@ -1,8 +1,8 @@
 {
   "id": "fliks.download",
-  "pluginApi": 0,
+  "pluginApi": 1,
   "name": "Download",
-  "fliks": ">=3.7.0 <4.0.0",
+  "fliks": ">=4.0.0 <5.0.0",
   "author": "Fliks",
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "license": "AGPL-3.0-or-later",
@@ -1227,9 +1227,9 @@
       "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.8.0",
+  "version": "0.9.0",
   "files": {
-    "plugin.js": "32a2fee3af68f3732fbda7397e5ceb4fd3093d16a52d48d71272bccbc1d7bef1",
+    "plugin.js": "885ffecdf434508b495e5adb9efbad0aecaf1467a9807e265f667f2f8901f08c",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
