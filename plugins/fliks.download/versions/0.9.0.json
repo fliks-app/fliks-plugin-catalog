@@ -6,7 +6,7 @@
   "kind": "process",
   "version": "0.9.0",
   "pluginApi": 1,
-  "fliks": ">=3.8.0 <4.0.0",
+  "fliks": ">=4.0.0 <5.0.0",
   "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/dist/fliks.download-0.9.0.fkplugin",
   "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/logo.svg"
