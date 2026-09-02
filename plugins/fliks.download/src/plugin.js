@@ -7944,7 +7944,7 @@ var MAX_RELEASE_ATTEMPTS = 3;
 function pickReleases(sorted, want, limit = MAX_RELEASE_ATTEMPTS) {
   if (!want) return [];
   if (want.decision === "skip") return [];
-  return sorted.filter((r) => r.rejections.length === 0 && r.rank > want.minRankExclusive && r.rank <= want.maxRankInclusive).slice(0, limit);
+  return sorted.filter((r) => r.rejections.length === 0).slice(0, limit);
 }
 function toWireRelease({ indexerId, indexerName, ...rest }) {
   return { ...rest, sourceId: indexerId, sourceName: indexerName };
@@ -10213,13 +10213,18 @@ var I18N = {
 };
 var MANIFEST_TEMPLATE = {
   id: PLUGIN_ID,
-  pluginApi: 0,
+  // 1 is the revision without the upgrade window in `AcquisitionTarget.want`: core decides it
+  // and reports it as a rejection. Within one revision the shape is additive only, so the
+  // removal had to move to a new one — and a core still on 0 refuses this build outright
+  // rather than handing the picker an absent bound.
+  pluginApi: 1,
   name: "Download",
   // 3.7.0 is the first core that reads `visibleWhen`, `confirmToggle` and `progressField`, and
   // the first whose data table substitutes `:id` into a proxy row action. An older client ignores
   // all four in silence — which would render every control unconditionally and drop the
-  // "delete the files" answer, so the floor is a correctness bound, not a courtesy.
-  fliks: ">=3.7.0 <4.0.0",
+  // "delete the files" answer. 3.8.0 raises it again: it is the first core that applies the whole
+  // quality profile itself, which is what lets the picker trust `rejections` alone.
+  fliks: ">=3.8.0 <4.0.0",
   author: "Fliks",
   description: "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   license: "AGPL-3.0-or-later",
