@@ -5717,12 +5717,71 @@ var migration_0004_download_history_info_url = {
   down: down4
 };
 
+// migrations/0005_indexer_sources.ts
+var up5 = `
+CREATE TABLE IF NOT EXISTS "indexer_sources" (
+  "id" SERIAL PRIMARY KEY,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  "updatedAt" timestamptz NOT NULL DEFAULT now(),
+  "name" varchar NOT NULL,
+  "implementation" varchar NOT NULL,
+  "settings" jsonb NOT NULL DEFAULT '{}',
+  "priority" integer NOT NULL DEFAULT 1,
+  "enabled" boolean NOT NULL DEFAULT true
+)
+`;
+var down5 = `
+DROP TABLE IF EXISTS "indexer_sources"
+`;
+var migration_0005_indexer_sources = {
+  name: "0005_indexer_sources",
+  up: up5,
+  down: down5
+};
+
+// migrations/0006_indexer_interactive_search.ts
+var up6 = `
+  ALTER TABLE "indexers" ADD COLUMN IF NOT EXISTS "enableInteractiveSearch" boolean NOT NULL DEFAULT true;
+
+  -- Backfilled from the column that used to gate both kinds of search: a row with searches off
+  -- must not come out of this migration answering manual ones. New rows take the default.
+  UPDATE "indexers" SET "enableInteractiveSearch" = "enableSearch"
+`;
+var down6 = `
+  ALTER TABLE "indexers" DROP COLUMN IF EXISTS "enableInteractiveSearch"
+`;
+var migration_0006_indexer_interactive_search = {
+  name: "0006_indexer_interactive_search",
+  up: up6,
+  down: down6
+};
+
+// migrations/0007_indexer_caps_supported_params.ts
+var up7 = `
+  ALTER TABLE "indexers"
+    ADD COLUMN IF NOT EXISTS "capsMovieSearchParams" text,
+    ADD COLUMN IF NOT EXISTS "capsTvSearchParams" text
+`;
+var down7 = `
+  ALTER TABLE "indexers"
+    DROP COLUMN IF EXISTS "capsMovieSearchParams",
+    DROP COLUMN IF EXISTS "capsTvSearchParams"
+`;
+var migration_0007_indexer_caps_supported_params = {
+  name: "0007_indexer_caps_supported_params",
+  up: up7,
+  down: down7
+};
+
 // migrations/index.ts
 var MIGRATIONS = [
   migration_0001_initial_schema,
   migration_0002_indexer_caps_probed_at,
   migration_0003_download_history_size,
-  migration_0004_download_history_info_url
+  migration_0004_download_history_info_url,
+  migration_0005_indexer_sources,
+  migration_0006_indexer_interactive_search,
+  migration_0007_indexer_caps_supported_params
 ];
 
 // src/db/migrate.ts
@@ -5766,7 +5825,8 @@ async function migrateUp(pool) {
 
 // src/db/repositories/indexers.repository.ts
 var COLUMNS = `"id", "name", "implementation", "settings", "enableRss", "enableSearch",
-  "priority", "enabled", "capsSearchFallback", "capsMovieSearch", "capsTvSearch", "capsProbedAt",
+  "enableInteractiveSearch", "priority", "enabled", "capsSearchFallback", "capsMovieSearch",
+  "capsTvSearch", "capsMovieSearchParams", "capsTvSearchParams", "capsProbedAt",
   "requestDelay", "createdAt", "updatedAt"`;
 var IndexersRepository = class {
   constructor(pool) {
@@ -5808,12 +5868,22 @@ var IndexersRepository = class {
     const { rows } = await this.pool.query(`SELECT ${COLUMNS} FROM "indexers" WHERE "id" = $1`, [id]);
     return rows[0] ?? null;
   }
+  /** The identity an import dedupes on: the torznab endpoint is derived from the source and the
+   *  remote indexer's own id, so it names one remote tracker even after a local rename. */
+  async findByBaseUrl(baseUrl) {
+    const { rows } = await this.pool.query(
+      `SELECT ${COLUMNS} FROM "indexers" WHERE "settings"->>'baseUrl' = $1 ORDER BY "id" ASC LIMIT 1`,
+      [baseUrl]
+    );
+    return rows[0] ?? null;
+  }
   /** `indexers.service.ts:82-93`. */
   async insert(input) {
     const { rows } = await this.pool.query(
       `INSERT INTO "indexers"
-         ("name", "implementation", "settings", "enableRss", "enableSearch", "priority", "requestDelay", "enabled")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ("name", "implementation", "settings", "enableRss", "enableSearch", "enableInteractiveSearch",
+          "priority", "requestDelay", "enabled")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING ${COLUMNS}`,
       [
         input.name,
@@ -5821,6 +5891,7 @@ var IndexersRepository = class {
         input.settings,
         input.enableRss,
         input.enableSearch,
+        input.enableInteractiveSearch,
         input.priority,
         input.requestDelay,
         input.enabled
@@ -5835,7 +5906,8 @@ var IndexersRepository = class {
     const { rows } = await this.pool.query(
       `UPDATE "indexers" SET
          "name" = $2, "implementation" = $3, "enableRss" = $4, "enableSearch" = $5,
-         "priority" = $6, "requestDelay" = $7, "enabled" = $8, "settings" = $9, "updatedAt" = now()
+         "enableInteractiveSearch" = $6, "priority" = $7, "requestDelay" = $8, "enabled" = $9,
+         "settings" = $10, "updatedAt" = now()
        WHERE "id" = $1
        RETURNING ${COLUMNS}`,
       [
@@ -5844,6 +5916,7 @@ var IndexersRepository = class {
         input.implementation,
         input.enableRss,
         input.enableSearch,
+        input.enableInteractiveSearch,
         input.priority,
         input.requestDelay,
         input.enabled,
@@ -5854,12 +5927,28 @@ var IndexersRepository = class {
     if (!row) throw new Error(`"indexers" row ${id} not found`);
     return row;
   }
+  /** Settings-only write, for an import refreshing a rotated API key on a row whose name,
+   *  priority and tuning are the admin's. */
+  async updateSettings(id, settings) {
+    await this.pool.query(`UPDATE "indexers" SET "settings" = $2, "updatedAt" = now() WHERE "id" = $1`, [
+      id,
+      settings
+    ]);
+  }
   /** `indexers/torznab.service.ts:256` — caps refresh after a `t=caps` probe. */
   async refreshCaps(id, caps) {
     await this.pool.query(
       `UPDATE "indexers" SET "capsMovieSearch" = $2, "capsTvSearch" = $3, "capsSearchFallback" = $4,
+              "capsMovieSearchParams" = $5, "capsTvSearchParams" = $6,
               "capsProbedAt" = NOW() WHERE "id" = $1`,
-      [id, caps.capsMovieSearch, caps.capsTvSearch, caps.capsSearchFallback]
+      [
+        id,
+        caps.capsMovieSearch,
+        caps.capsTvSearch,
+        caps.capsSearchFallback,
+        caps.capsMovieSearchParams,
+        caps.capsTvSearchParams
+      ]
     );
   }
   /** `indexers/torznab.service.ts:386` — a typed search failed, the untyped retry succeeded. */
@@ -5908,8 +5997,56 @@ var IndexerStatsRepository = class {
   }
 };
 
+// src/db/repositories/indexer-sources.repository.ts
+var COLUMNS3 = `"id", "name", "implementation", "settings", "priority", "enabled", "createdAt", "updatedAt"`;
+var IndexerSourcesRepository = class {
+  constructor(pool) {
+    this.pool = pool;
+  }
+  async listAll() {
+    const { rows } = await this.pool.query(
+      `SELECT ${COLUMNS3} FROM "indexer_sources" ORDER BY "priority" ASC, "id" ASC`
+    );
+    return rows;
+  }
+  async findById(id) {
+    const { rows } = await this.pool.query(
+      `SELECT ${COLUMNS3} FROM "indexer_sources" WHERE "id" = $1`,
+      [id]
+    );
+    return rows[0] ?? null;
+  }
+  async insert(input) {
+    const { rows } = await this.pool.query(
+      `INSERT INTO "indexer_sources" ("name", "implementation", "settings", "priority", "enabled")
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING ${COLUMNS3}`,
+      [input.name, input.implementation, input.settings, input.priority, input.enabled]
+    );
+    const row = rows[0];
+    if (!row) throw new Error('insert into "indexer_sources" returned no row');
+    return row;
+  }
+  async update(id, input) {
+    const { rows } = await this.pool.query(
+      `UPDATE "indexer_sources" SET
+         "name" = $2, "implementation" = $3, "settings" = $4, "priority" = $5, "enabled" = $6,
+         "updatedAt" = now()
+       WHERE "id" = $1
+       RETURNING ${COLUMNS3}`,
+      [id, input.name, input.implementation, input.settings, input.priority, input.enabled]
+    );
+    const row = rows[0];
+    if (!row) throw new Error(`"indexer_sources" row ${id} not found`);
+    return row;
+  }
+  async remove(id) {
+    await this.pool.query(`DELETE FROM "indexer_sources" WHERE "id" = $1`, [id]);
+  }
+};
+
 // src/db/repositories/download-clients.repository.ts
-var COLUMNS3 = `"id", "name", "implementation", "settings", "enabled", "priority", "createdAt", "updatedAt"`;
+var COLUMNS4 = `"id", "name", "implementation", "settings", "enabled", "priority", "createdAt", "updatedAt"`;
 var DownloadClientsRepository = class {
   constructor(pool) {
     this.pool = pool;
@@ -5918,7 +6055,7 @@ var DownloadClientsRepository = class {
    *  `download-clients.service.ts:251,281,334,379`. */
   async listEnabled() {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS3} FROM "download_clients" WHERE "enabled" = true ORDER BY "priority" ASC, "id" ASC`
+      `SELECT ${COLUMNS4} FROM "download_clients" WHERE "enabled" = true ORDER BY "priority" ASC, "id" ASC`
     );
     return rows;
   }
@@ -5926,7 +6063,7 @@ var DownloadClientsRepository = class {
    *  `download-clients.service.ts:150` (admin list, no `enabled` filter). */
   async listAll() {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS3} FROM "download_clients" ORDER BY "priority" ASC, "id" ASC`
+      `SELECT ${COLUMNS4} FROM "download_clients" ORDER BY "priority" ASC, "id" ASC`
     );
     return rows;
   }
@@ -5940,7 +6077,7 @@ var DownloadClientsRepository = class {
   /** `download-clients.service.ts:155`. */
   async findById(id) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS3} FROM "download_clients" WHERE "id" = $1`,
+      `SELECT ${COLUMNS4} FROM "download_clients" WHERE "id" = $1`,
       [id]
     );
     return rows[0] ?? null;
@@ -5950,7 +6087,7 @@ var DownloadClientsRepository = class {
     const { rows } = await this.pool.query(
       `INSERT INTO "download_clients" ("name", "implementation", "settings", "enabled", "priority")
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING ${COLUMNS3}`,
+       RETURNING ${COLUMNS4}`,
       [input.name, input.implementation, input.settings, input.enabled, input.priority]
     );
     const row = rows[0];
@@ -5963,7 +6100,7 @@ var DownloadClientsRepository = class {
       `UPDATE "download_clients" SET
          "name" = $2, "implementation" = $3, "settings" = $4, "enabled" = $5, "priority" = $6, "updatedAt" = now()
        WHERE "id" = $1
-       RETURNING ${COLUMNS3}`,
+       RETURNING ${COLUMNS4}`,
       [id, input.name, input.implementation, input.settings, input.enabled, input.priority]
     );
     const row = rows[0];
@@ -5977,7 +6114,7 @@ var DownloadClientsRepository = class {
 };
 
 // src/db/repositories/download-history.repository.ts
-var COLUMNS4 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "status", "statusMessage",
+var COLUMNS5 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "status", "statusMessage",
   "grabSource", "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId", "createdAt", "updatedAt"`;
 var DownloadHistoryRepository = class {
   constructor(pool) {
@@ -5997,7 +6134,7 @@ var DownloadHistoryRepository = class {
    *  for exactly that window. */
   async findPendingGrabForMedia(mediaId) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') LIMIT 1`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') LIMIT 1`,
       [mediaId]
     );
     return rows[0] ?? null;
@@ -6006,7 +6143,7 @@ var DownloadHistoryRepository = class {
    *  `sourceTitle` (caller builds the ILIKE pattern, e.g. `%S01E03%`). */
   async findPendingEpisodeGrab(mediaId, sourceTitlePattern) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history"
+      `SELECT ${COLUMNS5} FROM "download_history"
         WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "sourceTitle" ILIKE $2
         LIMIT 1`,
       [mediaId, sourceTitlePattern]
@@ -6016,7 +6153,7 @@ var DownloadHistoryRepository = class {
   /** `acquisition-scheduler.service.ts:394` — "is a season-pack grab already pending for this season". */
   async findPendingSeasonPackGrab(mediaId, seasonId) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history"
+      `SELECT ${COLUMNS5} FROM "download_history"
         WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "seasonId" = $2 AND "episodeId" IS NULL
         LIMIT 1`,
       [mediaId, seasonId]
@@ -6026,7 +6163,7 @@ var DownloadHistoryRepository = class {
   /** `acquisition-scheduler.service.ts:737` — RSS dedup, exact title match, any status. */
   async findBySourceTitleForMedia(mediaId, sourceTitle) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "sourceTitle" = $2 LIMIT 1`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "mediaId" = $1 AND "sourceTitle" = $2 LIMIT 1`,
       [mediaId, sourceTitle]
     );
     return rows[0] ?? null;
@@ -6035,14 +6172,14 @@ var DownloadHistoryRepository = class {
    *  recent season-pack grab client-side. */
   async findRecentGrabbedForMedia(mediaId, since) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "createdAt" >= $2`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "createdAt" >= $2`,
       [mediaId, since]
     );
     return rows;
   }
   /** `completion.service.ts:165` — unfiltered, for orphan-torrent auto-matching. */
   async findAll() {
-    const { rows } = await this.pool.query(`SELECT ${COLUMNS4} FROM "download_history"`);
+    const { rows } = await this.pool.query(`SELECT ${COLUMNS5} FROM "download_history"`);
     return rows;
   }
   /** Every row claiming one of these hashes — several can, so the caller still ranks them.
@@ -6050,7 +6187,7 @@ var DownloadHistoryRepository = class {
   async findByTorrentHashes(hashes) {
     if (!hashes.length) return [];
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE LOWER("torrentHash") = ANY($1::text[])`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE LOWER("torrentHash") = ANY($1::text[])`,
       [hashes.map((h) => h.toLowerCase())]
     );
     return rows;
@@ -6067,7 +6204,7 @@ var DownloadHistoryRepository = class {
    *  "rows in status X or Y or Z" read collapses to one status-list filter. */
   async findByStatuses(statuses) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "status" = ANY($1::text[])`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "status" = ANY($1::text[])`,
       [statuses]
     );
     return rows;
@@ -6088,7 +6225,7 @@ var DownloadHistoryRepository = class {
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const [page, count] = await Promise.all([
       this.pool.query(
-        `SELECT ${COLUMNS4} FROM "download_history" ${where}
+        `SELECT ${COLUMNS5} FROM "download_history" ${where}
           ORDER BY "createdAt" DESC, "id" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, limit, offset]
       ),
@@ -6099,7 +6236,7 @@ var DownloadHistoryRepository = class {
   /** `completion.service.ts:1145` — completed rows whose hash is among the ones a client currently holds. */
   async findCompletedByHashes(hashes) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history"
+      `SELECT ${COLUMNS5} FROM "download_history"
         WHERE "status" = 'completed' AND LOWER("torrentHash") = ANY($1::text[])`,
       [hashes.map((h) => h.toLowerCase())]
     );
@@ -6108,7 +6245,7 @@ var DownloadHistoryRepository = class {
   /** The queue and history row actions address a row by its own id. */
   async findById(id) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "id" = $1`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "id" = $1`,
       [id]
     );
     return rows[0] ?? null;
@@ -6128,7 +6265,7 @@ var DownloadHistoryRepository = class {
   /** `download-clients.service.ts:245,327` — latest row for an exact hash. */
   async findLatestByTorrentHash(torrentHash) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "torrentHash" = $1 ORDER BY "createdAt" DESC LIMIT 1`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "torrentHash" = $1 ORDER BY "createdAt" DESC LIMIT 1`,
       [torrentHash]
     );
     return rows[0] ?? null;
@@ -6136,7 +6273,7 @@ var DownloadHistoryRepository = class {
   /** `download-clients.service.ts:260,343` — latest row for an exact source title, hash-lookup fallback. */
   async findLatestBySourceTitle(sourceTitle) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS4} FROM "download_history" WHERE "sourceTitle" = $1 ORDER BY "createdAt" DESC LIMIT 1`,
+      `SELECT ${COLUMNS5} FROM "download_history" WHERE "sourceTitle" = $1 ORDER BY "createdAt" DESC LIMIT 1`,
       [sourceTitle]
     );
     return rows[0] ?? null;
@@ -6150,7 +6287,7 @@ var DownloadHistoryRepository = class {
          ("sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "grabSource",
           "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING ${COLUMNS4}`,
+       RETURNING ${COLUMNS5}`,
       [
         input.sourceTitle,
         input.quality,
@@ -6240,7 +6377,7 @@ var DownloadHistoryRepository = class {
 };
 
 // src/db/repositories/blocklist.repository.ts
-var COLUMNS5 = `"id", "sourceTitle", "indexerName", "downloadUrl", "quality", "note",
+var COLUMNS6 = `"id", "sourceTitle", "indexerName", "downloadUrl", "quality", "note",
   "indexerId", "mediaId", "userId", "createdAt", "updatedAt"`;
 var BlocklistRepository = class {
   constructor(pool) {
@@ -6252,7 +6389,7 @@ var BlocklistRepository = class {
       `INSERT INTO "blocklist"
          ("sourceTitle", "indexerId", "indexerName", "downloadUrl", "quality", "mediaId", "note", "userId")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING ${COLUMNS5}`,
+       RETURNING ${COLUMNS6}`,
       [
         input.sourceTitle,
         input.indexerId ?? null,
@@ -6272,7 +6409,7 @@ var BlocklistRepository = class {
   async list(limit, offset) {
     const [itemsResult, countResult] = await Promise.all([
       this.pool.query(
-        `SELECT ${COLUMNS5} FROM "blocklist" ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
+        `SELECT ${COLUMNS6} FROM "blocklist" ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
         [limit, offset]
       ),
       this.pool.query(`SELECT COUNT(*)::text AS "count" FROM "blocklist"`)
@@ -6289,7 +6426,7 @@ var BlocklistRepository = class {
   }
   /** `blocklist.service.ts:73` — looked up before `remove` to 404 on a missing id. */
   async findById(id) {
-    const { rows } = await this.pool.query(`SELECT ${COLUMNS5} FROM "blocklist" WHERE "id" = $1`, [id]);
+    const { rows } = await this.pool.query(`SELECT ${COLUMNS6} FROM "blocklist" WHERE "id" = $1`, [id]);
     return rows[0] ?? null;
   }
   /** `blocklist.service.ts:73-76`. */
@@ -6303,7 +6440,7 @@ var BlocklistRepository = class {
 };
 
 // src/db/repositories/stalled-checks.repository.ts
-var COLUMNS6 = `"id", "torrentHash", "downloadedBytes", "checkedAt"`;
+var COLUMNS7 = `"id", "torrentHash", "downloadedBytes", "checkedAt"`;
 var StalledChecksRepository = class {
   constructor(pool) {
     this.pool = pool;
@@ -6313,7 +6450,7 @@ var StalledChecksRepository = class {
    *  that makes the round trip lossless above 2^31. */
   async insert(torrentHash, downloadedBytes) {
     const { rows } = await this.pool.query(
-      `INSERT INTO "stalled_checks" ("torrentHash", "downloadedBytes") VALUES ($1, $2) RETURNING ${COLUMNS6}`,
+      `INSERT INTO "stalled_checks" ("torrentHash", "downloadedBytes") VALUES ($1, $2) RETURNING ${COLUMNS7}`,
       [torrentHash, downloadedBytes]
     );
     const row = rows[0];
@@ -6323,7 +6460,7 @@ var StalledChecksRepository = class {
   /** `completion.service.ts:1070` — latest snapshot, to gate on the configured check interval. */
   async findLatest(torrentHash) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS6} FROM "stalled_checks" WHERE "torrentHash" = $1 ORDER BY "checkedAt" DESC LIMIT 1`,
+      `SELECT ${COLUMNS7} FROM "stalled_checks" WHERE "torrentHash" = $1 ORDER BY "checkedAt" DESC LIMIT 1`,
       [torrentHash]
     );
     return rows[0] ?? null;
@@ -6331,7 +6468,7 @@ var StalledChecksRepository = class {
   /** `completion.service.ts:1088` — last N snapshots for one hash, newest first, feeds the stall-strike count. */
   async findRecent(torrentHash, limit) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS6} FROM "stalled_checks" WHERE "torrentHash" = $1 ORDER BY "checkedAt" DESC LIMIT $2`,
+      `SELECT ${COLUMNS7} FROM "stalled_checks" WHERE "torrentHash" = $1 ORDER BY "checkedAt" DESC LIMIT $2`,
       [torrentHash, limit]
     );
     return rows;
@@ -6339,7 +6476,7 @@ var StalledChecksRepository = class {
   /** `download-clients.service.ts:509` (`annotateStalledStrikes`) — bulk fetch across many hashes at once. */
   async findRecentForHashes(hashes) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS6} FROM "stalled_checks" WHERE "torrentHash" = ANY($1::text[]) ORDER BY "checkedAt" DESC`,
+      `SELECT ${COLUMNS7} FROM "stalled_checks" WHERE "torrentHash" = ANY($1::text[]) ORDER BY "checkedAt" DESC`,
       [hashes]
     );
     return rows;
@@ -6361,6 +6498,7 @@ function createRepositories(pool) {
   return {
     indexers: new IndexersRepository(pool),
     indexerStats: new IndexerStatsRepository(pool),
+    indexerSources: new IndexerSourcesRepository(pool),
     downloadClients: new DownloadClientsRepository(pool),
     downloadHistory: new DownloadHistoryRepository(pool),
     blocklist: new BlocklistRepository(pool),
@@ -6492,18 +6630,22 @@ function decodeHtmlEntities(s) {
 
 // src/indexers/torznab-parse.ts
 function buildTorznabQuery(opts) {
+  const advertised = new Set(
+    (opts.supportedParams ?? "").split(",").map((p) => p.trim().toLowerCase()).filter(Boolean)
+  );
+  const allows = (param) => advertised.has(param);
   const parts = [`t=${opts.t}`];
   if (opts.q) parts.push(`q=${encodeURIComponent(opts.q)}`);
   if (opts.season != null) parts.push(`season=${opts.season}`);
   if (opts.ep != null) parts.push(`ep=${opts.ep}`);
   parts.push(`cat=${opts.cat}`);
   parts.push(`apikey=${encodeURIComponent(opts.apiKey)}`);
-  if (opts.tvdbId) parts.push(`tvdbid=${opts.tvdbId}`);
-  if (opts.imdbId) {
+  if (opts.tvdbId && allows("tvdbid")) parts.push(`tvdbid=${opts.tvdbId}`);
+  if (opts.imdbId && allows("imdbid")) {
     const stripped = opts.imdbId.replace(/^tt/i, "");
     if (stripped) parts.push(`imdbid=${stripped}`);
   }
-  if (opts.tmdbId) parts.push(`tmdbid=${opts.tmdbId}`);
+  if (opts.tmdbId && allows("tmdbid")) parts.push(`tmdbid=${opts.tmdbId}`);
   return parts.join("&");
 }
 function describeTorznabQuery(url) {
@@ -6639,7 +6781,11 @@ async function fetchText(url, opts) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal, headers: { "User-Agent": USER_AGENT } });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": USER_AGENT, ...opts.headers },
+      ...opts.redirect ? { redirect: opts.redirect } : {}
+    });
     const body = await res.text();
     if (opts.validateStatus && !opts.validateStatus(res.status)) {
       throw new TorznabHttpError(res.status, res.headers.get("retry-after"));
@@ -6720,10 +6866,22 @@ var TorznabClient = class {
     }
     const capsMovieSearch = /<movie-search\s[^>]*available="yes"/i.test(res.body);
     const capsTvSearch = /<tv-search\s[^>]*available="yes"/i.test(res.body);
-    log.info(`[${indexer.name}] caps refreshed \u2014 movieSearch=${capsMovieSearch}, tvSearch=${capsTvSearch}`);
-    await this.deps.repo.refreshCaps(indexer.id, { capsMovieSearch, capsTvSearch, capsSearchFallback: false });
+    const capsMovieSearchParams = res.body.match(/<movie-search\s[^>]*supportedParams="([^"]*)"/i)?.[1]?.trim() || null;
+    const capsTvSearchParams = res.body.match(/<tv-search\s[^>]*supportedParams="([^"]*)"/i)?.[1]?.trim() || null;
+    log.info(
+      `[${indexer.name}] caps refreshed \u2014 movieSearch=${capsMovieSearch} (${capsMovieSearchParams}), tvSearch=${capsTvSearch} (${capsTvSearchParams})`
+    );
+    await this.deps.repo.refreshCaps(indexer.id, {
+      capsMovieSearch,
+      capsTvSearch,
+      capsSearchFallback: false,
+      capsMovieSearchParams,
+      capsTvSearchParams
+    });
     indexer.capsMovieSearch = capsMovieSearch;
     indexer.capsTvSearch = capsTvSearch;
+    indexer.capsMovieSearchParams = capsMovieSearchParams;
+    indexer.capsTvSearchParams = capsTvSearchParams;
     indexer.capsSearchFallback = false;
     indexer.capsProbedAt = (/* @__PURE__ */ new Date()).toISOString();
   }
@@ -6754,14 +6912,19 @@ var TorznabClient = class {
     }
     return { baseUrl, apiKey: String(settings.apiKey || "") };
   }
-  /** Gates a search call on enabled/enableSearch, then resolves the endpoint. */
-  resolveSearchTarget(indexer) {
+  /** Gates a search call on enabled, then on the gate `kind` names: `enableSearch` for an
+   *  automatic search, `enableInteractiveSearch` for a manual one. */
+  resolveSearchTarget(indexer, kind) {
     if (!indexer.enabled) {
       log.info(`[${indexer.name}] skipped \u2014 indexer disabled`);
       return null;
     }
-    if (!indexer.enableSearch) {
-      log.info(`[${indexer.name}] skipped \u2014 search disabled`);
+    if (kind === "auto" && !indexer.enableSearch) {
+      log.info(`[${indexer.name}] skipped: automatic search disabled`);
+      return null;
+    }
+    if (kind === "manual" && !indexer.enableInteractiveSearch) {
+      log.info(`[${indexer.name}] skipped: manual search disabled`);
       return null;
     }
     return this.resolveEndpoint(indexer);
@@ -6893,8 +7056,8 @@ var TorznabClient = class {
     }
   }
   /** Searches for a season pack (no episode number → indexer returns whole-season packs). */
-  async searchSeasonPack(indexer, showTitle, season, externalIds) {
-    const target = this.resolveSearchTarget(indexer);
+  async searchSeasonPack(indexer, kind, showTitle, season, externalIds) {
+    const target = this.resolveSearchTarget(indexer, kind);
     if (!target) return [];
     const { baseUrl, apiKey } = target;
     if (!await this.ensureCapsProbed(indexer)) return [];
@@ -6907,7 +7070,8 @@ var TorznabClient = class {
       cat: "5000",
       apiKey,
       tvdbId: useTvSearch ? externalIds?.tvdbId : void 0,
-      imdbId: useTvSearch ? externalIds?.imdbId : void 0
+      imdbId: useTvSearch ? externalIds?.imdbId : void 0,
+      supportedParams: indexer.capsTvSearchParams
     })}`;
     const { results, torznabError } = await this.execSearch(typedUrl, "season", indexer);
     if (!torznabError) return results;
@@ -6922,8 +7086,8 @@ var TorznabClient = class {
     }
     return [];
   }
-  async searchSeries(indexer, showTitle, season, episode, externalIds) {
-    const target = this.resolveSearchTarget(indexer);
+  async searchSeries(indexer, kind, showTitle, season, episode, externalIds) {
+    const target = this.resolveSearchTarget(indexer, kind);
     if (!target) return [];
     const { baseUrl, apiKey } = target;
     if (!await this.ensureCapsProbed(indexer)) return [];
@@ -6938,7 +7102,8 @@ var TorznabClient = class {
       cat: "5000",
       apiKey,
       tvdbId: useTvSearch ? externalIds?.tvdbId : void 0,
-      imdbId: useTvSearch ? externalIds?.imdbId : void 0
+      imdbId: useTvSearch ? externalIds?.imdbId : void 0,
+      supportedParams: indexer.capsTvSearchParams
     })}`;
     const { results, torznabError } = await this.execSearch(typedUrl, "tvsearch", indexer);
     if (!torznabError) return results;
@@ -6953,8 +7118,8 @@ var TorznabClient = class {
     }
     return [];
   }
-  async searchMovie(indexer, query, externalIds) {
-    const target = this.resolveSearchTarget(indexer);
+  async searchMovie(indexer, kind, query, externalIds) {
+    const target = this.resolveSearchTarget(indexer, kind);
     if (!target) return [];
     const { baseUrl, apiKey } = target;
     if (!await this.ensureCapsProbed(indexer)) return [];
@@ -6965,7 +7130,8 @@ var TorznabClient = class {
       cat: "2000",
       apiKey,
       imdbId: useMovieSearch ? externalIds?.imdbId : void 0,
-      tmdbId: useMovieSearch ? externalIds?.tmdbId : void 0
+      tmdbId: useMovieSearch ? externalIds?.tmdbId : void 0,
+      supportedParams: indexer.capsMovieSearchParams
     })}`;
     const { results, torznabError } = await this.execSearch(typedUrl, "search", indexer);
     if (!torznabError) return results;
@@ -7155,6 +7321,30 @@ function mergeSecretSettings(existing, incoming, keys) {
   return out;
 }
 
+// src/indexers/use-for.ts
+var USE_FOR_VALUES = ["rss", "auto", "manual"];
+function isUseFor(value) {
+  return typeof value === "string" && USE_FOR_VALUES.includes(value);
+}
+function isUseForList(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(isUseFor);
+}
+function useForOf(row) {
+  const out = [];
+  if (row.enableRss) out.push("rss");
+  if (row.enableSearch) out.push("auto");
+  if (row.enableInteractiveSearch) out.push("manual");
+  return out;
+}
+function gatesFor(useFor) {
+  const set = new Set(useFor);
+  return {
+    enableRss: set.has("rss"),
+    enableSearch: set.has("auto"),
+    enableInteractiveSearch: set.has("manual")
+  };
+}
+
 // src/indexers/service.ts
 var SECRET_SETTING_KEYS = ["apiKey"];
 function redactApiKey(ix) {
@@ -7213,13 +7403,16 @@ var IndexerService = class {
       settings: mergeSecretSettings(void 0, this.sanitizeSettings(input.settings), SECRET_SETTING_KEYS),
       enableRss: input.enableRss ?? true,
       enableSearch: input.enableSearch ?? true,
+      enableInteractiveSearch: input.enableInteractiveSearch ?? true,
       priority: input.priority ?? 25,
       requestDelay: input.requestDelay ?? 2,
       enabled: input.enabled ?? true,
       capsMovieSearch: false,
       capsTvSearch: false,
       capsSearchFallback: false,
-      capsProbedAt: null
+      capsProbedAt: null,
+      capsMovieSearchParams: null,
+      capsTvSearchParams: null
     });
     void this.deps.torznab.refreshCaps(saved).catch((e) => log.warn(`caps refresh failed: ${String(e)}`));
     return this.redact(saved);
@@ -7234,6 +7427,7 @@ var IndexerService = class {
       const cd = this.deps.throttle.getCooldown(ix.id);
       return {
         ...this.redact(ix),
+        useFor: useForOf(ix),
         cooldown: cd ? {
           reason: cd.reason,
           remainingMs: Math.max(0, cd.until - Date.now()),
@@ -7268,6 +7462,7 @@ var IndexerService = class {
     }
     if (input.enableRss !== void 0) patch.enableRss = input.enableRss;
     if (input.enableSearch !== void 0) patch.enableSearch = input.enableSearch;
+    if (input.enableInteractiveSearch !== void 0) patch.enableInteractiveSearch = input.enableInteractiveSearch;
     if (input.priority !== void 0) patch.priority = input.priority;
     if (input.requestDelay !== void 0) patch.requestDelay = input.requestDelay;
     if (input.enabled !== void 0) patch.enabled = input.enabled;
@@ -7907,6 +8102,332 @@ var DOWNLOAD_CLIENT_DRIVERS = {
   qbittorrent: new QbittorrentDriver()
 };
 
+// src/indexer-sources/types.ts
+var SourceUnreachableError = class extends Error {
+  constructor(message, messageKey, detail) {
+    super(message);
+    this.messageKey = messageKey;
+    this.detail = detail;
+    this.name = "SourceUnreachableError";
+  }
+};
+var IndexerSourceNotFoundError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "IndexerSourceNotFoundError";
+  }
+};
+var UnknownIndexerSourceImplementationError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UnknownIndexerSourceImplementationError";
+  }
+};
+
+// src/indexer-sources/drivers.ts
+var FETCH_TIMEOUT_MS = 15e3;
+var KEYS = {
+  baseUrlMissing: "download.indexer_sources.test.base_url_missing",
+  httpError: "download.indexer_sources.test.http_error",
+  unexpectedResponse: "download.indexer_sources.test.unexpected_response",
+  networkError: "download.indexer_sources.test.network_error",
+  loginRequired: "download.indexer_sources.test.login_required",
+  ok: "download.indexer_sources.test.ok"
+};
+function normalizeBase(baseUrl) {
+  return String(baseUrl || "").trim().replace(/\/+$/, "");
+}
+var MAX_HOPS = 4;
+async function walkWithJar(url, headers) {
+  const cookies = /* @__PURE__ */ new Map();
+  const jar = () => [...cookies].map(([k, v]) => `${k}=${v}`).join("; ");
+  let target = url;
+  for (let hop = 0; ; hop++) {
+    const res = await fetchText(target, {
+      timeoutMs: FETCH_TIMEOUT_MS,
+      headers: { ...headers, ...cookies.size ? { Cookie: jar() } : {} },
+      redirect: "manual"
+    });
+    for (const raw of res.headers.getSetCookie()) {
+      const [pair] = raw.split(";");
+      const eq = pair?.indexOf("=") ?? -1;
+      if (pair && eq > 0) cookies.set(pair.slice(0, eq), pair.slice(eq + 1));
+    }
+    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!location || hop >= MAX_HOPS) return { status: res.status, body: res.body, jar: jar() };
+    target = new URL(location, target).toString();
+  }
+}
+function looksLikeList(body) {
+  return body.trimStart().startsWith("[");
+}
+async function fetchList(url, what, opts = {}) {
+  let res;
+  try {
+    if (opts.session) {
+      const walked = await walkWithJar(url, opts.headers);
+      res = walked;
+      if (!(walked.status === 200 && looksLikeList(walked.body)) && walked.jar) {
+        res = await fetchText(url, {
+          timeoutMs: FETCH_TIMEOUT_MS,
+          headers: { ...opts.headers, Cookie: walked.jar },
+          redirect: "manual"
+        });
+      }
+      if (res.status >= 300 && res.status < 400) {
+        throw new SourceUnreachableError(`${what} still refuses the session`, KEYS.loginRequired);
+      }
+    } else {
+      res = await fetchText(url, { timeoutMs: FETCH_TIMEOUT_MS, headers: opts.headers });
+    }
+  } catch (e) {
+    if (e instanceof SourceUnreachableError) throw e;
+    throw new SourceUnreachableError(`${what} unreachable`, KEYS.networkError, e.message);
+  }
+  if (res.status >= 300) {
+    throw new SourceUnreachableError(`${what} answered HTTP ${res.status}`, KEYS.httpError, String(res.status));
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(res.body);
+  } catch {
+    throw new SourceUnreachableError(`${what} answered a non-JSON body`, KEYS.unexpectedResponse);
+  }
+  if (!Array.isArray(parsed)) {
+    throw new SourceUnreachableError(`${what} answered ${typeof parsed}, not a list`, KEYS.unexpectedResponse);
+  }
+  return parsed;
+}
+async function testViaList(settings, list) {
+  if (!normalizeBase(settings.baseUrl)) return { ok: false, messageKey: KEYS.baseUrlMissing };
+  try {
+    await list();
+    return { ok: true, messageKey: KEYS.ok };
+  } catch (e) {
+    const err = e;
+    return { ok: false, messageKey: err.messageKey ?? KEYS.networkError, detail: err.detail ?? err.message };
+  }
+}
+function requireBase(settings, what) {
+  const base = normalizeBase(settings.baseUrl);
+  if (!base) throw new SourceUnreachableError(`${what} has no base URL`, KEYS.baseUrlMissing);
+  return base;
+}
+var prowlarr = {
+  async fetchIndexers(settings) {
+    const base = requireBase(settings, "prowlarr");
+    const rows = await fetchList(
+      `${base}/api/v1/indexer?apikey=${encodeURIComponent(settings.apiKey)}`,
+      "prowlarr",
+      // Both are accepted; the header is the documented one, the query param survives a proxy
+      // that strips unknown headers.
+      { headers: { "X-Api-Key": settings.apiKey } }
+    );
+    const indexers = [];
+    let unsupported = 0;
+    for (const raw of rows) {
+      const row = raw ?? {};
+      const id = typeof row.id === "number" || typeof row.id === "string" ? String(row.id) : "";
+      const name = typeof row.name === "string" ? row.name.trim() : "";
+      if (!id || !name) continue;
+      if (row.protocol !== void 0 && row.protocol !== "torrent") {
+        unsupported++;
+        continue;
+      }
+      indexers.push({
+        externalId: id,
+        name,
+        baseUrl: `${base}/${encodeURIComponent(id)}/api`,
+        enabled: row.enable !== false
+      });
+    }
+    return { indexers, unsupported };
+  },
+  testConnection(settings) {
+    return testViaList(settings, () => prowlarr.fetchIndexers(settings));
+  }
+};
+var jackett = {
+  async fetchIndexers(settings) {
+    const base = requireBase(settings, "jackett");
+    const rows = await fetchList(
+      `${base}/api/v2.0/indexers?configured=true&apikey=${encodeURIComponent(settings.apiKey)}`,
+      "jackett",
+      { session: true }
+    );
+    const indexers = [];
+    for (const raw of rows) {
+      const row = raw ?? {};
+      const id = typeof row.id === "string" || typeof row.id === "number" ? String(row.id) : "";
+      const name = typeof row.name === "string" ? row.name.trim() : "";
+      if (!id || !name) continue;
+      if (row.configured === false) continue;
+      indexers.push({
+        externalId: id,
+        name,
+        baseUrl: `${base}/api/v2.0/indexers/${encodeURIComponent(id)}/results/torznab/`,
+        enabled: true
+      });
+    }
+    return { indexers, unsupported: 0 };
+  },
+  testConnection(settings) {
+    return testViaList(settings, () => jackett.fetchIndexers(settings));
+  }
+};
+var INDEXER_SOURCE_DRIVERS = {
+  prowlarr,
+  jackett
+};
+
+// src/indexer-sources/service.ts
+var SECRET_SETTING_KEYS3 = ["apiKey"];
+var IMPORTED_IMPLEMENTATION = "torznab";
+var DISABLED_KEY = "download.indexer_sources.errors.disabled";
+var IndexerSourceDisabledError = class extends Error {
+  messageKey = DISABLED_KEY;
+  constructor(message) {
+    super(message);
+    this.name = "IndexerSourceDisabledError";
+  }
+};
+var IndexerSourceService = class {
+  constructor(deps) {
+    this.deps = deps;
+  }
+  driverFor(implementation) {
+    const driver = this.deps.drivers[implementation];
+    if (!driver) {
+      throw new UnknownIndexerSourceImplementationError(`Unknown indexer source "${implementation}"`);
+    }
+    return driver;
+  }
+  /** Strips the stored API key so it never reaches an HTTP response, and reports that it is set. */
+  redact(source) {
+    return { ...source, settings: redactSecretSettings(source.settings, SECRET_SETTING_KEYS3) };
+  }
+  async findAll() {
+    const rows = await this.deps.repo.listAll();
+    return rows.map((row) => this.redact(row));
+  }
+  async findOne(id) {
+    const row = await this.deps.repo.findById(id);
+    if (!row) throw new IndexerSourceNotFoundError(`Indexer source #${id} not found`);
+    return row;
+  }
+  async create(input) {
+    this.driverFor(input.implementation);
+    const saved = await this.deps.repo.insert({
+      name: input.name,
+      implementation: input.implementation,
+      settings: mergeSecretSettings(void 0, input.settings ?? {}, SECRET_SETTING_KEYS3),
+      priority: input.priority ?? 1,
+      enabled: input.enabled ?? true
+    });
+    log.info(`indexer source "${saved.name}" (${saved.implementation}) saved`);
+    return this.redact(saved);
+  }
+  async update(id, input) {
+    const existing = await this.findOne(id);
+    if (input.implementation !== void 0) this.driverFor(input.implementation);
+    const saved = await this.deps.repo.update(id, {
+      name: input.name ?? existing.name,
+      implementation: input.implementation ?? existing.implementation,
+      settings: input.settings === void 0 ? existing.settings : mergeSecretSettings(existing.settings, input.settings, SECRET_SETTING_KEYS3),
+      priority: input.priority ?? existing.priority,
+      enabled: input.enabled ?? existing.enabled
+    });
+    return this.redact(saved);
+  }
+  async remove(id) {
+    await this.findOne(id);
+    await this.deps.repo.remove(id);
+    log.info(`indexer source #${id} removed; the indexers it imported were kept`);
+  }
+  /**
+   * A blank key on a saved row means "use the stored one". The client never receives the real
+   * value on read, so demanding it here would make testing a saved source impossible without
+   * retyping it. A `null` is a pending erase: it tests without a key.
+   */
+  async settingsForTest(input) {
+    const submitted = input.settings ?? {};
+    const baseUrl = String(submitted["baseUrl"] ?? "").trim();
+    if (submitted["apiKey"] === null) return { baseUrl, apiKey: "" };
+    const key = String(submitted["apiKey"] ?? "").trim();
+    if (key || input.id === void 0) return { baseUrl, apiKey: key };
+    try {
+      const existing = await this.findOne(input.id);
+      return { baseUrl, apiKey: String(existing.settings["apiKey"] ?? "").trim() };
+    } catch {
+      return { baseUrl, apiKey: key };
+    }
+  }
+  async testConnection(input) {
+    const driver = this.deps.drivers[input.implementation];
+    if (!driver) {
+      return {
+        ok: false,
+        messageKey: "download.indexer_sources.test.unknown_implementation",
+        detail: input.implementation
+      };
+    }
+    const result = await driver.testConnection(await this.settingsForTest(input));
+    if (!result.ok) {
+      log.warn(`indexer source test failed (${input.implementation}): ${result.messageKey} ${result.detail ?? ""}`.trim());
+    }
+    return result;
+  }
+  /**
+   * Imports (or re-imports) everything the source has configured. Deduped on the torznab
+   * endpoint, which is derived from the source's base URL and the remote indexer's own id, so a
+   * second run updates what it created rather than adding a second copy of every tracker.
+   *
+   * A row that already exists keeps the admin's own name, priority and tuning; only a rotated
+   * API key is written back, because that is the one field the source still owns.
+   */
+  async importFrom(id) {
+    const source = await this.findOne(id);
+    if (!source.enabled) {
+      throw new IndexerSourceDisabledError(`Indexer source #${id} is disabled`);
+    }
+    const driver = this.driverFor(source.implementation);
+    const apiKey = String(source.settings["apiKey"] ?? "");
+    const settings = { baseUrl: String(source.settings["baseUrl"] ?? ""), apiKey };
+    let list;
+    try {
+      list = await driver.fetchIndexers(settings);
+    } catch (e) {
+      const err = e;
+      log.error(`import from "${source.name}" (${source.implementation}) failed: ${err.message}${err.detail ? `: ${err.detail}` : ""}`);
+      throw err;
+    }
+    const summary = { created: 0, updated: 0, unchanged: 0, unsupported: list.unsupported };
+    for (const remote of list.indexers) {
+      const existing = await this.deps.indexers.findByBaseUrl(remote.baseUrl);
+      if (!existing) {
+        await this.deps.indexers.create({
+          name: remote.name,
+          implementation: IMPORTED_IMPLEMENTATION,
+          settings: { baseUrl: remote.baseUrl, apiKey },
+          enabled: remote.enabled
+        });
+        summary.created++;
+        continue;
+      }
+      if (String(existing.settings["apiKey"] ?? "") !== apiKey) {
+        await this.deps.indexers.updateSettings(existing.id, { ...existing.settings, apiKey });
+        summary.updated++;
+        continue;
+      }
+      summary.unchanged++;
+    }
+    log.info(
+      `import from "${source.name}" (${source.implementation}): ${summary.created} added, ${summary.updated} key-refreshed, ${summary.unchanged} unchanged, ${summary.unsupported} unsupported`
+    );
+    return summary;
+  }
+};
+
 // src/grab/release-scoring.ts
 async function buildScoreRequest(releases, indexers, blocklistRepo) {
   const byIndexer = new Map(indexers.map((ix) => [ix.id, ix]));
@@ -7944,7 +8465,7 @@ var MAX_RELEASE_ATTEMPTS = 3;
 function pickReleases(sorted, want, limit = MAX_RELEASE_ATTEMPTS) {
   if (!want) return [];
   if (want.decision === "skip") return [];
-  return sorted.filter((r) => r.rejections.length === 0 && r.rank > want.minRankExclusive && r.rank <= want.maxRankInclusive).slice(0, limit);
+  return sorted.filter((r) => r.rejections.length === 0).slice(0, limit);
 }
 function toWireRelease({ indexerId, indexerName, ...rest }) {
   return { ...rest, sourceId: indexerId, sourceName: indexerName };
@@ -7994,20 +8515,20 @@ function openRound(indexer, indexers, context, hooks) {
   }
   return ready.length ? ready : null;
 }
-async function searchMovieAcrossIndexers(indexer, indexers, query, externalIds, context = "search", hooks) {
+async function searchMovieAcrossIndexers(indexer, indexers, kind, query, externalIds, context = "search", hooks) {
   const ready = openRound(indexer, indexers, context, hooks);
   if (!ready) return [];
-  return fanOut(ready, (ix) => indexer.searchMovie(ix, query, externalIds), hooks);
+  return fanOut(ready, (ix) => indexer.searchMovie(ix, kind, query, externalIds), hooks);
 }
-async function searchSeriesAcrossIndexers(indexer, indexers, query, season, episode, externalIds, context = "search", hooks) {
+async function searchSeriesAcrossIndexers(indexer, indexers, kind, query, season, episode, externalIds, context = "search", hooks) {
   const ready = openRound(indexer, indexers, context, hooks);
   if (!ready) return [];
-  return fanOut(ready, (ix) => indexer.searchSeries(ix, query, season, episode, externalIds), hooks);
+  return fanOut(ready, (ix) => indexer.searchSeries(ix, kind, query, season, episode, externalIds), hooks);
 }
-async function searchSeasonPackAcrossIndexers(indexer, indexers, query, season, externalIds, context = "search", hooks) {
+async function searchSeasonPackAcrossIndexers(indexer, indexers, kind, query, season, externalIds, context = "search", hooks) {
   const ready = openRound(indexer, indexers, context, hooks);
   if (!ready) return [];
-  return fanOut(ready, (ix) => indexer.searchSeasonPack(ix, query, season, externalIds), hooks);
+  return fanOut(ready, (ix) => indexer.searchSeasonPack(ix, kind, query, season, externalIds), hooks);
 }
 async function rssAcrossIndexers(indexer, indexers, context = "RssSync") {
   const ready = readyIndexersOrNone(indexer, indexers, context);
@@ -8203,7 +8724,7 @@ function searchQuery(target, customQuery) {
 function isSpecial(target) {
   return target.season?.number === 0;
 }
-async function searchScored(deps, target, customQuery, stream) {
+async function searchScored(deps, target, kind, customQuery, stream) {
   const indexers = await deps.indexersRepo.listEnabled();
   if (!indexers.length) return [];
   await refreshSearchBudget(deps.host);
@@ -8235,11 +8756,11 @@ async function searchScored(deps, target, customQuery, stream) {
   }
   let raw;
   if (target.episode) {
-    raw = await searchSeriesAcrossIndexers(deps.indexer, indexers, query, target.season.number, target.episode.number, externalIds, context, hooks);
+    raw = await searchSeriesAcrossIndexers(deps.indexer, indexers, kind, query, target.season.number, target.episode.number, externalIds, context, hooks);
   } else if (target.season) {
-    raw = await searchSeasonPackAcrossIndexers(deps.indexer, indexers, query, target.season.number, externalIds, context, hooks);
+    raw = await searchSeasonPackAcrossIndexers(deps.indexer, indexers, kind, query, target.season.number, externalIds, context, hooks);
   } else {
-    raw = await searchMovieAcrossIndexers(deps.indexer, indexers, query, externalIds, context, hooks);
+    raw = await searchMovieAcrossIndexers(deps.indexer, indexers, kind, query, externalIds, context, hooks);
   }
   if (!raw.length) return [];
   return rank(raw);
@@ -8257,7 +8778,7 @@ async function rankReleases(deps, target, indexers, releases) {
 async function searchReleases(deps, mediaId, seasonId, episodeId, customQuery, stream) {
   const target = await loadTarget(deps, mediaId, seasonId, episodeId);
   if (!target.want) throw new GrabError("download.grab.errors.unprofiled");
-  const scored = await searchScored(deps, target, customQuery, stream);
+  const scored = await searchScored(deps, target, "manual", customQuery, stream);
   const satisfied = target.want.decision === "skip" ? " (profile already satisfied)" : "";
   log.info(`Search #${mediaId} "${target.title}"${satisfied} q="${searchQuery(target, customQuery)}" \u2192 ${scored.length} result(s)`);
   return scored;
@@ -8318,7 +8839,7 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
     });
   }
   log.info(`Grab #${mediaId} "${target.title}" \u2014 auto-pick`);
-  const scored = await searchScored(deps, target);
+  const scored = await searchScored(deps, target, "auto");
   const pick = pickRelease(scored, target.want);
   if (target.season && !target.episode && !pick?.isFullSeason) {
     return grabSeasonEpisodes(deps, target, pick ? "loose episodes outrank every pack" : "no eligible season release");
@@ -8478,7 +8999,7 @@ async function searchMissing(deps, mediaIds) {
       count++;
       if (!target.want || target.want.decision === "skip") continue;
       if (target.episode && target.season && seasonsGrabbedAsPack.has(target.season.id)) continue;
-      const grabbed = await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
+      const grabbed = await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t, "auto"), () => pendingCheck(deps.historyRepo, target));
       if (grabbed && target.season && !target.episode) seasonsGrabbedAsPack.add(target.season.id);
     }
     cursor = page.cursor;
@@ -8531,7 +9052,7 @@ async function rssSync(deps) {
         }
         continue;
       }
-      await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t), () => pendingCheck(deps.historyRepo, target));
+      await tryAutoGrab(deps, target, client, (t) => searchScored(deps, t, "auto"), () => pendingCheck(deps.historyRepo, target));
     }
   }
 }
@@ -8809,6 +9330,9 @@ var DownloadCompletionPoller = class {
       }
       try {
         await this.deps.historyRepo.markImporting(history.id);
+        if (history.mediaId != null) {
+          await this.publishOne(history.mediaId, allTorrents, allClientsResponded);
+        }
         await this.processOne(history, torrent, client);
         imported++;
       } catch (e) {
@@ -9462,6 +9986,13 @@ var ROUTES = [
   { method: "DELETE", path: "/indexers/:id", policy: POLICY.indexersManage },
   { method: "DELETE", path: "/indexers/:id/cooldown", policy: POLICY.indexersManage },
   { method: "GET", path: "/indexers/:id/stats", policy: POLICY.indexersRead },
+  { method: "GET", path: "/indexer-sources", policy: POLICY.indexersRead },
+  { method: "POST", path: "/indexer-sources", policy: POLICY.indexersManage },
+  { method: "POST", path: "/indexer-sources/test-connection", policy: POLICY.indexersManage },
+  { method: "GET", path: "/indexer-sources/implementations", policy: POLICY.indexersRead },
+  { method: "PUT", path: "/indexer-sources/:id", policy: POLICY.indexersManage },
+  { method: "DELETE", path: "/indexer-sources/:id", policy: POLICY.indexersManage },
+  { method: "POST", path: "/indexer-sources/:id/import", policy: POLICY.indexersManage },
   { method: "GET", path: "/download-clients", policy: POLICY.downloadClientsRead },
   { method: "POST", path: "/download-clients", policy: POLICY.downloadClientsManage },
   { method: "POST", path: "/download-clients/test-connection", policy: POLICY.downloadClientsManage },
@@ -9519,6 +10050,14 @@ var UI_CONTRIBUTIONS = [
     labelKey: "download.config.indexers.title",
     icon: "search",
     action: { kind: "route", path: settingsPagePath("indexers") }
+  },
+  {
+    id: "fliks-download.settings.indexer-sources",
+    slot: "settings.page",
+    weight: 115,
+    labelKey: "download.config.indexer_sources.title",
+    icon: "server",
+    action: { kind: "route", path: settingsPagePath("indexer-sources") }
   },
   {
     id: "fliks-download.settings.download-clients",
@@ -9669,6 +10208,10 @@ var CONFIG_PAGES = [
     testConnection: { route: "/indexers/test-connection" },
     showPriority: true,
     defaultPriority: 25,
+    // An imported list arrives a dozen rows at a time, and the first thing an admin does with it
+    // is disable or retune part of it. One row at a time is the reason this is on here and
+    // nowhere else.
+    bulkSelect: true,
     labels: {
       newKey: "download.config.indexers.labels.new",
       emptyKey: "download.config.indexers.labels.empty",
@@ -9713,6 +10256,41 @@ var CONFIG_PAGES = [
         method: "DELETE",
         route: "/indexers/cooldowns",
         scope: "list"
+      }
+    ]
+  },
+  {
+    /**
+     * The import side of the indexers page: a saved Prowlarr / Jackett connection, and one
+     * button per row that turns what it has configured into torznab indexers. Its own page
+     * rather than a dialog on the indexers page, because a source is saved and re-read: the
+     * refresh has to have somewhere to live.
+     */
+    id: "indexer-sources",
+    kind: "providers",
+    labelKey: "download.config.indexer_sources.title",
+    subtitleKey: "download.config.indexer_sources.subtitle",
+    icon: "server",
+    list: "/indexer-sources",
+    implementations: "/indexer-sources/implementations",
+    testConnection: { route: "/indexer-sources/test-connection" },
+    // Nothing consumes a source in priority order: the import is manual, one source at a time.
+    showPriority: false,
+    labels: {
+      newKey: "download.config.indexer_sources.labels.new",
+      emptyKey: "download.config.indexer_sources.labels.empty",
+      testKey: "download.config.indexer_sources.labels.test",
+      deleteConfirmKey: "download.config.indexer_sources.labels.delete_confirm",
+      createTitleKey: "download.config.indexer_sources.labels.create_title",
+      editTitleKey: "download.config.indexer_sources.labels.edit_title"
+    },
+    actions: [
+      {
+        id: "import",
+        labelKey: "download.config.indexer_sources.actions.import",
+        method: "POST",
+        route: "/indexer-sources/:id/import",
+        scope: "row"
       }
     ]
   },
@@ -9776,6 +10354,7 @@ var CONFIG_PAGES = [
           stalled: "warning",
           paused: "ghost",
           importing: "primary"
+          // Ghost, not warning: nothing is wrong, the row is simply unverifiable.
         },
         // The percentage fills this badge instead of holding a column of its own: it says what
         // the state beside it is doing, and a column of bare numbers read as unrelated to it.
@@ -9802,6 +10381,9 @@ var CONFIG_PAGES = [
     icon: "history",
     list: "/history",
     paged: true,
+    // Cleaning up a history is the one thing done to several rows at once, and the page already
+    // has the filters to narrow down which.
+    bulkSelect: true,
     pageSize: 25,
     filters: [
       { kind: "search", key: "q", placeholderKey: "download.config.history.filters.search_placeholder" },
@@ -9956,6 +10538,28 @@ var I18N = {
     "download.jobs.clean_seeded": "Clean seeded downloads",
     // Connection-test outcomes: the key names the reason, `detail` carries the
     // indexer's own text or an HTTP status — the `rejections[].code` split.
+    // Import sources: a saved Prowlarr / Jackett connection, and the outcomes of reading it.
+    "download.config.indexer_sources.title": "Indexer sources",
+    "download.config.indexer_sources.subtitle": "Sync the indexer list from configured providers.",
+    "download.config.indexer_sources.implementations.prowlarr": "Prowlarr",
+    "download.config.indexer_sources.implementations.jackett": "Jackett",
+    "download.config.indexer_sources.fields.base_url": "Base URL",
+    "download.config.indexer_sources.fields.api_key": "API key",
+    "download.config.indexer_sources.labels.new": "New source",
+    "download.config.indexer_sources.labels.empty": "No source saved yet",
+    "download.config.indexer_sources.labels.test": "Test connection",
+    "download.config.indexer_sources.labels.delete_confirm": "Delete this source? The indexers it imported are kept.",
+    "download.config.indexer_sources.labels.create_title": "New indexer source",
+    "download.config.indexer_sources.labels.edit_title": "Edit the source",
+    "download.config.indexer_sources.actions.import": "Import the indexers",
+    "download.config.indexer_sources.errors.disabled": "This source is disabled. Enable it before importing.",
+    "download.indexer_sources.test.ok": "Indexer list read, connection OK",
+    "download.indexer_sources.test.base_url_missing": "Base URL is empty",
+    "download.indexer_sources.test.http_error": "The source answered with an HTTP error",
+    "download.indexer_sources.test.unexpected_response": "Unexpected response: not an indexer list. Check the base URL.",
+    "download.indexer_sources.test.network_error": "Could not reach the source",
+    "download.indexer_sources.test.login_required": "The source asks for a login this import cannot provide. Remove its admin password, or add the indexers by hand.",
+    "download.indexer_sources.test.unknown_implementation": "Unknown source type",
     "download.indexers.test.ok": "Capabilities read, connection OK",
     "download.indexers.test.base_url_missing": "Base URL is empty",
     "download.indexers.test.http_error": "The indexer answered with an HTTP error",
@@ -9979,6 +10583,7 @@ var I18N = {
     "download.grab.errors.blocklisted": "This release is blocklisted",
     "download.grab.errors.releases_unobtainable": "No release could be fetched. Last reason: {{detail}}",
     "download.queue.removed_by_user": "Removed from the queue by a user",
+    "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it",
     "download.queue.errors.not_controllable": "This download can no longer be controlled",
     "download.queue.errors.no_torrent": "No download client holds this release yet",
     "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
@@ -9997,7 +10602,12 @@ var I18N = {
     "download.config.indexers.fields.api_key": "API key",
     "download.config.indexers.fields.request_delay": "Request delay (seconds)",
     "download.config.indexers.fields.request_delay_hint": "Minimum time between two search requests sent to this indexer.",
-    "download.config.indexers.fields.enable_search": "Enable in search",
+    "download.config.indexers.fields.use_for": "Use for",
+    "download.config.indexers.fields.use_for_hint": "Which of these this indexer is queried for. At least one usage is required.",
+    "download.config.indexers.fields.use_for_rss": "RSS sync",
+    "download.config.indexers.fields.use_for_auto": "Automatic searches",
+    "download.config.indexers.fields.use_for_manual": "Manual searches",
+    "download.config.indexers.errors.no_usage": "Pick at least one usage for this indexer",
     "download.config.indexers.fields.min_seeders": "Minimum seeders",
     "download.config.indexers.fields.seed_ratio": "Seed ratio target",
     "download.config.indexers.fields.seed_ratio_hint": "A completed download is removed from the client once it reaches this ratio.",
@@ -10114,6 +10724,27 @@ var I18N = {
     "download.jobs.import_completed": "Import des t\xE9l\xE9chargements termin\xE9s",
     "download.jobs.clean_stalled": "Nettoyage des torrents bloqu\xE9s",
     "download.jobs.clean_seeded": "Nettoyage des torrents seed\xE9s",
+    "download.config.indexer_sources.title": "Sources d\u2019indexeurs",
+    "download.config.indexer_sources.subtitle": "Synchroniser la liste des indexeurs depuis des fournisseurs configur\xE9s.",
+    "download.config.indexer_sources.implementations.prowlarr": "Prowlarr",
+    "download.config.indexer_sources.implementations.jackett": "Jackett",
+    "download.config.indexer_sources.fields.base_url": "URL de base",
+    "download.config.indexer_sources.fields.api_key": "Cl\xE9 d\u2019API",
+    "download.config.indexer_sources.labels.new": "Nouvelle source",
+    "download.config.indexer_sources.labels.empty": "Aucune source enregistr\xE9e",
+    "download.config.indexer_sources.labels.test": "Tester la connexion",
+    "download.config.indexer_sources.labels.delete_confirm": "Supprimer cette source ? Les indexeurs import\xE9s sont conserv\xE9s.",
+    "download.config.indexer_sources.labels.create_title": "Nouvelle source d\u2019indexeurs",
+    "download.config.indexer_sources.labels.edit_title": "Modifier la source",
+    "download.config.indexer_sources.actions.import": "Importer les indexeurs",
+    "download.config.indexer_sources.errors.disabled": "Cette source est d\xE9sactiv\xE9e. Activez-la avant d\u2019importer.",
+    "download.indexer_sources.test.ok": "Liste des indexeurs lue, connexion OK",
+    "download.indexer_sources.test.base_url_missing": "L\u2019URL de base est vide",
+    "download.indexer_sources.test.http_error": "La source a r\xE9pondu avec une erreur HTTP",
+    "download.indexer_sources.test.unexpected_response": "R\xE9ponse inattendue : ce n\u2019est pas une liste d\u2019indexeurs. V\xE9rifiez l\u2019URL de base.",
+    "download.indexer_sources.test.network_error": "Impossible de joindre la source",
+    "download.indexer_sources.test.login_required": "La source demande une authentification que cet import ne peut pas fournir. Retirez son mot de passe admin, ou ajoutez les indexeurs \xE0 la main.",
+    "download.indexer_sources.test.unknown_implementation": "Type de source inconnu",
     "download.indexers.test.ok": "Capacit\xE9s lues, connexion OK",
     "download.indexers.test.base_url_missing": "L\u2019URL de base est vide",
     "download.indexers.test.http_error": "L\u2019indexeur a r\xE9pondu avec une erreur HTTP",
@@ -10133,6 +10764,7 @@ var I18N = {
     "download.grab.errors.blocklisted": "Cette release est sur liste de blocage",
     "download.grab.errors.releases_unobtainable": "Aucune release n\u2019a pu \xEAtre r\xE9cup\xE9r\xE9e. Derni\xE8re raison : {{detail}}",
     "download.queue.removed_by_user": "Retir\xE9 de la file d'attente par un utilisateur",
+    "download.queue.retired_unverifiable": "Retir\xE9 de la file d'attente, aucun client de t\xE9l\xE9chargement n'a pu le confirmer",
     "download.queue.errors.not_controllable": "Ce t\xE9l\xE9chargement ne peut plus \xEAtre pilot\xE9",
     "download.queue.errors.no_torrent": "Aucun client de t\xE9l\xE9chargement ne d\xE9tient encore cette release",
     "download.grab.errors.quality_not_allowed": "La qualit\xE9 de cette release n\u2019est pas autoris\xE9e par le profil",
@@ -10149,7 +10781,12 @@ var I18N = {
     "download.config.indexers.fields.api_key": "Cl\xE9 API",
     "download.config.indexers.fields.request_delay": "D\xE9lai entre requ\xEAtes (secondes)",
     "download.config.indexers.fields.request_delay_hint": "D\xE9lai minimum entre deux requ\xEAtes de recherche envoy\xE9es \xE0 cet indexeur.",
-    "download.config.indexers.fields.enable_search": "Activer dans la recherche",
+    "download.config.indexers.fields.use_for": "Utiliser pour",
+    "download.config.indexers.fields.use_for_hint": "Les usages pour lesquels cet indexeur est interrog\xE9. Au moins un usage est requis.",
+    "download.config.indexers.fields.use_for_rss": "Synchro RSS",
+    "download.config.indexers.fields.use_for_auto": "Recherches automatiques",
+    "download.config.indexers.fields.use_for_manual": "Recherches manuelles",
+    "download.config.indexers.errors.no_usage": "Choisissez au moins un usage pour cet indexeur",
     "download.config.indexers.fields.min_seeders": "Nombre minimum de seeders",
     "download.config.indexers.fields.seed_ratio": "Ratio de partage cible",
     "download.config.indexers.fields.seed_ratio_hint": "Un t\xE9l\xE9chargement termin\xE9 est retir\xE9 du client une fois ce ratio atteint.",
@@ -10213,13 +10850,15 @@ var I18N = {
 };
 var MANIFEST_TEMPLATE = {
   id: PLUGIN_ID,
-  pluginApi: 0,
+  // 1 is the revision without the upgrade window in `AcquisitionTarget.want`: core decides it
+  // and reports it as a rejection. Within one revision the shape is additive only, so the
+  // removal had to move to a new one — and a core still on 0 refuses this build outright
+  // rather than handing the picker an absent bound.
+  pluginApi: 1,
   name: "Download",
-  // 3.7.0 is the first core that reads `visibleWhen`, `confirmToggle` and `progressField`, and
-  // the first whose data table substitutes `:id` into a proxy row action. An older client ignores
-  // all four in silence — which would render every control unconditionally and drop the
-  // "delete the files" answer, so the floor is a correctness bound, not a courtesy.
-  fliks: ">=3.7.0 <4.0.0",
+  // 4.0.0 is the first core that applies the whole quality profile itself, which is what lets the
+  // picker trust `rejections` alone. It is also the first that accepts `pluginApi` 1 at all.
+  fliks: ">=4.0.0 <5.0.0",
   author: "Fliks",
   description: "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   license: "AGPL-3.0-or-later",
@@ -10273,16 +10912,33 @@ function optionalIntParam(params, name) {
   const n = /^[1-9]\d*$/.test(params[name]) ? Number(params[name]) : null;
   return n;
 }
+function useForErrorResponse(err) {
+  return err.useForError === "empty" ? jsonResponse(400, { error: { key: "download.config.indexers.errors.no_usage" } }) : badBody("useFor");
+}
+function readGates(body) {
+  const useFor = body["useFor"];
+  if (useFor !== void 0) {
+    if (Array.isArray(useFor) && useFor.length === 0) return { useForError: "empty" };
+    if (!isUseForList(useFor)) return { useForError: "invalid" };
+    return gatesFor(useFor);
+  }
+  return {
+    enableRss: typeof body["enableRss"] === "boolean" ? body["enableRss"] : void 0,
+    enableSearch: typeof body["enableSearch"] === "boolean" ? body["enableSearch"] : void 0,
+    enableInteractiveSearch: typeof body["enableInteractiveSearch"] === "boolean" ? body["enableInteractiveSearch"] : void 0
+  };
+}
 function readCreateIndexerInput(body) {
   const b = body ?? {};
   if (typeof b.name !== "string" || !b.name.trim()) return "name";
   if (typeof b.implementation !== "string" || !b.implementation) return "implementation";
+  const gates = readGates(body ?? {});
+  if ("useForError" in gates) return gates;
   return {
     name: b.name,
     implementation: b.implementation,
     settings: typeof b.settings === "object" && b.settings !== null ? b.settings : void 0,
-    enableRss: typeof b.enableRss === "boolean" ? b.enableRss : void 0,
-    enableSearch: typeof b.enableSearch === "boolean" ? b.enableSearch : void 0,
+    ...gates,
     priority: typeof b.priority === "number" ? b.priority : void 0,
     requestDelay: typeof b.requestDelay === "number" ? b.requestDelay : void 0,
     enabled: typeof b.enabled === "boolean" ? b.enabled : void 0
@@ -10290,18 +10946,51 @@ function readCreateIndexerInput(body) {
 }
 function readUpdateIndexerInput(body) {
   const b = body ?? {};
+  const gates = readGates(body ?? {});
+  if ("useForError" in gates) return gates;
   return {
     name: typeof b.name === "string" ? b.name : void 0,
     implementation: typeof b.implementation === "string" ? b.implementation : void 0,
     settings: typeof b.settings === "object" && b.settings !== null ? b.settings : void 0,
-    enableRss: typeof b.enableRss === "boolean" ? b.enableRss : void 0,
-    enableSearch: typeof b.enableSearch === "boolean" ? b.enableSearch : void 0,
+    ...gates,
     priority: typeof b.priority === "number" ? b.priority : void 0,
     requestDelay: typeof b.requestDelay === "number" ? b.requestDelay : void 0,
     enabled: typeof b.enabled === "boolean" ? b.enabled : void 0
   };
 }
 function readTestIndexerConnectionInput(body) {
+  const b = body ?? {};
+  if (typeof b.implementation !== "string") return null;
+  const settings = typeof b.settings === "object" && b.settings !== null ? b.settings : {};
+  return {
+    implementation: b.implementation,
+    settings,
+    ...Number.isInteger(b.id) ? { id: b.id } : {}
+  };
+}
+function readCreateIndexerSourceInput(body) {
+  const b = body ?? {};
+  if (typeof b.name !== "string" || !b.name.trim()) return "name";
+  if (typeof b.implementation !== "string" || !b.implementation) return "implementation";
+  return {
+    name: b.name,
+    implementation: b.implementation,
+    settings: typeof b.settings === "object" && b.settings !== null ? b.settings : void 0,
+    priority: typeof b.priority === "number" ? b.priority : void 0,
+    enabled: typeof b.enabled === "boolean" ? b.enabled : void 0
+  };
+}
+function readUpdateIndexerSourceInput(body) {
+  const b = body ?? {};
+  return {
+    name: typeof b.name === "string" ? b.name : void 0,
+    implementation: typeof b.implementation === "string" ? b.implementation : void 0,
+    settings: typeof b.settings === "object" && b.settings !== null ? b.settings : void 0,
+    priority: typeof b.priority === "number" ? b.priority : void 0,
+    enabled: typeof b.enabled === "boolean" ? b.enabled : void 0
+  };
+}
+function readTestIndexerSourceInput(body) {
   const b = body ?? {};
   if (typeof b.implementation !== "string") return null;
   const settings = typeof b.settings === "object" && b.settings !== null ? b.settings : {};
@@ -10397,12 +11086,15 @@ async function handleListDownloadClients(deps) {
 async function handleCreateIndexer(deps, req) {
   const input = readCreateIndexerInput(req.body);
   if (typeof input === "string") return badBody(input);
+  if ("useForError" in input) return useForErrorResponse(input);
   return jsonResponse(201, await deps.indexerService.create(input));
 }
 async function handleUpdateIndexer(deps, params, req) {
   const id = requireIntParam(params, "id");
   if (id === null) return badRequest("id");
-  return jsonResponse(200, await deps.indexerService.update(id, readUpdateIndexerInput(req.body)));
+  const input = readUpdateIndexerInput(req.body);
+  if ("useForError" in input) return useForErrorResponse(input);
+  return jsonResponse(200, await deps.indexerService.update(id, input));
 }
 async function handleDeleteIndexer(deps, params) {
   const id = requireIntParam(params, "id");
@@ -10429,6 +11121,35 @@ async function handleClearIndexerCooldown(deps, params) {
 }
 async function handleClearAllIndexerCooldowns(deps) {
   return jsonResponse(200, deps.indexerService.clearAllCooldowns());
+}
+async function handleListIndexerSources(deps) {
+  return jsonResponse(200, await deps.indexerSourceService.findAll());
+}
+async function handleCreateIndexerSource(deps, req) {
+  const input = readCreateIndexerSourceInput(req.body);
+  if (typeof input === "string") return badBody(input);
+  return jsonResponse(201, await deps.indexerSourceService.create(input));
+}
+async function handleUpdateIndexerSource(deps, params, req) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  return jsonResponse(200, await deps.indexerSourceService.update(id, readUpdateIndexerSourceInput(req.body)));
+}
+async function handleDeleteIndexerSource(deps, params) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  await deps.indexerSourceService.remove(id);
+  return jsonResponse(200, {});
+}
+async function handleTestIndexerSourceConnection(deps, req) {
+  const input = readTestIndexerSourceInput(req.body);
+  if (!input) return badBody("implementation");
+  return jsonResponse(200, await deps.indexerSourceService.testConnection(input));
+}
+async function handleImportFromIndexerSource(deps, params) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  return jsonResponse(200, await deps.indexerSourceService.importFrom(id));
 }
 async function handleCreateDownloadClient(deps, req) {
   const input = readCreateDownloadClientInput(req.body);
@@ -10470,8 +11191,9 @@ async function handleRemoveBlocklistEntry(deps, params) {
   return jsonResponse(200, {});
 }
 var REMOVED_BY_USER_KEY = "download.queue.removed_by_user";
+var RETIRED_UNVERIFIABLE_KEY = "download.queue.retired_unverifiable";
 var CONTROLLABLE_STATUSES = ["grabbed"];
-async function resolveControllable(deps, params) {
+async function findControllableRow(deps, params) {
   const id = requireIntParam(params, "id");
   if (id === null) return badRequest("id");
   const row = await deps.downloadHistory.findById(id);
@@ -10479,8 +11201,14 @@ async function resolveControllable(deps, params) {
   if (!CONTROLLABLE_STATUSES.includes(row.status)) {
     return jsonResponse(409, { error: { key: "download.queue.errors.not_controllable", detail: row.status } });
   }
+  return { row };
+}
+async function resolveControllable(deps, params) {
+  const resolved = await findControllableRow(deps, params);
+  if (isHttpResponse(resolved)) return resolved;
+  const { row } = resolved;
   if (row.downloadClientId == null || !row.torrentHash) {
-    return jsonResponse(409, { error: { key: "download.queue.errors.no_torrent", detail: String(id) } });
+    return jsonResponse(409, { error: { key: "download.queue.errors.no_torrent", detail: String(row.id) } });
   }
   return { row, clientId: row.downloadClientId, hash: row.torrentHash };
 }
@@ -10499,11 +11227,18 @@ async function handleQueueControl(deps, params, action) {
   return jsonResponse(200, {});
 }
 async function handleQueueRemove(deps, req, params) {
-  const resolved = await resolveControllable(deps, params);
+  const resolved = await findControllableRow(deps, params);
   if (isHttpResponse(resolved)) return resolved;
-  await deps.downloadClientsService.removeTorrent(resolved.clientId, resolved.hash, req.query["deleteFiles"] === "true");
-  await deps.downloadHistory.markFailed(resolved.row.id, REMOVED_BY_USER_KEY);
-  await settleAndPublish(deps, resolved.row, "absent");
+  const { row } = resolved;
+  const { byClientId } = await indexClientTorrents(deps);
+  const consulted = row.downloadClientId != null && byClientId.get(row.downloadClientId)?.consulted === true;
+  if (consulted && row.torrentHash) {
+    await deps.downloadClientsService.removeTorrent(row.downloadClientId, row.torrentHash, req.query["deleteFiles"] === "true");
+    await deps.downloadHistory.markFailed(row.id, REMOVED_BY_USER_KEY);
+  } else {
+    await deps.downloadHistory.markFailed(row.id, RETIRED_UNVERIFIABLE_KEY);
+  }
+  await settleAndPublish(deps, row, "absent");
   return jsonResponse(200, {});
 }
 async function handleDeleteHistoryEntry(deps, params) {
@@ -10555,16 +11290,20 @@ async function attachMediaLabels(deps, items) {
 var QUEUE_STATUSES = ["grabbed", "importing"];
 var HISTORY_STATUSES = ["grabbed", "importing", "completed", "failed", "warning"];
 async function indexClientTorrents(deps) {
-  const clients = await deps.downloadClientsRepo.listEnabled();
+  const clients = await deps.downloadClientsRepo.listAll();
   const byClientId = /* @__PURE__ */ new Map();
   let anyUnreachable = false;
   await Promise.all(
     clients.map(async (client) => {
       const driver = deps.downloadClientDrivers[client.implementation];
-      if (!driver || !driver.supports(client)) return;
+      if (!client.enabled || !driver || !driver.supports(client)) {
+        byClientId.set(client.id, { consulted: false, ok: false, byHash: /* @__PURE__ */ new Map() });
+        return;
+      }
       const result = await driver.getTorrentsResult(client);
       if (!result.ok) anyUnreachable = true;
       byClientId.set(client.id, {
+        consulted: true,
         ok: result.ok,
         byHash: new Map(result.torrents.map((t) => [t.hash.toLowerCase(), t]))
       });
@@ -10575,6 +11314,13 @@ async function indexClientTorrents(deps) {
 function liveTorrentFor(row, byClientId) {
   const index = row.downloadClientId != null ? byClientId.get(row.downloadClientId) : void 0;
   return index && row.torrentHash ? index.byHash.get(row.torrentHash.toLowerCase()) : void 0;
+}
+function isUnverifiable(row, byClientId) {
+  if (row.status === "importing") return false;
+  if (row.downloadClientId == null || !row.torrentHash) return false;
+  const index = byClientId.get(row.downloadClientId);
+  if (!index || !index.consulted || !index.ok) return true;
+  return false;
 }
 function toQueueItem(row, byClientId, indexerNames) {
   const base = {
@@ -10608,15 +11354,10 @@ function toQueueItem(row, byClientId, indexerNames) {
       clientReachable: true
     };
   }
-  if (index?.ok) return null;
-  return {
-    ...base,
-    state: "queued",
-    progress: null,
-    bytesPerSecond: null,
-    size: null,
-    clientReachable: false
-  };
+  if (row.downloadClientId == null || !row.torrentHash) {
+    return { ...base, state: "queued", progress: null, bytesPerSecond: null, size: null, clientReachable: true };
+  }
+  return null;
 }
 function displayStatusOf(row, live, anyUnreachable) {
   if (row.status === "importing") return "importing";
@@ -10673,6 +11414,7 @@ async function handleQueue(deps, req) {
   ]);
   const indexerNames = new Map(indexers.map((ix) => [ix.id, ix.name]));
   const items = rows.map((row) => toQueueItem(row, byClientId, indexerNames)).filter((item) => item !== null).sort((a, b) => b.id - a.id);
+  const unverifiable = rows.filter((row) => isUnverifiable(row, byClientId)).length;
   const start = (page - 1) * pageSize;
   const data = await attachMediaLabels(deps, items.slice(start, start + pageSize));
   return jsonResponse(200, {
@@ -10680,7 +11422,9 @@ async function handleQueue(deps, req) {
     total: items.length,
     page,
     pageSize,
-    clientsUnreachable: anyUnreachable
+    // Counts the rows left out for want of a client that could answer, not the ones a client
+    // answered about without holding: those are over, not unverifiable.
+    clientsUnreachable: anyUnreachable || unverifiable > 0
   });
 }
 var INDEXER_IMPLEMENTATIONS = [
@@ -10699,11 +11443,22 @@ var INDEXER_IMPLEMENTATIONS = [
         topLevel: true
       },
       {
-        key: "enableSearch",
-        type: "toggle",
-        labelKey: "download.config.indexers.fields.enable_search",
-        default: true,
-        topLevel: true
+        // Three independent usages, not one choice: RSS sync, an automatic search and a manual
+        // one are each gated on their own column, and none of them implies another.
+        key: "useFor",
+        type: "multiselect",
+        labelKey: "download.config.indexers.fields.use_for",
+        hint: "download.config.indexers.fields.use_for_hint",
+        required: true,
+        topLevel: true,
+        // A new indexer is worth using everywhere until its owner says otherwise, which is also
+        // what `IndexerService.create` writes when a caller (the source import) sends no gates.
+        default: ["rss", "auto", "manual"],
+        options: [
+          { value: "rss", labelKey: "download.config.indexers.fields.use_for_rss" },
+          { value: "auto", labelKey: "download.config.indexers.fields.use_for_auto" },
+          { value: "manual", labelKey: "download.config.indexers.fields.use_for_manual" }
+        ]
       },
       { key: "minSeeders", type: "number", labelKey: "download.config.indexers.fields.min_seeders", default: 0 },
       {
@@ -10725,6 +11480,24 @@ var INDEXER_IMPLEMENTATIONS = [
         labelKey: "download.config.indexers.fields.unknown_language",
         hint: "download.config.indexers.fields.unknown_language_hint"
       }
+    ]
+  }
+];
+var INDEXER_SOURCE_IMPLEMENTATIONS = [
+  {
+    implementation: "prowlarr",
+    labelKey: "download.config.indexer_sources.implementations.prowlarr",
+    fields: [
+      { key: "baseUrl", type: "url", labelKey: "download.config.indexer_sources.fields.base_url", required: true },
+      { key: "apiKey", type: "password", labelKey: "download.config.indexer_sources.fields.api_key", secret: true, required: true }
+    ]
+  },
+  {
+    implementation: "jackett",
+    labelKey: "download.config.indexer_sources.implementations.jackett",
+    fields: [
+      { key: "baseUrl", type: "url", labelKey: "download.config.indexer_sources.fields.base_url", required: true },
+      { key: "apiKey", type: "password", labelKey: "download.config.indexer_sources.fields.api_key", secret: true, required: true }
     ]
   }
 ];
@@ -10753,6 +11526,9 @@ var DOWNLOAD_CLIENT_IMPLEMENTATIONS = [
 async function handleIndexerImplementations() {
   return jsonResponse(200, INDEXER_IMPLEMENTATIONS);
 }
+async function handleIndexerSourceImplementations() {
+  return jsonResponse(200, INDEXER_SOURCE_IMPLEMENTATIONS);
+}
 async function handleDownloadClientImplementations() {
   return jsonResponse(200, DOWNLOAD_CLIENT_IMPLEMENTATIONS);
 }
@@ -10762,11 +11538,20 @@ function wrap(handler) {
       return await handler(req, params);
     } catch (err) {
       if (err instanceof GrabError) return grabErrorResponse(err);
-      if (err instanceof IndexerNotFoundError || err instanceof DownloadClientNotFoundError) {
+      if (err instanceof IndexerNotFoundError || err instanceof DownloadClientNotFoundError || err instanceof IndexerSourceNotFoundError) {
         return notFoundResponse(err.message);
       }
-      if (err instanceof UnknownIndexerImplementationError || err instanceof UnsupportedDownloadClientError) {
+      if (err instanceof UnknownIndexerImplementationError || err instanceof UnsupportedDownloadClientError || err instanceof UnknownIndexerSourceImplementationError) {
         return badBody("implementation");
+      }
+      if (err instanceof SourceUnreachableError || err instanceof IndexerSourceDisabledError) {
+        log.error(`indexer source import refused: ${err.message}`);
+        return jsonResponse(400, {
+          error: {
+            key: err.messageKey,
+            detail: err instanceof SourceUnreachableError ? err.detail : void 0
+          }
+        });
       }
       if (err instanceof DownloadClientHttpError || err instanceof DownloadClientUnreachableError || err instanceof DownloadClientAuthError) {
         log.error(`download client refused the request: ${err.message}`);
@@ -10800,6 +11585,17 @@ function canonicalRoutes(deps) {
     { method: "DELETE", path: "/indexers/:id", handler: (_req, params) => handleDeleteIndexer(deps, params) },
     { method: "DELETE", path: "/indexers/:id/cooldown", handler: (_req, params) => handleClearIndexerCooldown(deps, params) },
     { method: "GET", path: "/indexers/:id/stats", handler: (_req, params) => handleIndexerStats(deps, params) },
+    { method: "GET", path: "/indexer-sources", handler: () => handleListIndexerSources(deps) },
+    { method: "POST", path: "/indexer-sources", handler: (req) => handleCreateIndexerSource(deps, req) },
+    {
+      method: "POST",
+      path: "/indexer-sources/test-connection",
+      handler: (req) => handleTestIndexerSourceConnection(deps, req)
+    },
+    { method: "GET", path: "/indexer-sources/implementations", handler: () => handleIndexerSourceImplementations() },
+    { method: "PUT", path: "/indexer-sources/:id", handler: (req, params) => handleUpdateIndexerSource(deps, params, req) },
+    { method: "DELETE", path: "/indexer-sources/:id", handler: (_req, params) => handleDeleteIndexerSource(deps, params) },
+    { method: "POST", path: "/indexer-sources/:id/import", handler: (_req, params) => handleImportFromIndexerSource(deps, params) },
     { method: "GET", path: "/download-clients", handler: () => handleListDownloadClients(deps) },
     { method: "POST", path: "/download-clients", handler: (req) => handleCreateDownloadClient(deps, req) },
     {
@@ -10895,6 +11691,15 @@ function createAppGraph(repositories2, host2) {
   const indexerRepo = toIndexerRepository(repositories2.indexers);
   const torznabClient = new TorznabClient({ stats: toIndexerStatsRecorder(repositories2.indexerStats), repo: indexerRepo, throttle });
   const indexerService = new IndexerService({ repo: indexerRepo, torznab: torznabClient, throttle });
+  const indexerSourceService = new IndexerSourceService({
+    repo: repositories2.indexerSources,
+    drivers: INDEXER_SOURCE_DRIVERS,
+    indexers: {
+      findByBaseUrl: (baseUrl) => repositories2.indexers.findByBaseUrl(baseUrl),
+      create: (input) => indexerService.create(input),
+      updateSettings: (id, settings) => repositories2.indexers.updateSettings(id, settings)
+    }
+  });
   const driver = DOWNLOAD_CLIENT_DRIVERS["qbittorrent"];
   const grabPipeline = createGrabPipeline({
     host: host2,
@@ -10931,12 +11736,14 @@ function createAppGraph(repositories2, host2) {
   });
   return {
     indexerService,
+    indexerSourceService,
     downloadClientsService,
     grabPipeline,
     completionPoller,
     jobHandlers: createJobHandlers({ grabPipeline, completionPoller }),
     routeTable: createRouteTable({
       indexerService,
+      indexerSourceService,
       downloadClientsService,
       grabPipeline,
       indexerStats: repositories2.indexerStats,
