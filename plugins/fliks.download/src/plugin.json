@@ -265,7 +265,6 @@
     "releases",
     "indexers",
     "download-clients",
-    "delay-profiles",
     "queue",
     "queue-control",
     "blocklist"
@@ -289,6 +288,9 @@
         "weight": 110,
         "labelKey": "download.config.indexers.title",
         "icon": "search",
+        "when": [
+          "hasPermission:read:plugin:fliks.download:indexers"
+        ],
         "action": {
           "kind": "route",
           "path": "/admin/settings/plugins/fliks.download/indexers"
@@ -300,6 +302,9 @@
         "weight": 115,
         "labelKey": "download.config.indexer_sources.title",
         "icon": "server",
+        "when": [
+          "hasPermission:read:plugin:fliks.download:indexers"
+        ],
         "action": {
           "kind": "route",
           "path": "/admin/settings/plugins/fliks.download/indexer-sources"
@@ -311,6 +316,9 @@
         "weight": 120,
         "labelKey": "download.config.download_clients.title",
         "icon": "server",
+        "when": [
+          "hasPermission:read:plugin:fliks.download:download-clients"
+        ],
         "action": {
           "kind": "route",
           "path": "/admin/settings/plugins/fliks.download/download-clients"
@@ -322,6 +330,9 @@
         "weight": 100,
         "labelKey": "download.config.queue.title",
         "icon": "download",
+        "when": [
+          "hasPermission:read:plugin:fliks.download:queue"
+        ],
         "action": {
           "kind": "route",
           "path": "/plugins/fliks.download/queue"
@@ -333,6 +344,9 @@
         "weight": 130,
         "labelKey": "download.config.history.title",
         "icon": "history",
+        "when": [
+          "hasPermission:read:plugin:fliks.download:queue"
+        ],
         "action": {
           "kind": "route",
           "path": "/admin/settings/plugins/fliks.download/history"
@@ -697,7 +711,7 @@
             "method": "POST",
             "path": "/queue/:id/pause",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -714,7 +728,7 @@
             "method": "POST",
             "path": "/queue/:id/resume",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -736,7 +750,7 @@
             },
             "tone": "danger",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -915,7 +929,7 @@
             "method": "POST",
             "path": "/queue/:id/pause",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -932,7 +946,7 @@
             "method": "POST",
             "path": "/queue/:id/resume",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -954,7 +968,7 @@
             },
             "tone": "danger",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ],
             "visibleWhen": {
               "key": "state",
@@ -974,7 +988,7 @@
             "confirmKey": "download.config.history.actions.delete_confirm",
             "tone": "danger",
             "when": [
-              "hasPermission:plugin:fliks.download:queue-control"
+              "hasPermission:manage:plugin:fliks.download:queue-control"
             ]
           }
         ],
@@ -983,7 +997,10 @@
             "labelKey": "download.config.history.actions.clear",
             "method": "DELETE",
             "path": "/history/all",
-            "confirmKey": "download.config.history.actions.clear_confirm"
+            "confirmKey": "download.config.history.actions.clear_confirm",
+            "when": [
+              "hasPermission:manage:plugin:fliks.download:queue-control"
+            ]
           }
         ]
       }
@@ -1359,9 +1376,9 @@
       "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.9.0",
+  "version": "0.10.0",
   "files": {
-    "plugin.js": "33899fcff814c14a2524670b313358e73d7796b39d7eb23499d35e31c46475aa",
+    "plugin.js": "2ea54c0e3784423eaa4046069eb4505aa80ae336e06f16e8a09da36262262e44",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
