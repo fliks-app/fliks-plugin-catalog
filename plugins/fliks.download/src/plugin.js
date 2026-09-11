@@ -9864,7 +9864,6 @@ var PERMISSIONS = {
   releases: "releases",
   indexers: "indexers",
   downloadClients: "download-clients",
-  delayProfiles: "delay-profiles",
   queue: "queue",
   /** Separate from `queue`: reading what is downloading and reaching into the download client
    *  to stop or delete it are different powers, and core grants `Manage` on any plugin
@@ -9875,7 +9874,6 @@ var PERMISSIONS = {
 function subjectFor(name) {
   return `plugin:${PLUGIN_ID}:${name}`;
 }
-var WHEN_QUEUE_CONTROL = [`hasPermission:${subjectFor(PERMISSIONS.queueControl)}`];
 var DETAIL_ACTION = {
   kind: "detail",
   labelKey: "download.config.queue.actions.info",
@@ -9942,12 +9940,13 @@ var POLICY = {
   indexersManage: `manage:${subjectFor(PERMISSIONS.indexers)}`,
   downloadClientsRead: `read:${subjectFor(PERMISSIONS.downloadClients)}`,
   downloadClientsManage: `manage:${subjectFor(PERMISSIONS.downloadClients)}`,
-  delayProfilesRead: `read:${subjectFor(PERMISSIONS.delayProfiles)}`,
   queueRead: `read:${subjectFor(PERMISSIONS.queue)}`,
   queueControl: `manage:${subjectFor(PERMISSIONS.queueControl)}`,
   blocklistRead: `read:${subjectFor(PERMISSIONS.blocklist)}`,
   blocklistManage: `manage:${subjectFor(PERMISSIONS.blocklist)}`
 };
+var whenFor = (policy) => [`hasPermission:${policy}`];
+var WHEN_QUEUE_CONTROL = whenFor(POLICY.queueControl);
 var ROUTES = [
   { method: "GET", path: "/:id/releases", policy: POLICY.releasesRead, objectGuard: "mediaAccessible:id" },
   { method: "POST", path: "/:id/grab", policy: POLICY.releasesGrab, objectGuard: "mediaAccessible:id" },
@@ -10049,6 +10048,7 @@ var UI_CONTRIBUTIONS = [
     weight: 110,
     labelKey: "download.config.indexers.title",
     icon: "search",
+    when: whenFor(POLICY.indexersRead),
     action: { kind: "route", path: settingsPagePath("indexers") }
   },
   {
@@ -10057,6 +10057,7 @@ var UI_CONTRIBUTIONS = [
     weight: 115,
     labelKey: "download.config.indexer_sources.title",
     icon: "server",
+    when: whenFor(POLICY.indexersRead),
     action: { kind: "route", path: settingsPagePath("indexer-sources") }
   },
   {
@@ -10065,6 +10066,7 @@ var UI_CONTRIBUTIONS = [
     weight: 120,
     labelKey: "download.config.download_clients.title",
     icon: "server",
+    when: whenFor(POLICY.downloadClientsRead),
     action: { kind: "route", path: settingsPagePath("download-clients") }
   },
   {
@@ -10074,6 +10076,7 @@ var UI_CONTRIBUTIONS = [
     weight: 100,
     labelKey: "download.config.queue.title",
     icon: "download",
+    when: whenFor(POLICY.queueRead),
     action: { kind: "route", path: `/plugins/${PLUGIN_ID}/queue` }
   },
   {
@@ -10082,6 +10085,7 @@ var UI_CONTRIBUTIONS = [
     weight: 130,
     labelKey: "download.config.history.title",
     icon: "history",
+    when: whenFor(POLICY.queueRead),
     action: { kind: "route", path: settingsPagePath("history") }
   },
   {
@@ -10476,7 +10480,8 @@ var CONFIG_PAGES = [
         labelKey: "download.config.history.actions.clear",
         method: "DELETE",
         path: "/history/all",
-        confirmKey: "download.config.history.actions.clear_confirm"
+        confirmKey: "download.config.history.actions.clear_confirm",
+        when: WHEN_QUEUE_CONTROL
       }
     ]
   }
