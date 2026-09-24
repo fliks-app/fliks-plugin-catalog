@@ -16,7 +16,7 @@ test('a legitimate release adds a version and rewrites the source it is built fr
 
 test('VERDICT: refuses touching a published descriptor or archive, however it is touched', () => {
   const cases = [
-    'M\tplugins/fliks.webhooks/versions/1.1.2.json',
+    'M\tplugins/fliks.download/versions/0.9.0.json',
     'D\tplugins/fliks.download/dist/fliks.download-0.1.4.fkplugin',
     'R071\tplugins/fliks.download/versions/0.1.5.json\tplugins/fliks.download/versions/0.1.6.json',
   ];

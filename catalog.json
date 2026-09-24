@@ -229,23 +229,6 @@
           "sha256": "b622a10f7937d67213ea87355cd54bb9244f1c9b87e20d76a3e2e394d04f04e3"
         }
       ]
-    },
-    {
-      "id": "fliks.webhooks",
-      "name": "Webhook notifications",
-      "description": "Posts a JSON payload to the HTTPS endpoint you configure when a media import completes or a request is approved. Holds no credentials and makes no outbound request of its own — Fliks core delivers every webhook.",
-      "author": "Fliks",
-      "kind": "data",
-      "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/logo.svg",
-      "versions": [
-        {
-          "version": "1.1.2",
-          "pluginApi": 0,
-          "fliks": ">=2.0.0 <3.0.0",
-          "zipUrl": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-1.1.2.fkplugin",
-          "sha256": "c82749108a4b158718189daaa75389e67a7785990f5ed97464b68b138fddd75f"
-        }
-      ]
     }
   ]
 }
