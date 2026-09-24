@@ -68,8 +68,8 @@ test keys.
      "author": "Fliks",
      "kind": "process",
      "version": "1.0.0",
-     "pluginApi": 0,
-     "fliks": ">=2.1.0 <3.0.0",
+     "pluginApi": 1,
+     "fliks": ">=4.0.0 <5.0.0",
      "zipUrl": "https://github.com/fliks-app/fk-plugin-download/releases/download/v1.0.0/fk-plugin-download-1.0.0.fkplugin",
      "sha256": "<sha256 of that exact zip, lowercase hex>"
    }
@@ -86,7 +86,7 @@ test keys.
    `catalog.json`, signs it, and republishes to GitHub Pages. No separate release
    step.
 
-`pluginApi` is currently **0** — see `COMPATIBILITY.md` for what that maps to on the
+`pluginApi` is currently **1** — see `COMPATIBILITY.md` for what that maps to on the
 core side.
 
 ## Why "no dependencies"
