@@ -23,13 +23,15 @@ inside Fliks itself it is only ever referred to as a **source**, and it holds a
 **catalog**. Using "repository" for all three would make "the plugin repository
 repository" a sentence someone eventually has to say out loud.
 
-**One exception to "no plugin code lives here":** a `kind: "data"` plugin has no
-code — its whole archive is a manifest and a logo. For a `data` plugin owned by
-this org, `fk-plugin-<name>` would be a second repository holding two files.
-`plugins/<id>/src/` keeps that source next to the entry that publishes it;
-`.github/workflows/package-plugin.yml` and `scripts/package-plugin.mjs` build
-and sign the archive from it. A `process` plugin (real code, its own release
-cycle) still gets its own `fk-plugin-<name>` repository.
+**One exception to "no plugin code lives here":** a plugin this org signs
+directly through this catalog keeps its built code under `plugins/<id>/src/`,
+and `.github/workflows/package-plugin.yml` + `scripts/package-plugin.mjs`
+build and sign the archive from it. A `kind: "data"` plugin has no code, so
+that is a manifest and a logo. A `kind: "process"` plugin — e.g.
+`fliks.download` — still develops in its own `fk-plugin-<name>` repository
+(TypeScript source, tests, CI); when this org publishes its release, the
+built `plugin.js`/`plugin.json`/`logo.svg` are copied into `plugins/<id>/src/`
+here too, the same way a `data` plugin's are, and signed from there.
 
 ## What's in here
 
@@ -68,8 +70,8 @@ test keys.
      "author": "Fliks",
      "kind": "process",
      "version": "1.0.0",
-     "pluginApi": 0,
-     "fliks": ">=2.1.0 <3.0.0",
+     "pluginApi": 1,
+     "fliks": ">=4.0.0 <5.0.0",
      "zipUrl": "https://github.com/fliks-app/fk-plugin-download/releases/download/v1.0.0/fk-plugin-download-1.0.0.fkplugin",
      "sha256": "<sha256 of that exact zip, lowercase hex>"
    }
@@ -86,7 +88,7 @@ test keys.
    `catalog.json`, signs it, and republishes to GitHub Pages. No separate release
    step.
 
-`pluginApi` is currently **0** — see `COMPATIBILITY.md` for what that maps to on the
+`pluginApi` is currently **1** — see `COMPATIBILITY.md` for what that maps to on the
 core side.
 
 ## Why "no dependencies"
