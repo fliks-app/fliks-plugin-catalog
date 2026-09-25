@@ -7894,19 +7894,18 @@ var STALL_ELIGIBLE_STATES = /* @__PURE__ */ new Set([
   "error",
   "missingFiles"
 ]);
-var STALL_PROGRESS_TOLERANCE_BYTES = 30 * 1024 * 1024;
-function isNoProgress(olderBytes, newerBytes) {
-  const delta = newerBytes - olderBytes;
+var DEFAULT_STALL_MIN_SPEED_KIB = 8;
+function isNoProgress(older, newer, minBytesPerSecond) {
+  const delta = newer.downloadedBytes - older.downloadedBytes;
   if (delta < 0) return false;
-  return delta < STALL_PROGRESS_TOLERANCE_BYTES;
+  const seconds = (Date.parse(newer.checkedAt) - Date.parse(older.checkedAt)) / 1e3;
+  return delta < minBytesPerSecond * seconds;
 }
-function countStalledStrikes(samplesDescByCheckedAt) {
+function countStalledStrikes(samplesDescByCheckedAt, minBytesPerSecond) {
   if (!samplesDescByCheckedAt.length) return 0;
   let strikes = 1;
   for (let i = 0; i + 1 < samplesDescByCheckedAt.length; i++) {
-    const newer = samplesDescByCheckedAt[i].downloadedBytes;
-    const older = samplesDescByCheckedAt[i + 1].downloadedBytes;
-    if (!isNoProgress(older, newer)) break;
+    if (!isNoProgress(samplesDescByCheckedAt[i + 1], samplesDescByCheckedAt[i], minBytesPerSecond)) break;
     strikes++;
   }
   return strikes;
@@ -8091,7 +8090,7 @@ var DownloadClientsService = class {
     }
     for (const it of eligible) {
       const snaps = snapsByHash.get(it.hash.toLowerCase()) ?? [];
-      it.stalledStrikes = Math.min(countStalledStrikes(snaps), stallConfig.samples);
+      it.stalledStrikes = Math.min(countStalledStrikes(snaps, stallConfig.minBytesPerSecond), stallConfig.samples);
       it.stalledStrikesRequired = stallConfig.samples;
     }
   }
@@ -8857,7 +8856,8 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
         size: candidate.size,
         infoUrl: candidate.infoUrl,
         indexerId: candidate.indexerId,
-        grabSource: "auto"
+        // A user asked for it; the auto-pick only chose the release.
+        grabSource: "manual"
       });
     } catch (e) {
       if (!(e instanceof ReleaseUnobtainableError)) throw e;
@@ -8979,10 +8979,18 @@ async function resolveSeasonEpisodeIds(host2, mediaId, seasonNumber, episodeNumb
 }
 
 // src/grab/scheduler.ts
+var AUTO_ACQUISITION_PAUSED_KEY = "auto_acquisition_paused";
+async function autoAcquisitionPaused(host2, job) {
+  const values = await host2.call("config.get", { keys: [AUTO_ACQUISITION_PAUSED_KEY] });
+  const paused = values[AUTO_ACQUISITION_PAUSED_KEY] === "true";
+  if (paused) log.info(`${job}: automatic acquisition is paused, skipped`);
+  return paused;
+}
 function pickClient2(deps, clients) {
   return clients.find((c) => deps.driver.supports(c)) ?? null;
 }
 async function searchMissing(deps, mediaIds) {
+  if (await autoAcquisitionPaused(deps.host, "SearchMissing")) return;
   const clients = await deps.clientsRepo.listEnabled();
   const client = pickClient2(deps, clients);
   if (!client) {
@@ -9003,7 +9011,7 @@ async function searchMissing(deps, mediaIds) {
       if (grabbed && target.season && !target.episode) seasonsGrabbedAsPack.add(target.season.id);
     }
     cursor = page.cursor;
-  } while (cursor);
+  } while (cursor && !await autoAcquisitionPaused(deps.host, "SearchMissing"));
   log.info(`SearchMissing: ${count} candidate(s) checked`);
 }
 async function pendingCheck(historyRepo, target) {
@@ -9021,6 +9029,7 @@ async function pendingCheck(historyRepo, target) {
   return !!pending;
 }
 async function rssSync(deps) {
+  if (await autoAcquisitionPaused(deps.host, "RssSync")) return;
   const indexers = await deps.indexersRepo.listEnabled();
   const clients = await deps.clientsRepo.listEnabled();
   const client = pickClient2(deps, clients);
@@ -9033,6 +9042,7 @@ async function rssSync(deps) {
   const feeds = await rssAcrossIndexers(deps.indexer, ready, "RssSync");
   for (const { releases } of feeds) {
     if (!releases.length) continue;
+    if (await autoAcquisitionPaused(deps.host, "RssSync")) return;
     const matched = await identifyOrphans(
       deps.host,
       releases.map((r) => r.title)
@@ -9173,19 +9183,28 @@ var STALL_SAMPLES_KEY = "stall_samples";
 var STALL_INTERVAL_MINUTES_KEY = "stall_interval_minutes";
 var STALL_AUTO_RESTART_KEY = "stall_auto_restart";
 var STALL_INCLUDE_MANUAL_GRABS_KEY = "stall_include_manual_grabs";
+var STALL_MIN_SPEED_KIB_KEY = "stall_min_speed_kib";
 async function getStallConfig(host2) {
   const values = await host2.call("config.get", {
-    keys: [STALL_SAMPLES_KEY, STALL_INTERVAL_MINUTES_KEY, STALL_AUTO_RESTART_KEY, STALL_INCLUDE_MANUAL_GRABS_KEY]
+    keys: [
+      STALL_SAMPLES_KEY,
+      STALL_INTERVAL_MINUTES_KEY,
+      STALL_AUTO_RESTART_KEY,
+      STALL_INCLUDE_MANUAL_GRABS_KEY,
+      STALL_MIN_SPEED_KIB_KEY
+    ]
   });
   const samples = parseInt(values[STALL_SAMPLES_KEY] ?? "", 10);
   if (!Number.isFinite(samples) || samples < 2) return null;
   const intervalMinutes = parseInt(values[STALL_INTERVAL_MINUTES_KEY] ?? "", 10);
+  const minSpeedKib = parseFloat(values[STALL_MIN_SPEED_KIB_KEY] ?? "");
   return {
     samples,
     intervalMinutes: Number.isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : 60,
     // Absent means unsaved, not off: the manifest field defaults this toggle to on.
     autoRestart: values[STALL_AUTO_RESTART_KEY] !== "false",
-    includeManualGrabs: values[STALL_INCLUDE_MANUAL_GRABS_KEY] === "true"
+    includeManualGrabs: values[STALL_INCLUDE_MANUAL_GRABS_KEY] === "true",
+    minBytesPerSecond: (Number.isFinite(minSpeedKib) && minSpeedKib > 0 ? minSpeedKib : DEFAULT_STALL_MIN_SPEED_KIB) * 1024
   };
 }
 
@@ -9245,6 +9264,10 @@ var DownloadCompletionPoller = class {
    *  before a restart. The first tick therefore states every in-flight media's set, empty
    *  included, which is what keeps the model from depending on a field that a restart clears. */
   firstProgressTick = true;
+  /** Why the last CleanStalled run did nothing, logged when it changes so a 5-minute job stays quiet. */
+  stallSkipReason = null;
+  /** Stall-eligible torrents with no history row on the previous run, each logged once. */
+  untrackedStallHashes = /* @__PURE__ */ new Set();
   /** Every enabled client's torrents in one read, with whether all of them answered. A failed
    *  fetch yields an empty list indistinguishable from a client that genuinely holds nothing,
    *  and several callers turn on telling those apart. */
@@ -9675,11 +9698,13 @@ var DownloadCompletionPoller = class {
    */
   async cleanStalled() {
     const stallConfig = await getStallConfig(this.deps.host);
-    if (!stallConfig) return;
+    if (!stallConfig) return this.skipStalled("off, the number of checks before cleanup is not set");
     await this.pruneOldStalledChecks(stallConfig);
     const clients = await this.deps.clientsRepo.listEnabled();
     const qbitClients = clients.filter((c) => this.deps.driver.supports(c));
-    if (!qbitClients.length) return;
+    if (!qbitClients.length) return this.skipStalled("no enabled download client supports it");
+    this.skipStalled(null);
+    const untracked = /* @__PURE__ */ new Set();
     const histories = await this.deps.historyRepo.findByStatuses(["grabbed", "failed", "warning", "importing"]);
     const mediaToResearch = /* @__PURE__ */ new Set();
     const now = Date.now();
@@ -9690,10 +9715,16 @@ var DownloadCompletionPoller = class {
       if (!downloading.length) continue;
       for (const t of downloading) {
         const history = await this.deps.historyMatcher.matchAndHeal(t, histories);
-        if (!history) continue;
+        if (!history) {
+          untracked.add(t.hash);
+          if (!this.untrackedStallHashes.has(t.hash)) log.info(`StalledCleanup: "${t.name}" is not a download this plugin grabbed, ignored`);
+          continue;
+        }
         const stalled = await this.evaluateStalled(t, stallConfig, now);
         if (!stalled) continue;
-        log.warn(`StalledCleanup: "${t.name}" stalled (samples=${stallConfig.samples}, interval=${stallConfig.intervalMinutes}m)`);
+        log.warn(
+          `StalledCleanup: "${t.name}" stalled (under ${stallConfig.minBytesPerSecond / 1024} KiB/s for ${stallConfig.samples} checks, interval=${stallConfig.intervalMinutes}m)`
+        );
         try {
           await this.deps.driver.deleteTorrent(client, t.hash, true);
         } catch (e) {
@@ -9703,17 +9734,20 @@ var DownloadCompletionPoller = class {
         await this.deps.stalledChecksRepo.deleteByHash(t.hash);
         await this.autoBlocklist(history, "Auto-blocklist: stalled torrent");
         await this.deps.historyRepo.markFailed(history.id, "Stalled \u2014 removed by stalled-download cleanup");
-        await this.deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]).catch(
-          (e) => log.warn(`StalledCleanup: failed to publish acquisition.queue.changed: ${e.message}`)
-        );
+        await this.deps.host.call("events.publish", [{ type: "acquisition.stalled.removed", mediaId: history.mediaId, title: history.sourceTitle }]).catch((e) => log.warn(`StalledCleanup: failed to publish acquisition.stalled.removed: ${e.message}`));
         const shouldRestart = stallConfig.autoRestart && (history.grabSource === "auto" || stallConfig.includeManualGrabs);
         if (shouldRestart && history.mediaId != null) mediaToResearch.add(history.mediaId);
       }
     }
+    this.untrackedStallHashes = untracked;
     if (mediaToResearch.size > 0) {
       log.info(`StalledCleanup: searching for a replacement for ${mediaToResearch.size} media(s)`);
       await this.deps.searchMissing(Array.from(mediaToResearch));
     }
+  }
+  skipStalled(reason) {
+    if (reason && reason !== this.stallSkipReason) log.info(`StalledCleanup: skipped, ${reason}`);
+    this.stallSkipReason = reason;
   }
   async evaluateStalled(torrent, config, now) {
     const hash = torrent.hash;
@@ -9724,7 +9758,7 @@ var DownloadCompletionPoller = class {
     if (shouldSnapshot) await this.deps.stalledChecksRepo.insert(hash, currentBytes);
     const recent = await this.deps.stalledChecksRepo.findRecent(hash, config.samples);
     if (recent.length < config.samples) return false;
-    return countStalledStrikes(recent) >= config.samples;
+    return countStalledStrikes(recent, config.minBytesPerSecond) >= config.samples;
   }
   /**
    * Drops stalled-check rows the configured window can no longer reach. A fixed 24h horizon
@@ -10149,10 +10183,17 @@ var CONFIG_PAGES = [
     icon: "download",
     fields: [
       {
+        key: "auto_acquisition_paused",
+        type: "toggle",
+        labelKey: "download.config.general.auto_acquisition_paused",
+        hint: "download.config.general.auto_acquisition_paused_hint",
+        default: false
+      },
+      {
         key: "requestsAutoGrabOnApproval",
         type: "toggle",
-        labelKey: "download.config.general.auto_grab_on_approval",
-        hint: "download.config.general.auto_grab_on_approval_hint",
+        labelKey: "download.config.general.immediate_search",
+        hint: "download.config.general.immediate_search_hint",
         default: true
       },
       {
@@ -10184,6 +10225,15 @@ var CONFIG_PAGES = [
         default: 60,
         min: 5,
         max: 1440
+      },
+      {
+        key: "stall_min_speed_kib",
+        type: "number",
+        labelKey: "download.config.stall.min_speed_kib",
+        hint: "download.config.stall.min_speed_kib_hint",
+        default: 8,
+        min: 1,
+        max: 102400
       },
       {
         key: "stall_auto_restart",
@@ -10529,13 +10579,17 @@ var I18N = {
     "download.config.stall.samples_hint": "Leave empty to never clean up stalled downloads. Removing one deletes the torrent and its files.",
     "download.config.stall.interval_minutes": "Minutes between checks",
     "download.config.stall.interval_minutes_hint": "How long to wait before sampling a download\u2019s progress again.",
+    "download.config.stall.min_speed_kib": "Minimum average speed (KiB/s)",
+    "download.config.stall.min_speed_kib_hint": "A check that averages less than this since the previous one counts as stalled, even if the download is still moving.",
     "download.config.stall.auto_restart": "Search again after cleanup",
     "download.config.stall.auto_restart_hint": "Look for another release once a stalled download has been removed.",
     "download.config.stall.include_manual_grabs": "Search again for downloads you started yourself too",
     "download.config.stall.include_manual_grabs_hint": "A stalled download is removed either way \u2014 this only decides whether a replacement is searched for.",
     "download.config.general.title": "General",
-    "download.config.general.auto_grab_on_approval": "Auto-grab on request approval",
-    "download.config.general.auto_grab_on_approval_hint": "Start a search automatically when an admin approves a request.",
+    "download.config.general.auto_acquisition_paused": "Pause automatic downloads",
+    "download.config.general.auto_acquisition_paused_hint": "No new release is grabbed on its own. Downloads in progress finish and are imported, and you can still grab a release yourself.",
+    "download.config.general.immediate_search": "Search as soon as a title needs a download",
+    "download.config.general.immediate_search_hint": "When a request is approved, a file is identified or new episodes appear. Off, the next scheduled search handles it.",
     "download.jobs.search_missing": "Search missing",
     "download.jobs.rss_sync": "RSS sync",
     "download.jobs.import_completed": "Import completed downloads",
@@ -10717,13 +10771,17 @@ var I18N = {
     "download.config.stall.samples_hint": "Laissez vide pour ne jamais nettoyer les t\xE9l\xE9chargements bloqu\xE9s. Supprimer un torrent efface aussi ses fichiers.",
     "download.config.stall.interval_minutes": "Minutes entre deux v\xE9rifications",
     "download.config.stall.interval_minutes_hint": "D\xE9lai d\u2019attente avant de v\xE9rifier \xE0 nouveau la progression d\u2019un t\xE9l\xE9chargement.",
+    "download.config.stall.min_speed_kib": "Vitesse moyenne minimale (Kio/s)",
+    "download.config.stall.min_speed_kib_hint": "Une v\xE9rification sous cette moyenne depuis la pr\xE9c\xE9dente compte comme bloqu\xE9e, m\xEAme si le t\xE9l\xE9chargement avance encore.",
     "download.config.stall.auto_restart": "Relancer une recherche apr\xE8s nettoyage",
     "download.config.stall.auto_restart_hint": "Cherche une autre release une fois le t\xE9l\xE9chargement bloqu\xE9 supprim\xE9.",
     "download.config.stall.include_manual_grabs": "Relancer aussi une recherche pour les t\xE9l\xE9chargements lanc\xE9s manuellement",
     "download.config.stall.include_manual_grabs_hint": "Un t\xE9l\xE9chargement bloqu\xE9 est supprim\xE9 dans tous les cas \u2014 ceci d\xE9cide seulement si une autre release est cherch\xE9e.",
     "download.config.general.title": "G\xE9n\xE9ral",
-    "download.config.general.auto_grab_on_approval": "T\xE9l\xE9charger automatiquement apr\xE8s l\u2019approbation d\u2019une demande",
-    "download.config.general.auto_grab_on_approval_hint": "Lance une recherche automatiquement quand un administrateur approuve une demande.",
+    "download.config.general.auto_acquisition_paused": "Suspendre les t\xE9l\xE9chargements automatiques",
+    "download.config.general.auto_acquisition_paused_hint": "Aucune release n\u2019est plus r\xE9cup\xE9r\xE9e d\u2019elle-m\xEAme. Les t\xE9l\xE9chargements en cours se terminent et sont import\xE9s, et vous pouvez toujours en r\xE9cup\xE9rer une vous-m\xEAme.",
+    "download.config.general.immediate_search": "Chercher d\xE8s qu\u2019un titre doit \xEAtre t\xE9l\xE9charg\xE9",
+    "download.config.general.immediate_search_hint": "Quand une demande est approuv\xE9e, qu\u2019un fichier est identifi\xE9 ou que de nouveaux \xE9pisodes sortent. D\xE9sactiv\xE9, la prochaine recherche planifi\xE9e s\u2019en charge.",
     "download.jobs.search_missing": "Recherche des m\xE9dias manquants",
     "download.jobs.rss_sync": "Synchronisation RSS",
     "download.jobs.import_completed": "Import des t\xE9l\xE9chargements termin\xE9s",
@@ -11763,11 +11821,11 @@ function createAppGraph(repositories2, host2) {
 }
 
 // src/grab/on-acquisition-requested.ts
-var AUTO_GRAB_ON_APPROVAL_KEY = "requestsAutoGrabOnApproval";
+var IMMEDIATE_SEARCH_KEY = "requestsAutoGrabOnApproval";
 var ACQUISITION_REQUESTED = "media.acquisition.requested";
-async function autoGrabOnApprovalEnabled(host2) {
-  const values = await host2.call("config.get", { keys: [AUTO_GRAB_ON_APPROVAL_KEY] });
-  return values[AUTO_GRAB_ON_APPROVAL_KEY] !== "false";
+async function immediateSearchEnabled(host2) {
+  const values = await host2.call("config.get", { keys: [IMMEDIATE_SEARCH_KEY] });
+  return values[IMMEDIATE_SEARCH_KEY] !== "false";
 }
 function createAcquisitionRequestedHandler(deps) {
   const inFlight = /* @__PURE__ */ new Set();
@@ -11783,8 +11841,8 @@ function createAcquisitionRequestedHandler(deps) {
     }
     void (async () => {
       try {
-        if (!await autoGrabOnApprovalEnabled(deps.host)) {
-          log.info(`${name}: auto-grab on approval is off \u2014 not searching`);
+        if (!await immediateSearchEnabled(deps.host)) {
+          log.info(`${name}: immediate search is off, left to the next scheduled search`);
           return;
         }
         fresh.forEach((id) => inFlight.add(id));

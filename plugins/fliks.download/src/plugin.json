@@ -430,10 +430,17 @@
         "icon": "download",
         "fields": [
           {
+            "key": "auto_acquisition_paused",
+            "type": "toggle",
+            "labelKey": "download.config.general.auto_acquisition_paused",
+            "hint": "download.config.general.auto_acquisition_paused_hint",
+            "default": false
+          },
+          {
             "key": "requestsAutoGrabOnApproval",
             "type": "toggle",
-            "labelKey": "download.config.general.auto_grab_on_approval",
-            "hint": "download.config.general.auto_grab_on_approval_hint",
+            "labelKey": "download.config.general.immediate_search",
+            "hint": "download.config.general.immediate_search_hint",
             "default": true
           },
           {
@@ -461,6 +468,15 @@
             "default": 60,
             "min": 5,
             "max": 1440
+          },
+          {
+            "key": "stall_min_speed_kib",
+            "type": "number",
+            "labelKey": "download.config.stall.min_speed_kib",
+            "hint": "download.config.stall.min_speed_kib_hint",
+            "default": 8,
+            "min": 1,
+            "max": 102400
           },
           {
             "key": "stall_auto_restart",
@@ -1063,13 +1079,17 @@
       "download.config.stall.samples_hint": "Leave empty to never clean up stalled downloads. Removing one deletes the torrent and its files.",
       "download.config.stall.interval_minutes": "Minutes between checks",
       "download.config.stall.interval_minutes_hint": "How long to wait before sampling a download’s progress again.",
+      "download.config.stall.min_speed_kib": "Minimum average speed (KiB/s)",
+      "download.config.stall.min_speed_kib_hint": "A check that averages less than this since the previous one counts as stalled, even if the download is still moving.",
       "download.config.stall.auto_restart": "Search again after cleanup",
       "download.config.stall.auto_restart_hint": "Look for another release once a stalled download has been removed.",
       "download.config.stall.include_manual_grabs": "Search again for downloads you started yourself too",
       "download.config.stall.include_manual_grabs_hint": "A stalled download is removed either way — this only decides whether a replacement is searched for.",
       "download.config.general.title": "General",
-      "download.config.general.auto_grab_on_approval": "Auto-grab on request approval",
-      "download.config.general.auto_grab_on_approval_hint": "Start a search automatically when an admin approves a request.",
+      "download.config.general.auto_acquisition_paused": "Pause automatic downloads",
+      "download.config.general.auto_acquisition_paused_hint": "No new release is grabbed on its own. Downloads in progress finish and are imported, and you can still grab a release yourself.",
+      "download.config.general.immediate_search": "Search as soon as a title needs a download",
+      "download.config.general.immediate_search_hint": "When a request is approved, a file is identified or new episodes appear. Off, the next scheduled search handles it.",
       "download.jobs.search_missing": "Search missing",
       "download.jobs.rss_sync": "RSS sync",
       "download.jobs.import_completed": "Import completed downloads",
@@ -1240,13 +1260,17 @@
       "download.config.stall.samples_hint": "Laissez vide pour ne jamais nettoyer les téléchargements bloqués. Supprimer un torrent efface aussi ses fichiers.",
       "download.config.stall.interval_minutes": "Minutes entre deux vérifications",
       "download.config.stall.interval_minutes_hint": "Délai d’attente avant de vérifier à nouveau la progression d’un téléchargement.",
+      "download.config.stall.min_speed_kib": "Vitesse moyenne minimale (Kio/s)",
+      "download.config.stall.min_speed_kib_hint": "Une vérification sous cette moyenne depuis la précédente compte comme bloquée, même si le téléchargement avance encore.",
       "download.config.stall.auto_restart": "Relancer une recherche après nettoyage",
       "download.config.stall.auto_restart_hint": "Cherche une autre release une fois le téléchargement bloqué supprimé.",
       "download.config.stall.include_manual_grabs": "Relancer aussi une recherche pour les téléchargements lancés manuellement",
       "download.config.stall.include_manual_grabs_hint": "Un téléchargement bloqué est supprimé dans tous les cas — ceci décide seulement si une autre release est cherchée.",
       "download.config.general.title": "Général",
-      "download.config.general.auto_grab_on_approval": "Télécharger automatiquement après l’approbation d’une demande",
-      "download.config.general.auto_grab_on_approval_hint": "Lance une recherche automatiquement quand un administrateur approuve une demande.",
+      "download.config.general.auto_acquisition_paused": "Suspendre les téléchargements automatiques",
+      "download.config.general.auto_acquisition_paused_hint": "Aucune release n’est plus récupérée d’elle-même. Les téléchargements en cours se terminent et sont importés, et vous pouvez toujours en récupérer une vous-même.",
+      "download.config.general.immediate_search": "Chercher dès qu’un titre doit être téléchargé",
+      "download.config.general.immediate_search_hint": "Quand une demande est approuvée, qu’un fichier est identifié ou que de nouveaux épisodes sortent. Désactivé, la prochaine recherche planifiée s’en charge.",
       "download.jobs.search_missing": "Recherche des médias manquants",
       "download.jobs.rss_sync": "Synchronisation RSS",
       "download.jobs.import_completed": "Import des téléchargements terminés",
@@ -1376,9 +1400,9 @@
       "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.10.0",
+  "version": "0.11.0",
   "files": {
-    "plugin.js": "2ea54c0e3784423eaa4046069eb4505aa80ae336e06f16e8a09da36262262e44",
+    "plugin.js": "29468d6e13be096a40c43b6f424556367bae2c1b900a010dc68e643bfd9d76cf",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
