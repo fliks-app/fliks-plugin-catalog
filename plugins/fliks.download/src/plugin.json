@@ -192,6 +192,11 @@
       "policy": "manage:plugin:fliks.download:queue-control"
     },
     {
+      "method": "POST",
+      "path": "/queue/:id/retry-import",
+      "policy": "manage:plugin:fliks.download:queue-control"
+    },
+    {
       "method": "DELETE",
       "path": "/history/all",
       "policy": "manage:plugin:fliks.download:queue-control"
@@ -594,7 +599,9 @@
             "labelKey": "download.config.indexer_sources.actions.import",
             "method": "POST",
             "route": "/indexer-sources/:id/import",
-            "scope": "row"
+            "scope": "row",
+            "successKey": "download.config.indexer_sources.actions.import_done",
+            "afterSave": true
           }
         ]
       },
@@ -651,15 +658,19 @@
               "active": "download.config.queue.states.active",
               "stalled": "download.config.queue.states.stalled",
               "paused": "download.config.queue.states.paused",
-              "importing": "download.status.importing"
+              "importing": "download.status.importing",
+              "import_failed": "download.status.import_failed"
             },
             "badges": {
               "queued": "neutral",
               "active": "info",
               "stalled": "warning",
               "paused": "ghost",
-              "importing": "primary"
+              "importing": "primary",
+              "import_failed": "error"
             },
+            "detailField": "statusMessage",
+            "detailTitleKey": "download.config.history.detail_title",
             "progressField": "progress"
           },
           {
@@ -755,6 +766,21 @@
           },
           {
             "kind": "proxy",
+            "labelKey": "download.config.queue.actions.retry_import",
+            "method": "POST",
+            "path": "/queue/:id/retry-import",
+            "when": [
+              "hasPermission:manage:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "import_failed"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
             "labelKey": "download.config.queue.actions.cancel",
             "method": "DELETE",
             "path": "/queue/:id",
@@ -822,6 +848,10 @@
                 "labelKey": "download.config.history.filters.status_failed"
               },
               {
+                "value": "import_failed",
+                "labelKey": "download.status.import_failed"
+              },
+              {
                 "value": "warning",
                 "labelKey": "download.config.history.filters.status_warning"
               }
@@ -877,6 +907,7 @@
               "importing": "download.status.importing",
               "completed": "download.config.history.filters.status_completed",
               "failed": "download.config.history.filters.status_failed",
+              "import_failed": "download.status.import_failed",
               "warning": "download.config.history.filters.status_warning"
             },
             "badges": {
@@ -888,6 +919,7 @@
               "importing": "primary",
               "completed": "success",
               "failed": "error",
+              "import_failed": "error",
               "warning": "warning"
             },
             "detailField": "statusMessage",
@@ -973,6 +1005,21 @@
           },
           {
             "kind": "proxy",
+            "labelKey": "download.config.queue.actions.retry_import",
+            "method": "POST",
+            "path": "/queue/:id/retry-import",
+            "when": [
+              "hasPermission:manage:plugin:fliks.download:queue-control"
+            ],
+            "visibleWhen": {
+              "key": "state",
+              "in": [
+                "import_failed"
+              ]
+            }
+          },
+          {
+            "kind": "proxy",
             "labelKey": "download.config.queue.actions.cancel",
             "method": "DELETE",
             "path": "/queue/:id",
@@ -1048,6 +1095,7 @@
       "download.config.queue.states.stalled": "Stalled",
       "download.config.queue.states.paused": "Paused",
       "download.status.importing": "Importing",
+      "download.status.import_failed": "Import failed",
       "download.config.history.title": "Download history",
       "download.config.history.detail_title": "Reason",
       "download.config.history.columns.date": "Date",
@@ -1108,6 +1156,7 @@
       "download.config.indexer_sources.labels.create_title": "New indexer source",
       "download.config.indexer_sources.labels.edit_title": "Edit the source",
       "download.config.indexer_sources.actions.import": "Import the indexers",
+      "download.config.indexer_sources.actions.import_done": "{{created}} indexers added, {{updated}} updated",
       "download.config.indexer_sources.errors.disabled": "This source is disabled. Enable it before importing.",
       "download.indexer_sources.test.ok": "Indexer list read, connection OK",
       "download.indexer_sources.test.base_url_missing": "Base URL is empty",
@@ -1137,6 +1186,7 @@
       "download.queue.removed_by_user": "Removed from the queue by a user",
       "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it",
       "download.queue.errors.not_controllable": "This download can no longer be controlled",
+      "download.queue.errors.not_retryable": "Only a failed import can be retried",
       "download.queue.errors.no_torrent": "No download client holds this release yet",
       "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
       "download.grab.errors.no_eligible_release": "No eligible release was found",
@@ -1206,6 +1256,7 @@
       "download.config.history.grab_source.manual": "Manual",
       "download.config.queue.actions.pause": "Pause",
       "download.config.queue.actions.resume": "Resume",
+      "download.config.queue.actions.retry_import": "Retry the import",
       "download.config.queue.actions.cancel": "Cancel download",
       "download.config.queue.actions.cancel_confirm": "Stop this download and remove it from its download client? It leaves the queue either way.",
       "download.config.queue.actions.cancel_delete_files": "Also delete the files held by the download client",
@@ -1229,6 +1280,7 @@
       "download.config.queue.states.stalled": "Bloqué",
       "download.config.queue.states.paused": "En pause",
       "download.status.importing": "Import en cours",
+      "download.status.import_failed": "Échec de l’import",
       "download.config.history.title": "Historique des téléchargements",
       "download.config.history.detail_title": "Raison",
       "download.config.history.columns.date": "Date",
@@ -1289,6 +1341,7 @@
       "download.config.indexer_sources.labels.create_title": "Nouvelle source d’indexeurs",
       "download.config.indexer_sources.labels.edit_title": "Modifier la source",
       "download.config.indexer_sources.actions.import": "Importer les indexeurs",
+      "download.config.indexer_sources.actions.import_done": "{{created}} indexeurs ajoutés, {{updated}} mis à jour",
       "download.config.indexer_sources.errors.disabled": "Cette source est désactivée. Activez-la avant d’importer.",
       "download.indexer_sources.test.ok": "Liste des indexeurs lue, connexion OK",
       "download.indexer_sources.test.base_url_missing": "L’URL de base est vide",
@@ -1318,6 +1371,7 @@
       "download.queue.removed_by_user": "Retiré de la file d'attente par un utilisateur",
       "download.queue.retired_unverifiable": "Retiré de la file d'attente, aucun client de téléchargement n'a pu le confirmer",
       "download.queue.errors.not_controllable": "Ce téléchargement ne peut plus être piloté",
+      "download.queue.errors.not_retryable": "Seul un import en échec peut être relancé",
       "download.queue.errors.no_torrent": "Aucun client de téléchargement ne détient encore cette release",
       "download.grab.errors.quality_not_allowed": "La qualité de cette release n’est pas autorisée par le profil",
       "download.grab.errors.no_eligible_release": "Aucune release éligible n’a été trouvée",
@@ -1387,6 +1441,7 @@
       "download.config.history.grab_source.manual": "Manuelle",
       "download.config.queue.actions.pause": "Mettre en pause",
       "download.config.queue.actions.resume": "Reprendre",
+      "download.config.queue.actions.retry_import": "Relancer l’import",
       "download.config.queue.actions.cancel": "Annuler le téléchargement",
       "download.config.queue.actions.cancel_confirm": "Arrêter ce téléchargement et le retirer de son client ? Il quitte la file d'attente dans tous les cas.",
       "download.config.queue.actions.cancel_delete_files": "Supprimer aussi les fichiers détenus par le client de téléchargement",
@@ -1400,9 +1455,9 @@
       "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.11.0",
+  "version": "0.12.0",
   "files": {
-    "plugin.js": "29468d6e13be096a40c43b6f424556367bae2c1b900a010dc68e643bfd9d76cf",
+    "plugin.js": "6158ee908677cdcbbf9f040e9074be6316b61cde359ad412a42fd17b13f6b19a",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
