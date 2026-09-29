@@ -6258,7 +6258,7 @@ var DownloadHistoryRepository = class {
   /** Terminal rows only — a row still in flight is in the queue, not in what "clear" means. */
   async clearTerminal() {
     const { rowCount } = await this.pool.query(
-      `DELETE FROM "download_history" WHERE "status" IN ('completed', 'failed', 'warning')`
+      `DELETE FROM "download_history" WHERE "status" IN ('completed', 'failed', 'import_failed', 'warning')`
     );
     return rowCount ?? 0;
   }
@@ -9328,7 +9328,7 @@ var DownloadCompletionPoller = class {
     const { torrents: allTorrents, allOk: allClientsResponded } = await this.fetchAllTorrents();
     const torrentClient = new Map(qbitClients.map((c) => [c.id, c]));
     await this.autoMatchOrphanTorrents(allTorrents);
-    const grabbed = await this.deps.historyRepo.findByStatuses(["grabbed", "failed", "warning"]);
+    const grabbed = await this.deps.historyRepo.findByStatuses(["grabbed", "failed", "import_failed", "warning"]);
     const importing = await this.deps.historyRepo.findByStatuses(["importing"]);
     if (allClientsResponded) {
       await this.reconcileOrphanHistory(allTorrents, grabbed, importing);
@@ -9342,7 +9342,7 @@ var DownloadCompletionPoller = class {
     for (const torrent of completedTorrents) {
       const history = await this.deps.historyMatcher.matchAndHeal(torrent, grabbed);
       if (!history) continue;
-      if (history.status !== "grabbed" && history.status !== "failed" && history.status !== "warning") continue;
+      if (history.status !== "grabbed" && history.status !== "warning") continue;
       const client = torrentClient.get(torrent._clientId);
       log.info(`Import: torrent "${torrent.name}" -> history #${history.id} (mediaId=${history.mediaId}, status=${history.status})`);
       if (!client) {
@@ -9366,7 +9366,7 @@ var DownloadCompletionPoller = class {
           continue;
         }
         log.error(`Import: FAILED for "${history.sourceTitle}": ${message}`);
-        await this.deps.historyRepo.markFailed(history.id, message);
+        await this.deps.historyRepo.updateStatusByIds([history.id], "import_failed", message);
         await this.publishFailed(history, message);
       }
     }
@@ -9478,7 +9478,7 @@ var DownloadCompletionPoller = class {
     }
     const cutoff = Date.now() - ORPHAN_GRACE_MS;
     const expired = candidates.filter(
-      (h) => (h.status === "grabbed" || h.status === "importing") && !matchedHistoryIds.has(h.id) && new Date(h.updatedAt).getTime() < cutoff
+      (h) => (h.status === "grabbed" || h.status === "importing" || h.status === "import_failed") && !matchedHistoryIds.has(h.id) && new Date(h.updatedAt).getTime() < cutoff
     );
     if (expired.length) {
       await this.deps.historyRepo.updateStatusByIds(expired.map((h) => h.id), "failed", ORPHAN_STATUS_MESSAGE);
@@ -9634,7 +9634,7 @@ var DownloadCompletionPoller = class {
       return;
     }
     if (history.mediaId == null) {
-      await this.deps.historyRepo.markFailed(history.id, "Import failed: no media linked to this download");
+      await this.deps.historyRepo.updateStatusByIds([history.id], "import_failed", "Import failed: no media linked to this download");
       return;
     }
     const result = await this.deps.host.call(
@@ -9659,7 +9659,7 @@ var DownloadCompletionPoller = class {
     if (!result.imported.length) {
       const statusMessage = `Import failed: no file could be placed under the library root for "${torrent.name}"`;
       log.error(`Import[${history.sourceTitle}]: ${statusMessage}`);
-      await this.deps.historyRepo.markFailed(history.id, statusMessage);
+      await this.deps.historyRepo.updateStatusByIds([history.id], "import_failed", statusMessage);
       await this.publishFailed(history, statusMessage);
       return;
     }
@@ -9953,6 +9953,14 @@ var QUEUE_CONTROL_ACTIONS = (stateKey) => [
   },
   {
     kind: "proxy",
+    labelKey: "download.config.queue.actions.retry_import",
+    method: "POST",
+    path: "/queue/:id/retry-import",
+    when: WHEN_QUEUE_CONTROL,
+    visibleWhen: { key: stateKey, in: ["import_failed"] }
+  },
+  {
+    kind: "proxy",
     labelKey: "download.config.queue.actions.cancel",
     method: "DELETE",
     path: "/queue/:id",
@@ -10035,6 +10043,7 @@ var ROUTES = [
   { method: "POST", path: "/queue/:id/pause", policy: POLICY.queueControl },
   { method: "POST", path: "/queue/:id/resume", policy: POLICY.queueControl },
   { method: "DELETE", path: "/queue/:id", policy: POLICY.queueControl },
+  { method: "POST", path: "/queue/:id/retry-import", policy: POLICY.queueControl },
   { method: "DELETE", path: "/history/all", policy: POLICY.queueControl },
   { method: "DELETE", path: "/history/:id", policy: POLICY.queueControl },
   { method: "GET", path: "/blocklist", policy: POLICY.blocklistRead },
@@ -10328,7 +10337,7 @@ var CONFIG_PAGES = [
     list: "/indexer-sources",
     implementations: "/indexer-sources/implementations",
     testConnection: { route: "/indexer-sources/test-connection" },
-    // Nothing consumes a source in priority order: the import is manual, one source at a time.
+    // Nothing consumes a source in priority order: the import runs one source at a time.
     showPriority: false,
     labels: {
       newKey: "download.config.indexer_sources.labels.new",
@@ -10344,7 +10353,9 @@ var CONFIG_PAGES = [
         labelKey: "download.config.indexer_sources.actions.import",
         method: "POST",
         route: "/indexer-sources/:id/import",
-        scope: "row"
+        scope: "row",
+        successKey: "download.config.indexer_sources.actions.import_done",
+        afterSave: true
       }
     ]
   },
@@ -10400,16 +10411,20 @@ var CONFIG_PAGES = [
           active: "download.config.queue.states.active",
           stalled: "download.config.queue.states.stalled",
           paused: "download.config.queue.states.paused",
-          importing: "download.status.importing"
+          importing: "download.status.importing",
+          import_failed: "download.status.import_failed"
         },
         badges: {
           queued: "neutral",
           active: "info",
           stalled: "warning",
           paused: "ghost",
-          importing: "primary"
+          importing: "primary",
+          import_failed: "error"
           // Ghost, not warning: nothing is wrong, the row is simply unverifiable.
         },
+        detailField: "statusMessage",
+        detailTitleKey: "download.config.history.detail_title",
         // The percentage fills this badge instead of holding a column of its own: it says what
         // the state beside it is doing, and a column of bare numbers read as unrelated to it.
         progressField: "progress"
@@ -10451,6 +10466,7 @@ var CONFIG_PAGES = [
           { value: "importing", labelKey: "download.status.importing" },
           { value: "completed", labelKey: "download.config.history.filters.status_completed" },
           { value: "failed", labelKey: "download.config.history.filters.status_failed" },
+          { value: "import_failed", labelKey: "download.status.import_failed" },
           { value: "warning", labelKey: "download.config.history.filters.status_warning" }
         ]
       }
@@ -10485,6 +10501,7 @@ var CONFIG_PAGES = [
           importing: "download.status.importing",
           completed: "download.config.history.filters.status_completed",
           failed: "download.config.history.filters.status_failed",
+          import_failed: "download.status.import_failed",
           warning: "download.config.history.filters.status_warning"
         },
         badges: {
@@ -10496,6 +10513,7 @@ var CONFIG_PAGES = [
           importing: "primary",
           completed: "success",
           failed: "error",
+          import_failed: "error",
           warning: "warning"
         },
         // The reason a grab failed reads in a dialog; as a column it stretched every row.
@@ -10548,6 +10566,7 @@ var I18N = {
     "download.config.queue.states.stalled": "Stalled",
     "download.config.queue.states.paused": "Paused",
     "download.status.importing": "Importing",
+    "download.status.import_failed": "Import failed",
     "download.config.history.title": "Download history",
     "download.config.history.detail_title": "Reason",
     "download.config.history.columns.date": "Date",
@@ -10611,6 +10630,7 @@ var I18N = {
     "download.config.indexer_sources.labels.create_title": "New indexer source",
     "download.config.indexer_sources.labels.edit_title": "Edit the source",
     "download.config.indexer_sources.actions.import": "Import the indexers",
+    "download.config.indexer_sources.actions.import_done": "{{created}} indexers added, {{updated}} updated",
     "download.config.indexer_sources.errors.disabled": "This source is disabled. Enable it before importing.",
     "download.indexer_sources.test.ok": "Indexer list read, connection OK",
     "download.indexer_sources.test.base_url_missing": "Base URL is empty",
@@ -10644,6 +10664,7 @@ var I18N = {
     "download.queue.removed_by_user": "Removed from the queue by a user",
     "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it",
     "download.queue.errors.not_controllable": "This download can no longer be controlled",
+    "download.queue.errors.not_retryable": "Only a failed import can be retried",
     "download.queue.errors.no_torrent": "No download client holds this release yet",
     "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
     "download.grab.errors.no_eligible_release": "No eligible release was found",
@@ -10715,6 +10736,7 @@ var I18N = {
     "download.config.history.grab_source.manual": "Manual",
     "download.config.queue.actions.pause": "Pause",
     "download.config.queue.actions.resume": "Resume",
+    "download.config.queue.actions.retry_import": "Retry the import",
     "download.config.queue.actions.cancel": "Cancel download",
     "download.config.queue.actions.cancel_confirm": "Stop this download and remove it from its download client? It leaves the queue either way.",
     "download.config.queue.actions.cancel_delete_files": "Also delete the files held by the download client",
@@ -10740,6 +10762,7 @@ var I18N = {
     "download.config.queue.states.stalled": "Bloqu\xE9",
     "download.config.queue.states.paused": "En pause",
     "download.status.importing": "Import en cours",
+    "download.status.import_failed": "\xC9chec de l\u2019import",
     "download.config.history.title": "Historique des t\xE9l\xE9chargements",
     "download.config.history.detail_title": "Raison",
     "download.config.history.columns.date": "Date",
@@ -10800,6 +10823,7 @@ var I18N = {
     "download.config.indexer_sources.labels.create_title": "Nouvelle source d\u2019indexeurs",
     "download.config.indexer_sources.labels.edit_title": "Modifier la source",
     "download.config.indexer_sources.actions.import": "Importer les indexeurs",
+    "download.config.indexer_sources.actions.import_done": "{{created}} indexeurs ajout\xE9s, {{updated}} mis \xE0 jour",
     "download.config.indexer_sources.errors.disabled": "Cette source est d\xE9sactiv\xE9e. Activez-la avant d\u2019importer.",
     "download.indexer_sources.test.ok": "Liste des indexeurs lue, connexion OK",
     "download.indexer_sources.test.base_url_missing": "L\u2019URL de base est vide",
@@ -10829,6 +10853,7 @@ var I18N = {
     "download.queue.removed_by_user": "Retir\xE9 de la file d'attente par un utilisateur",
     "download.queue.retired_unverifiable": "Retir\xE9 de la file d'attente, aucun client de t\xE9l\xE9chargement n'a pu le confirmer",
     "download.queue.errors.not_controllable": "Ce t\xE9l\xE9chargement ne peut plus \xEAtre pilot\xE9",
+    "download.queue.errors.not_retryable": "Seul un import en \xE9chec peut \xEAtre relanc\xE9",
     "download.queue.errors.no_torrent": "Aucun client de t\xE9l\xE9chargement ne d\xE9tient encore cette release",
     "download.grab.errors.quality_not_allowed": "La qualit\xE9 de cette release n\u2019est pas autoris\xE9e par le profil",
     "download.grab.errors.no_eligible_release": "Aucune release \xE9ligible n\u2019a \xE9t\xE9 trouv\xE9e",
@@ -10898,6 +10923,7 @@ var I18N = {
     "download.config.history.grab_source.manual": "Manuelle",
     "download.config.queue.actions.pause": "Mettre en pause",
     "download.config.queue.actions.resume": "Reprendre",
+    "download.config.queue.actions.retry_import": "Relancer l\u2019import",
     "download.config.queue.actions.cancel": "Annuler le t\xE9l\xE9chargement",
     "download.config.queue.actions.cancel_confirm": "Arr\xEAter ce t\xE9l\xE9chargement et le retirer de son client ? Il quitte la file d'attente dans tous les cas.",
     "download.config.queue.actions.cancel_delete_files": "Supprimer aussi les fichiers d\xE9tenus par le client de t\xE9l\xE9chargement",
@@ -11304,6 +11330,18 @@ async function handleQueueRemove(deps, req, params) {
   await settleAndPublish(deps, row, "absent");
   return jsonResponse(200, {});
 }
+async function handleRetryImport(deps, params) {
+  const id = requireIntParam(params, "id");
+  if (id === null) return badRequest("id");
+  const row = await deps.downloadHistory.findById(id);
+  if (!row) return notFoundResponse(String(id));
+  if (row.status !== "import_failed") {
+    return jsonResponse(409, { error: { key: "download.queue.errors.not_retryable", detail: row.status } });
+  }
+  await deps.downloadHistory.updateStatusByIds([row.id], "grabbed", null);
+  await deps.host.call("events.publish", [{ type: "acquisition.queue.changed" }]).catch((e) => log.warn(`queue-changed publish failed: ${e.message}`));
+  return jsonResponse(200, {});
+}
 async function handleDeleteHistoryEntry(deps, params) {
   const id = requireIntParam(params, "id");
   if (id === null) return badRequest("id");
@@ -11351,7 +11389,7 @@ async function attachMediaLabels(deps, items) {
   });
 }
 var QUEUE_STATUSES = ["grabbed", "importing"];
-var HISTORY_STATUSES = ["grabbed", "importing", "completed", "failed", "warning"];
+var HISTORY_STATUSES = ["grabbed", "importing", "completed", "failed", "import_failed", "warning"];
 async function indexClientTorrents(deps) {
   const clients = await deps.downloadClientsRepo.listAll();
   const byClientId = /* @__PURE__ */ new Map();
@@ -11379,7 +11417,7 @@ function liveTorrentFor(row, byClientId) {
   return index && row.torrentHash ? index.byHash.get(row.torrentHash.toLowerCase()) : void 0;
 }
 function isUnverifiable(row, byClientId) {
-  if (row.status === "importing") return false;
+  if (row.status === "importing" || row.status === "import_failed") return false;
   if (row.downloadClientId == null || !row.torrentHash) return false;
   const index = byClientId.get(row.downloadClientId);
   if (!index || !index.consulted || !index.ok) return true;
@@ -11398,8 +11436,20 @@ function toQueueItem(row, byClientId, indexerNames) {
     mediaId: row.mediaId,
     seasonId: row.seasonId,
     episodeId: row.episodeId,
-    mediaType: null
+    mediaType: null,
+    statusMessage: null
   };
+  if (row.status === "import_failed") {
+    return {
+      ...base,
+      state: "import_failed",
+      statusMessage: row.statusMessage,
+      progress: 100,
+      bytesPerSecond: null,
+      size: row.size || null,
+      clientReachable: true
+    };
+  }
   if (row.status === "importing") {
     return { ...base, state: "importing", progress: 100, bytesPerSecond: null, size: null, clientReachable: true };
   }
@@ -11456,7 +11506,7 @@ async function handleHistory(deps, req) {
       infoUrl: row.infoUrl,
       // `importing` is definitive whatever the client says: the download is done, the files
       // are being moved. Same rule as the queue's own `toQueueItem`.
-      state: row.status === "importing" ? "importing" : live ? torrentProgressState(live) : null,
+      state: row.status === "importing" || row.status === "import_failed" ? row.status : live ? torrentProgressState(live) : null,
       progress: row.status === "importing" ? 100 : live ? live.progress * 100 : null,
       mediaId: row.mediaId,
       seasonId: row.seasonId,
@@ -11471,7 +11521,7 @@ async function handleQueue(deps, req) {
   const page = Math.max(1, Math.trunc(Number(req.query["page"])) || 1);
   const pageSize = readPageSize(req.query["pageSize"]);
   const [rows, { byClientId, anyUnreachable }, indexers] = await Promise.all([
-    deps.downloadHistory.findByStatuses(QUEUE_STATUSES),
+    deps.downloadHistory.findByStatuses([...QUEUE_STATUSES, "import_failed"]),
     indexClientTorrents(deps),
     deps.indexerService.findAll()
   ]);
@@ -11672,6 +11722,7 @@ function canonicalRoutes(deps) {
     { method: "POST", path: "/queue/:id/pause", handler: (_req, params) => handleQueueControl(deps, params, "pause") },
     { method: "POST", path: "/queue/:id/resume", handler: (_req, params) => handleQueueControl(deps, params, "resume") },
     { method: "DELETE", path: "/queue/:id", handler: (req, params) => handleQueueRemove(deps, req, params) },
+    { method: "POST", path: "/queue/:id/retry-import", handler: (_req, params) => handleRetryImport(deps, params) },
     { method: "DELETE", path: "/history/all", handler: () => handleClearHistory(deps) },
     { method: "DELETE", path: "/history/:id", handler: (_req, params) => handleDeleteHistoryEntry(deps, params) },
     { method: "GET", path: "/blocklist", handler: (req) => handleListBlocklist(deps, req) },
