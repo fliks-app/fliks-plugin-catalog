@@ -1455,9 +1455,9 @@
       "download.config.queue.columns.size": "Taille"
     }
   },
-  "version": "0.12.0",
+  "version": "0.12.1",
   "files": {
-    "plugin.js": "6158ee908677cdcbbf9f040e9074be6316b61cde359ad412a42fd17b13f6b19a",
+    "plugin.js": "24d52c6c850cee65811c37d4cf1f7f31023f07205640e8fa57ae7499e59ba0d4",
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e"
   }
 }
