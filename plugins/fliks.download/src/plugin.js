@@ -30,9 +30,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// node_modules/postgres-array/index.js
+// ../../fk-plugin-download/node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
-  "node_modules/postgres-array/index.js"(exports2) {
+  "../../fk-plugin-download/node_modules/postgres-array/index.js"(exports2) {
     "use strict";
     exports2.parse = function(source, transform) {
       return new ArrayParser(source, transform).parse();
@@ -124,9 +124,9 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// node_modules/pg-types/lib/arrayParser.js
+// ../../fk-plugin-download/node_modules/pg-types/lib/arrayParser.js
 var require_arrayParser = __commonJS({
-  "node_modules/pg-types/lib/arrayParser.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-types/lib/arrayParser.js"(exports2, module2) {
     var array = require_postgres_array();
     module2.exports = {
       create: function(source, transform) {
@@ -140,9 +140,9 @@ var require_arrayParser = __commonJS({
   }
 });
 
-// node_modules/postgres-date/index.js
+// ../../fk-plugin-download/node_modules/postgres-date/index.js
 var require_postgres_date = __commonJS({
-  "node_modules/postgres-date/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/postgres-date/index.js"(exports2, module2) {
     "use strict";
     var DATE_TIME = /(\d{1,})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(\.\d{1,})?.*?( BC)?$/;
     var DATE = /^(\d{1,})-(\d{2})-(\d{2})( BC)?$/;
@@ -227,9 +227,9 @@ var require_postgres_date = __commonJS({
   }
 });
 
-// node_modules/xtend/mutable.js
+// ../../fk-plugin-download/node_modules/xtend/mutable.js
 var require_mutable = __commonJS({
-  "node_modules/xtend/mutable.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/xtend/mutable.js"(exports2, module2) {
     module2.exports = extend;
     var hasOwnProperty = Object.prototype.hasOwnProperty;
     function extend(target) {
@@ -246,9 +246,9 @@ var require_mutable = __commonJS({
   }
 });
 
-// node_modules/postgres-interval/index.js
+// ../../fk-plugin-download/node_modules/postgres-interval/index.js
 var require_postgres_interval = __commonJS({
-  "node_modules/postgres-interval/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/postgres-interval/index.js"(exports2, module2) {
     "use strict";
     var extend = require_mutable();
     module2.exports = PostgresInterval;
@@ -337,9 +337,9 @@ var require_postgres_interval = __commonJS({
   }
 });
 
-// node_modules/postgres-bytea/index.js
+// ../../fk-plugin-download/node_modules/postgres-bytea/index.js
 var require_postgres_bytea = __commonJS({
-  "node_modules/postgres-bytea/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/postgres-bytea/index.js"(exports2, module2) {
     "use strict";
     var bufferFrom = Buffer.from || Buffer;
     module2.exports = function parseBytea(input) {
@@ -373,9 +373,9 @@ var require_postgres_bytea = __commonJS({
   }
 });
 
-// node_modules/pg-types/lib/textParsers.js
+// ../../fk-plugin-download/node_modules/pg-types/lib/textParsers.js
 var require_textParsers = __commonJS({
-  "node_modules/pg-types/lib/textParsers.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-types/lib/textParsers.js"(exports2, module2) {
     var array = require_postgres_array();
     var arrayParser = require_arrayParser();
     var parseDate = require_postgres_date();
@@ -573,9 +573,9 @@ var require_textParsers = __commonJS({
   }
 });
 
-// node_modules/pg-int8/index.js
+// ../../fk-plugin-download/node_modules/pg-int8/index.js
 var require_pg_int8 = __commonJS({
-  "node_modules/pg-int8/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-int8/index.js"(exports2, module2) {
     "use strict";
     var BASE = 1e6;
     function readInt8(buffer) {
@@ -653,9 +653,9 @@ var require_pg_int8 = __commonJS({
   }
 });
 
-// node_modules/pg-types/lib/binaryParsers.js
+// ../../fk-plugin-download/node_modules/pg-types/lib/binaryParsers.js
 var require_binaryParsers = __commonJS({
-  "node_modules/pg-types/lib/binaryParsers.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-types/lib/binaryParsers.js"(exports2, module2) {
     var parseInt64 = require_pg_int8();
     var parseBits = function(data, bits, offset, invert, callback) {
       offset = offset || 0;
@@ -853,9 +853,9 @@ var require_binaryParsers = __commonJS({
   }
 });
 
-// node_modules/pg-types/lib/builtins.js
+// ../../fk-plugin-download/node_modules/pg-types/lib/builtins.js
 var require_builtins = __commonJS({
-  "node_modules/pg-types/lib/builtins.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-types/lib/builtins.js"(exports2, module2) {
     module2.exports = {
       BOOL: 16,
       BYTEA: 17,
@@ -921,9 +921,9 @@ var require_builtins = __commonJS({
   }
 });
 
-// node_modules/pg-types/index.js
+// ../../fk-plugin-download/node_modules/pg-types/index.js
 var require_pg_types = __commonJS({
-  "node_modules/pg-types/index.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-types/index.js"(exports2) {
     var textParsers = require_textParsers();
     var binaryParsers = require_binaryParsers();
     var arrayParser = require_arrayParser();
@@ -962,9 +962,9 @@ var require_pg_types = __commonJS({
   }
 });
 
-// node_modules/pg/lib/defaults.js
+// ../../fk-plugin-download/node_modules/pg/lib/defaults.js
 var require_defaults = __commonJS({
-  "node_modules/pg/lib/defaults.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/defaults.js"(exports2, module2) {
     "use strict";
     var user;
     try {
@@ -1031,9 +1031,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// node_modules/pg/lib/utils.js
+// ../../fk-plugin-download/node_modules/pg/lib/utils.js
 var require_utils = __commonJS({
-  "node_modules/pg/lib/utils.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/utils.js"(exports2, module2) {
     "use strict";
     var defaults2 = require_defaults();
     var { isDate } = require("util/types");
@@ -1179,9 +1179,9 @@ var require_utils = __commonJS({
   }
 });
 
-// node_modules/pg/lib/crypto/utils.js
+// ../../fk-plugin-download/node_modules/pg/lib/crypto/utils.js
 var require_utils2 = __commonJS({
-  "node_modules/pg/lib/crypto/utils.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/crypto/utils.js"(exports2, module2) {
     var nodeCrypto = require("crypto");
     module2.exports = {
       postgresMd5PasswordHash,
@@ -1230,9 +1230,9 @@ var require_utils2 = __commonJS({
   }
 });
 
-// node_modules/pg/lib/crypto/cert-signatures.js
+// ../../fk-plugin-download/node_modules/pg/lib/crypto/cert-signatures.js
 var require_cert_signatures = __commonJS({
-  "node_modules/pg/lib/crypto/cert-signatures.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/crypto/cert-signatures.js"(exports2, module2) {
     function x509Error(msg, cert) {
       return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert.toString("base64"));
     }
@@ -1343,9 +1343,9 @@ var require_cert_signatures = __commonJS({
   }
 });
 
-// node_modules/pg/lib/crypto/sasl.js
+// ../../fk-plugin-download/node_modules/pg/lib/crypto/sasl.js
 var require_sasl = __commonJS({
-  "node_modules/pg/lib/crypto/sasl.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/crypto/sasl.js"(exports2, module2) {
     "use strict";
     var crypto2 = require_utils2();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
@@ -1528,9 +1528,9 @@ var require_sasl = __commonJS({
   }
 });
 
-// node_modules/pg/lib/type-overrides.js
+// ../../fk-plugin-download/node_modules/pg/lib/type-overrides.js
 var require_type_overrides = __commonJS({
-  "node_modules/pg/lib/type-overrides.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/type-overrides.js"(exports2, module2) {
     "use strict";
     var types2 = require_pg_types();
     function TypeOverrides2(userTypes) {
@@ -1563,9 +1563,9 @@ var require_type_overrides = __commonJS({
   }
 });
 
-// node_modules/pg-connection-string/index.js
+// ../../fk-plugin-download/node_modules/pg-connection-string/index.js
 var require_pg_connection_string = __commonJS({
-  "node_modules/pg-connection-string/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-connection-string/index.js"(exports2, module2) {
     "use strict";
     function parse(str, options = {}) {
       if (str.charAt(0) === "/") {
@@ -1751,9 +1751,9 @@ See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode de
   }
 });
 
-// node_modules/pg/lib/connection-parameters.js
+// ../../fk-plugin-download/node_modules/pg/lib/connection-parameters.js
 var require_connection_parameters = __commonJS({
-  "node_modules/pg/lib/connection-parameters.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/connection-parameters.js"(exports2, module2) {
     "use strict";
     var dns = require("dns");
     var defaults2 = require_defaults();
@@ -1902,9 +1902,9 @@ var require_connection_parameters = __commonJS({
   }
 });
 
-// node_modules/pg/lib/result.js
+// ../../fk-plugin-download/node_modules/pg/lib/result.js
 var require_result = __commonJS({
-  "node_modules/pg/lib/result.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/result.js"(exports2, module2) {
     "use strict";
     var types2 = require_pg_types();
     var matchRegexp = /^([A-Za-z]+)(?: (\d+))?(?: (\d+))?/;
@@ -1993,9 +1993,9 @@ var require_result = __commonJS({
   }
 });
 
-// node_modules/pg/lib/query.js
+// ../../fk-plugin-download/node_modules/pg/lib/query.js
 var require_query = __commonJS({
-  "node_modules/pg/lib/query.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/query.js"(exports2, module2) {
     "use strict";
     var { EventEmitter } = require("events");
     var Result2 = require_result();
@@ -2195,9 +2195,9 @@ var require_query = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/messages.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/messages.js
 var require_messages = __commonJS({
-  "node_modules/pg-protocol/dist/messages.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/messages.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NoticeMessage = exports2.DataRowMessage = exports2.CommandCompleteMessage = exports2.ReadyForQueryMessage = exports2.NotificationResponseMessage = exports2.BackendKeyDataMessage = exports2.AuthenticationMD5Password = exports2.ParameterStatusMessage = exports2.ParameterDescriptionMessage = exports2.RowDescriptionMessage = exports2.Field = exports2.CopyResponse = exports2.CopyDataMessage = exports2.DatabaseError = exports2.copyDone = exports2.emptyQuery = exports2.replicationStart = exports2.portalSuspended = exports2.noData = exports2.closeComplete = exports2.bindComplete = exports2.parseComplete = void 0;
@@ -2360,9 +2360,9 @@ var require_messages = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/buffer-writer.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/buffer-writer.js
 var require_buffer_writer = __commonJS({
-  "node_modules/pg-protocol/dist/buffer-writer.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/buffer-writer.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Writer = void 0;
@@ -2464,9 +2464,9 @@ var require_buffer_writer = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/serializer.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/serializer.js
 var require_serializer = __commonJS({
-  "node_modules/pg-protocol/dist/serializer.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/serializer.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.serialize = void 0;
@@ -2686,9 +2686,9 @@ var require_serializer = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/buffer-reader.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/buffer-reader.js
 var require_buffer_reader = __commonJS({
-  "node_modules/pg-protocol/dist/buffer-reader.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/buffer-reader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BufferReader = void 0;
@@ -2745,9 +2745,9 @@ var require_buffer_reader = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/parser.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/parser.js
 var require_parser = __commonJS({
-  "node_modules/pg-protocol/dist/parser.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/parser.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Parser = void 0;
@@ -3052,9 +3052,9 @@ var require_parser = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/index.js
+// ../../fk-plugin-download/node_modules/pg-protocol/dist/index.js
 var require_dist = __commonJS({
-  "node_modules/pg-protocol/dist/index.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-protocol/dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DatabaseError = exports2.serialize = void 0;
@@ -3076,18 +3076,18 @@ var require_dist = __commonJS({
   }
 });
 
-// node_modules/pg-cloudflare/dist/empty.js
+// ../../fk-plugin-download/node_modules/pg-cloudflare/dist/empty.js
 var require_empty = __commonJS({
-  "node_modules/pg-cloudflare/dist/empty.js"(exports2) {
+  "../../fk-plugin-download/node_modules/pg-cloudflare/dist/empty.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = {};
   }
 });
 
-// node_modules/pg/lib/stream.js
+// ../../fk-plugin-download/node_modules/pg/lib/stream.js
 var require_stream = __commonJS({
-  "node_modules/pg/lib/stream.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/stream.js"(exports2, module2) {
     var { getStream, getSecureStream } = getStreamFuncs();
     module2.exports = {
       /**
@@ -3151,9 +3151,9 @@ var require_stream = __commonJS({
   }
 });
 
-// node_modules/pg/lib/connection.js
+// ../../fk-plugin-download/node_modules/pg/lib/connection.js
 var require_connection = __commonJS({
-  "node_modules/pg/lib/connection.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/connection.js"(exports2, module2) {
     "use strict";
     var EventEmitter = require("events").EventEmitter;
     var { parse, serialize } = require_dist();
@@ -3349,9 +3349,9 @@ var require_connection = __commonJS({
   }
 });
 
-// node_modules/split2/index.js
+// ../../fk-plugin-download/node_modules/split2/index.js
 var require_split2 = __commonJS({
-  "node_modules/split2/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/split2/index.js"(exports2, module2) {
     "use strict";
     var { Transform } = require("stream");
     var { StringDecoder } = require("string_decoder");
@@ -3450,9 +3450,9 @@ var require_split2 = __commonJS({
   }
 });
 
-// node_modules/pgpass/lib/helper.js
+// ../../fk-plugin-download/node_modules/pgpass/lib/helper.js
 var require_helper = __commonJS({
-  "node_modules/pgpass/lib/helper.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pgpass/lib/helper.js"(exports2, module2) {
     "use strict";
     var path3 = require("path");
     var Stream = require("stream").Stream;
@@ -3621,9 +3621,9 @@ var require_helper = __commonJS({
   }
 });
 
-// node_modules/pgpass/lib/index.js
+// ../../fk-plugin-download/node_modules/pgpass/lib/index.js
 var require_lib = __commonJS({
-  "node_modules/pgpass/lib/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pgpass/lib/index.js"(exports2, module2) {
     "use strict";
     var path3 = require("path");
     var fs2 = require("fs");
@@ -3642,9 +3642,9 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/pg/lib/client.js
+// ../../fk-plugin-download/node_modules/pg/lib/client.js
 var require_client = __commonJS({
-  "node_modules/pg/lib/client.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/client.js"(exports2, module2) {
     var EventEmitter = require("events").EventEmitter;
     var utils = require_utils();
     var nodeUtils = require("util");
@@ -4330,9 +4330,9 @@ var require_client = __commonJS({
   }
 });
 
-// node_modules/pg-pool/index.js
+// ../../fk-plugin-download/node_modules/pg-pool/index.js
 var require_pg_pool = __commonJS({
-  "node_modules/pg-pool/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg-pool/index.js"(exports2, module2) {
     "use strict";
     var EventEmitter = require("events").EventEmitter;
     var NOOP = function() {
@@ -4756,9 +4756,9 @@ var require_pg_pool = __commonJS({
   }
 });
 
-// node_modules/pg/lib/native/query.js
+// ../../fk-plugin-download/node_modules/pg/lib/native/query.js
 var require_query2 = __commonJS({
-  "node_modules/pg/lib/native/query.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/native/query.js"(exports2, module2) {
     "use strict";
     var EventEmitter = require("events").EventEmitter;
     var util = require("util");
@@ -4897,9 +4897,9 @@ var require_query2 = __commonJS({
   }
 });
 
-// node_modules/pg/lib/native/client.js
+// ../../fk-plugin-download/node_modules/pg/lib/native/client.js
 var require_client2 = __commonJS({
-  "node_modules/pg/lib/native/client.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/native/client.js"(exports2, module2) {
     var nodeUtils = require("util");
     var Native;
     try {
@@ -5231,17 +5231,17 @@ var require_client2 = __commonJS({
   }
 });
 
-// node_modules/pg/lib/native/index.js
+// ../../fk-plugin-download/node_modules/pg/lib/native/index.js
 var require_native = __commonJS({
-  "node_modules/pg/lib/native/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/native/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_client2();
   }
 });
 
-// node_modules/pg/lib/index.js
+// ../../fk-plugin-download/node_modules/pg/lib/index.js
 var require_lib2 = __commonJS({
-  "node_modules/pg/lib/index.js"(exports2, module2) {
+  "../../fk-plugin-download/node_modules/pg/lib/index.js"(exports2, module2) {
     "use strict";
     var Client2 = require_client();
     var defaults2 = require_defaults();
@@ -5542,7 +5542,7 @@ var HostClient = class {
   }
 };
 
-// node_modules/pg/esm/index.mjs
+// ../../fk-plugin-download/node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib2(), 1);
 var Client = import_lib.default.Client;
 var Pool = import_lib.default.Pool;
@@ -5773,6 +5773,29 @@ var migration_0007_indexer_caps_supported_params = {
   down: down7
 };
 
+// migrations/0008_download_history_coverage.ts
+var up8 = `
+  ALTER TABLE "download_history"
+    ADD COLUMN IF NOT EXISTS "coverSeasonFrom" integer,
+    ADD COLUMN IF NOT EXISTS "coverSeasonTo" integer,
+    ADD COLUMN IF NOT EXISTS "coverEpisodeFrom" integer,
+    ADD COLUMN IF NOT EXISTS "coverEpisodeTo" integer,
+    ADD COLUMN IF NOT EXISTS "coverCompleteSeries" boolean
+`;
+var down8 = `
+  ALTER TABLE "download_history"
+    DROP COLUMN IF EXISTS "coverSeasonFrom",
+    DROP COLUMN IF EXISTS "coverSeasonTo",
+    DROP COLUMN IF EXISTS "coverEpisodeFrom",
+    DROP COLUMN IF EXISTS "coverEpisodeTo",
+    DROP COLUMN IF EXISTS "coverCompleteSeries"
+`;
+var migration_0008_download_history_coverage = {
+  name: "0008_download_history_coverage",
+  up: up8,
+  down: down8
+};
+
 // migrations/index.ts
 var MIGRATIONS = [
   migration_0001_initial_schema,
@@ -5781,7 +5804,8 @@ var MIGRATIONS = [
   migration_0004_download_history_info_url,
   migration_0005_indexer_sources,
   migration_0006_indexer_interactive_search,
-  migration_0007_indexer_caps_supported_params
+  migration_0007_indexer_caps_supported_params,
+  migration_0008_download_history_coverage
 ];
 
 // src/db/migrate.ts
@@ -6115,7 +6139,8 @@ var DownloadClientsRepository = class {
 
 // src/db/repositories/download-history.repository.ts
 var COLUMNS5 = `"id", "sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "status", "statusMessage",
-  "grabSource", "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId", "createdAt", "updatedAt"`;
+  "grabSource", "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId", "createdAt", "updatedAt",
+  "coverSeasonFrom", "coverSeasonTo", "coverEpisodeFrom", "coverEpisodeTo", "coverCompleteSeries"`;
 var DownloadHistoryRepository = class {
   constructor(pool) {
     this.pool = pool;
@@ -6139,26 +6164,29 @@ var DownloadHistoryRepository = class {
     );
     return rows[0] ?? null;
   }
-  /** `acquisition-scheduler.service.ts:344,636,625` — dedup by episode-tag substring in
-   *  `sourceTitle` (caller builds the ILIKE pattern, e.g. `%S01E03%`). */
-  async findPendingEpisodeGrab(mediaId, sourceTitlePattern) {
+  /** Source title of a pending grab covering the target. Rows with coverage are judged on it
+   *  alone; rows without keep the seasonId / title checks. */
+  async findPendingGrabCovering(target) {
     const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS5} FROM "download_history"
-        WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "sourceTitle" ILIKE $2
-        LIMIT 1`,
-      [mediaId, sourceTitlePattern]
+      `SELECT "sourceTitle" FROM "download_history"
+          WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing')
+            AND (
+              ("coverCompleteSeries" IS NOT NULL AND (
+                 ("coverCompleteSeries" AND $2::int > 0)
+                 OR ($2::int BETWEEN "coverSeasonFrom" AND "coverSeasonTo"
+                     AND ("coverEpisodeFrom" IS NULL
+                          OR ($3::int IS NOT NULL AND $2::int = "coverSeasonFrom"
+                              AND $3::int BETWEEN "coverEpisodeFrom" AND "coverEpisodeTo")))
+              ))
+              OR ("coverCompleteSeries" IS NULL AND (
+                 ("seasonId" = $4 AND "episodeId" IS NULL)
+                 OR ($3::int IS NOT NULL AND "sourceTitle" ILIKE $5)
+              ))
+            )
+          LIMIT 1`,
+      [target.mediaId, target.seasonNumber, target.episodeNumber, target.seasonId, target.episodeTagPattern]
     );
-    return rows[0] ?? null;
-  }
-  /** `acquisition-scheduler.service.ts:394` — "is a season-pack grab already pending for this season". */
-  async findPendingSeasonPackGrab(mediaId, seasonId) {
-    const { rows } = await this.pool.query(
-      `SELECT ${COLUMNS5} FROM "download_history"
-        WHERE "mediaId" = $1 AND "status" IN ('grabbed', 'importing') AND "seasonId" = $2 AND "episodeId" IS NULL
-        LIMIT 1`,
-      [mediaId, seasonId]
-    );
-    return rows[0] ?? null;
+    return rows[0]?.sourceTitle ?? null;
   }
   /** `acquisition-scheduler.service.ts:737` — RSS dedup, exact title match, any status. */
   async findBySourceTitleForMedia(mediaId, sourceTitle) {
@@ -6285,8 +6313,9 @@ var DownloadHistoryRepository = class {
     const { rows } = await this.pool.query(
       `INSERT INTO "download_history"
          ("sourceTitle", "quality", "language", "torrentHash", "size", "infoUrl", "grabSource",
-          "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          "mediaId", "episodeId", "seasonId", "indexerId", "downloadClientId",
+          "coverSeasonFrom", "coverSeasonTo", "coverEpisodeFrom", "coverEpisodeTo", "coverCompleteSeries")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING ${COLUMNS5}`,
       [
         input.sourceTitle,
@@ -6300,7 +6329,12 @@ var DownloadHistoryRepository = class {
         input.episodeId ?? null,
         input.seasonId ?? null,
         input.indexerId ?? null,
-        input.downloadClientId ?? null
+        input.downloadClientId ?? null,
+        input.coverage?.coverSeasonFrom ?? null,
+        input.coverage?.coverSeasonTo ?? null,
+        input.coverage?.coverEpisodeFrom ?? null,
+        input.coverage?.coverEpisodeTo ?? null,
+        input.coverage?.coverCompleteSeries ?? null
       ]
     );
     const row = rows[0];
@@ -6367,11 +6401,28 @@ var DownloadHistoryRepository = class {
   }
   /** `completion.service.ts:246` — heal an orphan row once its real media/episode/season/quality is known. */
   async healMatch(id, patch) {
+    const c = patch.coverage;
     await this.pool.query(
       `UPDATE "download_history"
-         SET "mediaId" = $2, "episodeId" = $3, "seasonId" = $4, "quality" = $5, "updatedAt" = now()
+         SET "mediaId" = $2, "episodeId" = $3, "seasonId" = $4, "quality" = $5, "updatedAt" = now(),
+             "coverSeasonFrom" = CASE WHEN "coverCompleteSeries" IS NULL THEN $6::int ELSE "coverSeasonFrom" END,
+             "coverSeasonTo" = CASE WHEN "coverCompleteSeries" IS NULL THEN $7::int ELSE "coverSeasonTo" END,
+             "coverEpisodeFrom" = CASE WHEN "coverCompleteSeries" IS NULL THEN $8::int ELSE "coverEpisodeFrom" END,
+             "coverEpisodeTo" = CASE WHEN "coverCompleteSeries" IS NULL THEN $9::int ELSE "coverEpisodeTo" END,
+             "coverCompleteSeries" = CASE WHEN "coverCompleteSeries" IS NULL THEN $10::boolean ELSE "coverCompleteSeries" END
        WHERE "id" = $1`,
-      [id, patch.mediaId, patch.episodeId, patch.seasonId, patch.quality]
+      [id, patch.mediaId, patch.episodeId, patch.seasonId, patch.quality, c?.coverSeasonFrom ?? null, c?.coverSeasonTo ?? null, c?.coverEpisodeFrom ?? null, c?.coverEpisodeTo ?? null, c?.coverCompleteSeries ?? null]
+    );
+  }
+  /** Records coverage on a row that has none; a known one is left alone. */
+  async fillCoverage(id, c) {
+    if (c.coverCompleteSeries == null) return;
+    await this.pool.query(
+      `UPDATE "download_history"
+         SET "coverSeasonFrom" = $2, "coverSeasonTo" = $3, "coverEpisodeFrom" = $4, "coverEpisodeTo" = $5,
+             "coverCompleteSeries" = $6
+       WHERE "id" = $1 AND "coverCompleteSeries" IS NULL`,
+      [id, c.coverSeasonFrom, c.coverSeasonTo, c.coverEpisodeFrom, c.coverEpisodeTo, c.coverCompleteSeries]
     );
   }
 };
@@ -8604,6 +8655,18 @@ function createSearchStreamer(deps) {
 }
 
 // src/grab/grab-history.ts
+function toCoverageColumns(coverage) {
+  if (!coverage || !coverage.completeSeries && !coverage.seasons) {
+    return { coverSeasonFrom: null, coverSeasonTo: null, coverEpisodeFrom: null, coverEpisodeTo: null, coverCompleteSeries: null };
+  }
+  return {
+    coverSeasonFrom: coverage.seasons?.from ?? null,
+    coverSeasonTo: coverage.seasons?.to ?? null,
+    coverEpisodeFrom: coverage.episodes?.from ?? null,
+    coverEpisodeTo: coverage.episodes?.to ?? null,
+    coverCompleteSeries: coverage.completeSeries
+  };
+}
 function buildGrabHistoryRow(args) {
   return {
     mediaId: args.mediaId,
@@ -8620,7 +8683,8 @@ function buildGrabHistoryRow(args) {
     grabSource: args.grabSource,
     indexerId: args.indexerId ?? null,
     episodeId: args.episodeId ?? null,
-    seasonId: args.seasonId ?? null
+    seasonId: args.seasonId ?? null,
+    coverage: toCoverageColumns(args.coverage)
   };
 }
 
@@ -8636,6 +8700,7 @@ async function grabAndRecord(deps, args) {
   const existing = await deps.historyRepo.findLatestByTorrentHash(torrentHash);
   if (existing && existing.mediaId === args.mediaId && (existing.status === "grabbed" || existing.status === "importing")) {
     log.info(`AutoGrab[${args.mediaType}]: "${args.sourceTitle}" is already in flight as history #${existing.id}`);
+    await deps.historyRepo.fillCoverage(existing.id, toCoverageColumns(args.coverage));
     return { torrentHash };
   }
   await deps.historyRepo.insertGrab(
@@ -8650,7 +8715,8 @@ async function grabAndRecord(deps, args) {
       grabSource: args.grabSource,
       indexerId: args.indexerId,
       seasonId: args.seasonId,
-      episodeId: args.episodeId
+      episodeId: args.episodeId,
+      coverage: args.coverage
     })
   );
   void deps.host.call("events.publish", [
@@ -8834,7 +8900,8 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
       size: scored2.size,
       infoUrl: manual.infoUrl,
       indexerId: manual.indexerId,
-      grabSource: "manual"
+      grabSource: "manual",
+      coverage: scored2.coverage
     });
   }
   log.info(`Grab #${mediaId} "${target.title}" \u2014 auto-pick`);
@@ -8857,7 +8924,8 @@ async function grabRelease(deps, mediaId, seasonId, episodeId, manual) {
         infoUrl: candidate.infoUrl,
         indexerId: candidate.indexerId,
         // A user asked for it; the auto-pick only chose the release.
-        grabSource: "manual"
+        grabSource: "manual",
+        coverage: candidate.coverage
       });
     } catch (e) {
       if (!(e instanceof ReleaseUnobtainableError)) throw e;
@@ -8914,7 +8982,8 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
   };
   if (!target.want) return logSkip("no quality/language profile on media");
   if (target.want.decision === "skip") return logSkip("media already satisfies its profile");
-  if (pendingCheck2 && await pendingCheck2()) return logSkip("a grab is already pending");
+  const blocking = pendingCheck2 ? await pendingCheck2() : null;
+  if (blocking !== null) return logSkip(`a grab is already pending ("${blocking}")`);
   const scored = await searchScored2(target);
   if (!scored.length) return logSkip("no releases returned by indexers");
   const pick = pickRelease(scored, target.want);
@@ -8942,6 +9011,7 @@ async function tryAutoGrab(deps, target, client, searchScored2, pendingCheck2) {
       episodeNumber: target.episode?.number,
       seasonId: target.season?.id ?? null,
       episodeId: target.episode?.id ?? null,
+      coverage: candidate.coverage,
       // Only the scheduler/RSS path rejects a hash the client already holds —
       // interactive grabs (`release-pipeline.ts`) leave this off.
       rejectIfAlreadyPresent: true
@@ -8961,7 +9031,7 @@ async function identifyOrphans(host2, titles) {
   for (const r of results) {
     const title = titles[Number(r.id)];
     if (title === void 0) continue;
-    out.set(title, r.mediaId == null ? null : { mediaId: r.mediaId, seasonNumber: r.seasonNumber, episodeNumber: r.episodeNumber, isFullSeason: r.isFullSeason });
+    out.set(title, r.mediaId == null ? null : { mediaId: r.mediaId, seasonNumber: r.seasonNumber, episodeNumber: r.episodeNumber, isFullSeason: r.isFullSeason, coverage: r.coverage });
   }
   return out;
 }
@@ -9015,18 +9085,16 @@ async function searchMissing(deps, mediaIds) {
   log.info(`SearchMissing: ${count} candidate(s) checked`);
 }
 async function pendingCheck(historyRepo, target) {
-  if (target.season && !target.episode) {
-    const pending2 = await historyRepo.findPendingSeasonPackGrab(target.mediaId, target.season.id);
-    return !!pending2;
+  if (target.season) {
+    return historyRepo.findPendingGrabCovering({
+      mediaId: target.mediaId,
+      seasonId: target.season.id,
+      seasonNumber: target.season.number,
+      episodeNumber: target.episode?.number ?? null,
+      episodeTagPattern: target.episode ? `%S${String(target.season.number).padStart(2, "0")}E${String(target.episode.number).padStart(2, "0")}%` : null
+    });
   }
-  if (target.season && target.episode) {
-    if (await historyRepo.findPendingSeasonPackGrab(target.mediaId, target.season.id)) return true;
-    const epLabel = `S${String(target.season.number).padStart(2, "0")}E${String(target.episode.number).padStart(2, "0")}`;
-    const pending2 = await historyRepo.findPendingEpisodeGrab(target.mediaId, `%${epLabel}%`);
-    return !!pending2;
-  }
-  const pending = await historyRepo.findPendingGrabForMedia(target.mediaId);
-  return !!pending;
+  return (await historyRepo.findPendingGrabForMedia(target.mediaId))?.sourceTitle ?? null;
 }
 async function rssSync(deps) {
   if (await autoAcquisitionPaused(deps.host, "RssSync")) return;
@@ -9425,7 +9493,8 @@ var DownloadCompletionPoller = class {
           mediaId: match.mediaId,
           episodeId,
           seasonId,
-          quality: existingRow.quality
+          quality: existingRow.quality,
+          coverage: toCoverageColumns(match.coverage)
         });
         rebound++;
       } else {
@@ -9441,7 +9510,8 @@ var DownloadCompletionPoller = class {
             quality: "unknown",
             grabSource: "manual",
             episodeId,
-            seasonId
+            seasonId,
+            coverage: match.coverage
           })
         );
         bound++;
