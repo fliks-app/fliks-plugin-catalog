@@ -66,9 +66,11 @@ jobs:
         if: inputs.version != ''
         env:
           GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+          PLUGIN_ID: ${{ inputs.pluginId }}
+          VERSION: ${{ inputs.version }}
         run: |
           URL=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).zipUrl' \
-            "plugins/${{ inputs.pluginId }}/versions/${{ inputs.version }}.json")
+            "plugins/$PLUGIN_ID/versions/$VERSION.json")
           PATTERN='^https://github.com/([^/]+/[^/]+)/releases/download/([^/]+)/[^/]+$'
           [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a GitHub Release asset: $URL"; exit 1; }
           echo "PLUGIN_REPO=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
@@ -79,31 +81,51 @@ jobs:
       - name: Build and sign
         id: package
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            node scripts/package-plugin.mjs "${{ inputs.pluginId }}" --src "$RUNNER_TEMP/src" --out "$RUNNER_TEMP/out"
+          if [ -n "$VERSION" ]; then
+            node scripts/package-plugin.mjs "$PLUGIN_ID" --src "$RUNNER_TEMP/src" --out "$RUNNER_TEMP/out"
           else
-            node scripts/package-plugin.mjs "${{ inputs.pluginId }}"
+            node scripts/package-plugin.mjs "$PLUGIN_ID"
           fi
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+          PLUGIN_ID: ${{ inputs.pluginId }}
+          VERSION: ${{ inputs.version }}
+
+      # A published version is immutable: a re-run may only reproduce the recorded archive.
+      - name: Refuse to replace a published archive
+        env:
+          ENTRY: plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json
+          SHA256: ${{ steps.package.outputs.sha256 }}
+        run: |
+          RECORDED=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).sha256' "$ENTRY")
+          if [ -n "${RECORDED//0/}" ] && [ "$RECORDED" != "$SHA256" ]; then
+            echo "::error::$ENTRY already records sha256 $RECORDED, the new archive is $SHA256"
+            exit 1
+          fi
 
       - name: Upload the signed archive to the plugin repo's release
         if: inputs.version != ''
         env:
           GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+          BUILT_VERSION: ${{ steps.package.outputs.version }}
+          VERSION: ${{ inputs.version }}
+          DIST_PATH: ${{ steps.package.outputs.distPath }}
         run: |
-          if [ "${{ steps.package.outputs.version }}" != "${{ inputs.version }}" ]; then
-            echo "::error::plugin.json version ${{ steps.package.outputs.version }} is not ${{ inputs.version }}"
+          if [ "$BUILT_VERSION" != "$VERSION" ]; then
+            echo "::error::plugin.json version $BUILT_VERSION is not $VERSION"
             exit 1
           fi
           # The signature is deterministic, so a re-run uploads identical bytes.
-          gh release upload "$PLUGIN_TAG" "${{ steps.package.outputs.distPath }}" -R "$PLUGIN_REPO" --clobber
+          gh release upload "$PLUGIN_TAG" "$DIST_PATH" -R "$PLUGIN_REPO" --clobber
 
       # An Ed25519 signature is key-dependent, so the archive's hash is only
       # knowable once it has been signed with the real key. Writing it here is
       # what keeps the catalog entry and the published bytes in agreement — a
       # hand-copied hash is a checksum mismatch waiting to happen.
       - name: Record the published hash on the catalog entry
+        env:
+          ENTRY: plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json
+          SHA256: ${{ steps.package.outputs.sha256 }}
         run: |
           node -e '
             const fs = require("fs");
@@ -111,17 +133,21 @@ jobs:
             const entry = JSON.parse(fs.readFileSync(file, "utf8"));
             entry.sha256 = sha;
             fs.writeFileSync(file, JSON.stringify(entry, null, 2) + "\n");
-          ' "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
-            "${{ steps.package.outputs.sha256 }}"
+          ' "$ENTRY" "$SHA256"
           node scripts/build-catalog.mjs
 
       - name: Commit the archive and the updated entry
+        env:
+          PLUGIN_ID: ${{ inputs.pluginId }}
+          VERSION: ${{ inputs.version }}
+          BUILT_VERSION: ${{ steps.package.outputs.version }}
+          DIST_PATH: ${{ steps.package.outputs.distPath }}
         run: |
           git config user.name "fliks-catalog-bot"
           git config user.email "actions@users.noreply.github.com"
           # A wasm archive lives on the plugin repo's release, only a data/node one is committed.
-          if [ -z "${{ inputs.version }}" ]; then git add "${{ steps.package.outputs.distPath }}"; fi
-          git add "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
+          if [ -z "$VERSION" ]; then git add "$DIST_PATH"; fi
+          git add "plugins/$PLUGIN_ID/versions/$BUILT_VERSION.json" \
                   catalog.json
           # Re-running a signing that already landed is a legitimate operator action, and an
           # Ed25519 signature over identical bytes is identical: nothing staged means nothing to do.
@@ -129,7 +155,7 @@ jobs:
             echo "already published — nothing to commit"
             exit 0
           fi
-          git commit -m "chore(${{ inputs.pluginId }}): publish ${{ steps.package.outputs.version }} archive"
+          git commit -m "chore($PLUGIN_ID): publish $BUILT_VERSION archive"
           # Another id's run may have pushed between our checkout and here; its commit touches
           # different files, so replaying ours on top is safe and beats failing the whole job.
           git pull --rebase --autostash origin main
