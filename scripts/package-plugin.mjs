@@ -11,7 +11,7 @@
 // `.github/workflows/package-plugin.yml` calls this rather than duplicating it.
 import { createHash, createPrivateKey, createPublicKey, sign as ed25519Sign, verify as ed25519Verify } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
 import { isValidSemver } from './lib/semver-lite.mjs';
@@ -134,13 +134,35 @@ export function buildPluginZip(entries) {
   return Buffer.concat([...parts, centralDirectory, eocd]);
 }
 
-// plugins.md rules 14 and 16: caps and the component preamble the host enforces on inspect.
-export const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+// plugins.md rules 1-4, 14 and 16: what the host refuses at inspect, checked before signing.
 export const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
+// The entry caps keep a store-only archive under this (asserted by the tests), so it is not rechecked.
 export const MAX_ARCHIVE_BYTES = 33 * 1024 * 1024;
-const MAX_MANIFEST_BYTES = 256 * 1024;
-const MAX_LOGO_BYTES = 64 * 1024;
+export const ENTRY_CAPS = {
+  'plugin.json': 256 * 1024,
+  'plugin.json.sig': 256,
+  'plugin.wasm': 32 * 1024 * 1024,
+  'plugin.js': 8 * 1024 * 1024,
+  'logo.svg': 64 * 1024,
+  'logo.png': 64 * 1024,
+};
 const WASM_PREAMBLE = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x0d, 0x00, 0x01, 0x00]);
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+const ID_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9]+)*$/;
+const MAX_ID_LENGTH = 51;
+const RESERVED_IDS = ['ui', 'metrics', 'sources', 'import'];
+const BASE_KEYS = ['id', 'pluginApi', 'name', 'version', 'fliks', 'author', 'description', 'license', 'logo', 'homepage', 'ui', 'events', 'i18n', 'kind'];
+const PROCESS_KEYS = [...BASE_KEYS, 'runtime', 'memoryMb', 'files', 'database', 'routes', 'scopes', 'ingestRoots', 'jobs', 'permissions', 'checklist', 'network'];
+const SCOPES = ['media:read', 'acquisition:candidates', 'releases:score', 'requests:progress', 'ingest:write', 'events:emit', 'config:rw'];
+
+const isRecord = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStrings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+
+function isIngestRoot(root) {
+  const flavour = /^[a-zA-Z]:[\\/]/.test(root) ? win32 : posix;
+  return flavour.isAbsolute(root) && root === flavour.normalize(root) && flavour.dirname(root) !== root;
+}
 
 function readOneLogo(srcDir) {
   const found = LOGO_NAMES.filter((n) => existsSync(join(srcDir, n)));
@@ -149,16 +171,71 @@ function readOneLogo(srcDir) {
   return { name: found[0], content: readFileSync(join(srcDir, found[0])) };
 }
 
-/** Refuses what the host would refuse at inspect, before a signature is spent on it. */
-export function checkWasmPlugin(manifest, manifestBytes, wasm, logo) {
-  if (!wasm.subarray(0, WASM_PREAMBLE.length).equals(WASM_PREAMBLE)) {
+/** Rules 1-4: the manifest's shape, closed key set and id. */
+export function checkManifest(m) {
+  const bad = (what) => {
+    throw new Error(`plugin.json ${what}`);
+  };
+  if (!isRecord(m)) bad('must be a JSON object');
+  if (typeof m.id !== 'string' || !ID_PATTERN.test(m.id) || m.id.length > MAX_ID_LENGTH || RESERVED_IDS.includes(m.id)) {
+    bad(`"id" must match ${ID_PATTERN}, be at most ${MAX_ID_LENGTH} chars and not ${RESERVED_IDS.join('/')}`);
+  }
+  // The version names the output file and the workflow's outputs, so it must be plain semver.
+  if (!isValidSemver(m.version)) bad(`"version" must be semver (got ${JSON.stringify(m.version)})`);
+  if (m.kind !== 'data' && m.kind !== 'process') bad(`"kind" must be "data" or "process" (got ${JSON.stringify(m.kind)})`);
+  const unknown = Object.keys(m).filter((k) => !(m.kind === 'data' ? BASE_KEYS : PROCESS_KEYS).includes(k));
+  if (unknown.length > 0) bad(`has keys a ${m.kind} manifest may not carry: ${unknown.join(', ')}`);
+  if (typeof m.pluginApi !== 'number') bad('"pluginApi" must be a number');
+  for (const k of ['name', 'fliks']) if (typeof m[k] !== 'string' || m[k] === '') bad(`"${k}" must be a non-empty string`);
+  for (const k of ['author', 'description', 'license', 'logo']) if (typeof m[k] !== 'string') bad(`"${k}" must be a string`);
+  if (m.homepage !== undefined && typeof m.homepage !== 'string') bad('"homepage" must be a string');
+  if (m.kind === 'data') return;
+
+  if (typeof m.memoryMb !== 'number') bad('"memoryMb" must be a number');
+  if (!isRecord(m.files) || !Object.values(m.files).every((v) => typeof v === 'string')) bad('"files" must map names to sha256');
+  if (!isRecord(m.database) || typeof m.database.schema !== 'boolean' || !isStrings(m.database.coreRefs)) {
+    bad('"database" must be {schema: boolean, coreRefs: string[]}');
+  }
+  const isRoute = (r) =>
+    isRecord(r) && ['method', 'path', 'policy'].every((k) => typeof r[k] === 'string') && ['undefined', 'string'].includes(typeof r.objectGuard);
+  if (!Array.isArray(m.routes) || !m.routes.every(isRoute)) bad('"routes" must be [{method, path, policy, objectGuard?}]');
+  if (!isStrings(m.scopes) || m.scopes.length === 0 || !m.scopes.every((s) => SCOPES.includes(s))) {
+    bad(`"scopes" must be a non-empty subset of ${SCOPES.join(' ')}`);
+  }
+  if (!isStrings(m.ingestRoots) || !m.ingestRoots.every(isIngestRoot)) bad('"ingestRoots" must be absolute, normalised, not volume roots');
+  if (m.network !== undefined && JSON.stringify(m.network) !== '{"internal":true}') bad('"network" must be {"internal": true}');
+}
+
+/** Rule 14: PNG by magic bytes; an SVG rooted at <svg> with no script, handler or javascript: URI. */
+export function checkLogo({ name, content }) {
+  if (name === 'logo.png') {
+    if (!content.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)) throw new Error('logo.png does not start with the PNG magic bytes');
+    return;
+  }
+  const text = content.toString('utf8');
+  if (!/<svg[\s>]/i.test(text)) throw new Error('logo.svg has no <svg> root element');
+  if (/<script[\s>]/i.test(text)) throw new Error('logo.svg contains a <script> element');
+  if (/\son[a-z]+\s*=/i.test(text)) throw new Error('logo.svg contains an event-handler attribute');
+  if (/javascript:/i.test(text)) throw new Error('logo.svg contains a javascript: URI');
+}
+
+/** The catalog filters on the entry and the host installs the manifest: they must agree. */
+export function checkAgainstEntry(manifest, entry) {
+  for (const k of ['id', 'version', 'kind', 'pluginApi', 'fliks']) {
+    if (manifest[k] !== entry[k]) {
+      throw new Error(`plugin.json "${k}" ${JSON.stringify(manifest[k])} differs from the version entry's ${JSON.stringify(entry[k])}`);
+    }
+  }
+}
+
+/** Rule 16: the entry set equals `files`, every hash matches, and plugin.wasm is a component. */
+export function checkFiles(manifest, code, logo) {
+  if (code.name === 'plugin.wasm' && !code.content.subarray(0, WASM_PREAMBLE.length).equals(WASM_PREAMBLE)) {
     throw new Error('plugin.wasm does not start with the component preamble (\\0asm, version 0d 00, layer 01 00)');
   }
-  if (manifestBytes.length > MAX_MANIFEST_BYTES) throw new Error('plugin.json is over 256 KiB');
-  if (logo.content.length > MAX_LOGO_BYTES) throw new Error(`${logo.name} is over 64 KiB`);
-  const expected = { 'plugin.wasm': wasm, [logo.name]: logo.content };
+  const expected = { [code.name]: code.content, [logo.name]: logo.content };
   const files = manifest.files;
-  const listed = files && typeof files === 'object' ? Object.keys(files).sort() : [];
+  const listed = isRecord(files) ? Object.keys(files).sort() : [];
   if (listed.join() !== Object.keys(expected).sort().join()) {
     throw new Error(`plugin.json "files" must list exactly ${Object.keys(expected).sort().join(', ')} (got ${listed.join(', ') || 'none'})`);
   }
@@ -171,7 +248,7 @@ export function checkWasmPlugin(manifest, manifestBytes, wasm, logo) {
 
 export function assertEntryCaps(entries) {
   for (const { name, content } of entries) {
-    if (content.length > MAX_ENTRY_BYTES) throw new Error(`${name} is over the 32 MiB entry cap`);
+    if (content.length > ENTRY_CAPS[name]) throw new Error(`${name} is over its ${ENTRY_CAPS[name]} byte cap`);
   }
   if (entries.reduce((n, e) => n + e.content.length, 0) > MAX_TOTAL_BYTES) {
     throw new Error('uncompressed entries exceed the 48 MiB total cap');
@@ -193,13 +270,17 @@ function readCodeEntry(srcDir, manifest) {
     return 'plugin.wasm';
   }
   if (manifest.pluginApi >= 2) throw new Error('a pluginApi 2 process-tier plugin must declare runtime "wasm"');
+  if (manifest.runtime !== 'node') throw new Error('runtime must be "wasm" (pluginApi 2) or "node"');
   if (hasWasm) throw new Error('plugin.wasm requires runtime "wasm" in plugin.json');
   if (!hasJs) throw new Error('a process-tier plugin must ship plugin.js');
   return 'plugin.js';
 }
 
-/** Builds and signs the archive for the plugin sources in `srcDir`. Throws on any refusal. */
-export function buildArchive(pluginId, srcDir, privateKey) {
+/**
+ * Builds and signs the archive for the plugin sources in `srcDir`; `entryFor(version)` returns
+ * that version's catalog entry. Throws on any refusal.
+ */
+export function buildArchive(pluginId, srcDir, privateKey, entryFor) {
   const manifestPath = join(srcDir, 'plugin.json');
   if (!existsSync(manifestPath)) throw new Error(`${manifestPath} does not exist`);
   const manifestBytes = readFileSync(manifestPath);
@@ -209,21 +290,17 @@ export function buildArchive(pluginId, srcDir, privateKey) {
   } catch (err) {
     throw new Error(`${manifestPath} is not valid JSON (${err.message})`);
   }
-  if (manifest.id !== pluginId) {
-    throw new Error(`plugin.json "id" (${JSON.stringify(manifest.id)}) does not match "${pluginId}"`);
+  if (manifest?.id !== pluginId) {
+    throw new Error(`plugin.json "id" (${JSON.stringify(manifest?.id)}) does not match "${pluginId}"`);
   }
-  // The version names the output file and the workflow's outputs, so it must be plain semver.
-  if (!isValidSemver(manifest.version)) {
-    throw new Error(`plugin.json "version" must be semver (got ${JSON.stringify(manifest.version)})`);
-  }
-  if (manifest.kind !== 'data' && manifest.kind !== 'process') {
-    throw new Error(`plugin.json "kind" must be "data" or "process" (got ${JSON.stringify(manifest.kind)})`);
-  }
+  checkManifest(manifest);
+  checkAgainstEntry(manifest, entryFor(manifest.version));
 
   const codeName = readCodeEntry(srcDir, manifest);
   const logo = readOneLogo(srcDir);
+  checkLogo(logo);
   const code = codeName && { name: codeName, content: readFileSync(join(srcDir, codeName)) };
-  if (codeName === 'plugin.wasm') checkWasmPlugin(manifest, manifestBytes, code.content, logo);
+  if (code) checkFiles(manifest, code, logo);
 
   const signature = signManifest(privateKey, manifestBytes);
   const entries = [
@@ -234,9 +311,9 @@ export function buildArchive(pluginId, srcDir, privateKey) {
   ];
   assertEntryCaps(entries);
   const zip = buildPluginZip(entries);
-  if (zip.length > MAX_ARCHIVE_BYTES) throw new Error('archive is over the 33 MiB compressed cap');
   return { zip, manifest, digest: createHash('sha256').update(zip).digest('hex') };
 }
+
 
 function main() {
   const args = process.argv.slice(2);
@@ -246,13 +323,20 @@ function main() {
   };
   const srcOpt = opt('--src');
   const outOpt = opt('--out');
+  const versionsOpt = opt('--versions');
   const pluginId = args[0];
-  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId> [--src <dir> --out <dir>]');
+  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId> [--src <dir> --out <dir> --versions <dir>]');
 
   const srcDir = srcOpt ?? join(ROOT, 'plugins', pluginId, 'src');
+  const versionsDir = versionsOpt ?? join(ROOT, 'plugins', pluginId, 'versions');
+  const entryFor = (version) => {
+    const path = join(versionsDir, `${version}.json`);
+    if (!existsSync(path)) throw new Error(`${path} does not exist: commit the version entry first`);
+    return JSON.parse(readFileSync(path, 'utf8'));
+  };
   let built;
   try {
-    built = buildArchive(pluginId, srcDir, loadSigningKey(process.env.CATALOG_SIGNING_KEY));
+    built = buildArchive(pluginId, srcDir, loadSigningKey(process.env.CATALOG_SIGNING_KEY), entryFor);
   } catch (err) {
     fail(err.message);
   }
