@@ -7,6 +7,7 @@
 // accepts by construction — see backend/src/modules/plugins/archive/limits.ts and
 // zip-inspector.ts for the rules this mirrors: <=4 entries, no directories, no
 // ZIP64, no data descriptor, exact literal names, one EOCD, no archive comment.
+// A `runtime: "wasm"` plugin ships `plugin.wasm` instead of `plugin.js` (plugins.md rules 14, 16).
 // `.github/workflows/package-plugin.yml` calls this rather than duplicating it.
 import { createHash, createPrivateKey, createPublicKey, sign as ed25519Sign, verify as ed25519Verify } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -132,61 +133,135 @@ export function buildPluginZip(entries) {
   return Buffer.concat([...parts, centralDirectory, eocd]);
 }
 
+// plugins.md rules 14 and 16: caps and the component preamble the host enforces on inspect.
+export const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
+export const MAX_ARCHIVE_BYTES = 33 * 1024 * 1024;
+const MAX_MANIFEST_BYTES = 256 * 1024;
+const MAX_LOGO_BYTES = 64 * 1024;
+const WASM_PREAMBLE = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x0d, 0x00, 0x01, 0x00]);
+
 function readOneLogo(srcDir) {
   const found = LOGO_NAMES.filter((n) => existsSync(join(srcDir, n)));
-  if (found.length === 0) fail(`${srcDir} has no logo.svg or logo.png`);
-  if (found.length > 1) fail(`${srcDir} has both logo.svg and logo.png — exactly one is legal`);
+  if (found.length === 0) throw new Error(`${srcDir} has no logo.svg or logo.png`);
+  if (found.length > 1) throw new Error(`${srcDir} has both logo.svg and logo.png — exactly one is legal`);
   return { name: found[0], content: readFileSync(join(srcDir, found[0])) };
 }
 
-function main() {
-  const pluginId = process.argv[2];
-  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId>');
+/** Refuses what the host would refuse at inspect, before a signature is spent on it. */
+export function checkWasmPlugin(manifest, manifestBytes, wasm, logo) {
+  if (!wasm.subarray(0, WASM_PREAMBLE.length).equals(WASM_PREAMBLE)) {
+    throw new Error('plugin.wasm does not start with the component preamble (\\0asm, version 0d 00, layer 01 00)');
+  }
+  if (manifestBytes.length > MAX_MANIFEST_BYTES) throw new Error('plugin.json is over 256 KiB');
+  if (logo.content.length > MAX_LOGO_BYTES) throw new Error(`${logo.name} is over 64 KiB`);
+  const expected = { 'plugin.wasm': wasm, [logo.name]: logo.content };
+  const files = manifest.files;
+  const listed = files && typeof files === 'object' ? Object.keys(files).sort() : [];
+  if (listed.join() !== Object.keys(expected).sort().join()) {
+    throw new Error(`plugin.json "files" must list exactly ${Object.keys(expected).sort().join(', ')} (got ${listed.join(', ') || 'none'})`);
+  }
+  for (const [name, content] of Object.entries(expected)) {
+    if (files[name] !== createHash('sha256').update(content).digest('hex')) {
+      throw new Error(`plugin.json "files" sha256 for ${name} does not match the file`);
+    }
+  }
+}
 
-  const srcDir = join(ROOT, 'plugins', pluginId, 'src');
+export function assertEntryCaps(entries) {
+  for (const { name, content } of entries) {
+    if (content.length > MAX_ENTRY_BYTES) throw new Error(`${name} is over the 32 MiB entry cap`);
+  }
+  if (entries.reduce((n, e) => n + e.content.length, 0) > MAX_TOTAL_BYTES) {
+    throw new Error('uncompressed entries exceed the 48 MiB total cap');
+  }
+}
+
+/** Tier and runtime rules; returns the code entry to ship, or null for a data plugin. */
+function readCodeEntry(srcDir, manifest) {
+  const hasJs = existsSync(join(srcDir, 'plugin.js'));
+  const hasWasm = existsSync(join(srcDir, 'plugin.wasm'));
+  if (manifest.kind === 'data') {
+    if (hasJs || hasWasm) throw new Error('a data-tier plugin may not ship plugin.js or plugin.wasm');
+    return null;
+  }
+  if (hasJs && hasWasm) throw new Error('a process-tier plugin ships plugin.js or plugin.wasm, not both');
+  if (manifest.runtime === 'wasm') {
+    if (manifest.pluginApi !== 2) throw new Error('runtime "wasm" requires pluginApi 2');
+    if (!hasWasm) throw new Error('a wasm process-tier plugin must ship plugin.wasm');
+    return 'plugin.wasm';
+  }
+  if (manifest.pluginApi >= 2) throw new Error('a pluginApi 2 process-tier plugin must declare runtime "wasm"');
+  if (hasWasm) throw new Error('plugin.wasm requires runtime "wasm" in plugin.json');
+  if (!hasJs) throw new Error('a process-tier plugin must ship plugin.js');
+  return 'plugin.js';
+}
+
+/** Builds and signs the archive for the plugin sources in `srcDir`. Throws on any refusal. */
+export function buildArchive(pluginId, srcDir, privateKey) {
   const manifestPath = join(srcDir, 'plugin.json');
-  if (!existsSync(manifestPath)) fail(`${manifestPath} does not exist`);
-
+  if (!existsSync(manifestPath)) throw new Error(`${manifestPath} does not exist`);
   const manifestBytes = readFileSync(manifestPath);
   let manifest;
   try {
     manifest = JSON.parse(manifestBytes.toString('utf8'));
   } catch (err) {
-    fail(`${manifestPath} is not valid JSON (${err.message})`);
+    throw new Error(`${manifestPath} is not valid JSON (${err.message})`);
   }
   if (manifest.id !== pluginId) {
-    fail(`plugin.json "id" (${JSON.stringify(manifest.id)}) does not match directory "${pluginId}"`);
+    throw new Error(`plugin.json "id" (${JSON.stringify(manifest.id)}) does not match "${pluginId}"`);
   }
   if (manifest.kind !== 'data' && manifest.kind !== 'process') {
-    fail(`plugin.json "kind" must be "data" or "process" (got ${JSON.stringify(manifest.kind)})`);
+    throw new Error(`plugin.json "kind" must be "data" or "process" (got ${JSON.stringify(manifest.kind)})`);
   }
 
-  const pluginJsPath = join(srcDir, 'plugin.js');
-  const hasPluginJs = existsSync(pluginJsPath);
-  if (manifest.kind === 'data' && hasPluginJs) fail('a data-tier plugin may not ship plugin.js');
-  if (manifest.kind === 'process' && !hasPluginJs) fail('a process-tier plugin must ship plugin.js');
-
-  const privateKey = loadSigningKey(process.env.CATALOG_SIGNING_KEY);
-  const signature = signManifest(privateKey, manifestBytes);
+  const codeName = readCodeEntry(srcDir, manifest);
   const logo = readOneLogo(srcDir);
+  const code = codeName && { name: codeName, content: readFileSync(join(srcDir, codeName)) };
+  if (codeName === 'plugin.wasm') checkWasmPlugin(manifest, manifestBytes, code.content, logo);
 
+  const signature = signManifest(privateKey, manifestBytes);
   const entries = [
     { name: 'plugin.json', content: manifestBytes },
     { name: 'plugin.json.sig', content: Buffer.from(`${signature.toString('base64')}\n`, 'utf8') },
+    ...(code ? [code] : []),
+    logo,
   ];
-  if (hasPluginJs) entries.push({ name: 'plugin.js', content: readFileSync(pluginJsPath) });
-  entries.push(logo);
-
+  assertEntryCaps(entries);
   const zip = buildPluginZip(entries);
-  const digest = createHash('sha256').update(zip).digest('hex');
+  if (zip.length > MAX_ARCHIVE_BYTES) throw new Error('archive is over the 33 MiB compressed cap');
+  return { zip, manifest, digest: createHash('sha256').update(zip).digest('hex') };
+}
 
-  const outDir = join(ROOT, 'plugins', pluginId, 'dist');
+function main() {
+  const args = process.argv.slice(2);
+  const opt = (name) => {
+    const i = args.indexOf(name);
+    return i === -1 ? undefined : args.splice(i, 2)[1];
+  };
+  const srcOpt = opt('--src');
+  const outOpt = opt('--out');
+  const pluginId = args[0];
+  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId> [--src <dir> --out <dir>]');
+
+  const srcDir = srcOpt ?? join(ROOT, 'plugins', pluginId, 'src');
+  let built;
+  try {
+    built = buildArchive(pluginId, srcDir, loadSigningKey(process.env.CATALOG_SIGNING_KEY));
+  } catch (err) {
+    fail(err.message);
+  }
+  const { zip, manifest, digest } = built;
+
+  // A wasm archive is a release asset, never committed: it has no default output directory.
+  if (manifest.runtime === 'wasm' && !outOpt) fail('a wasm plugin needs --out <dir> (its archive is not stored in this repo)');
+  const outDir = outOpt ?? join(ROOT, 'plugins', pluginId, 'dist');
   mkdirSync(outDir, { recursive: true });
   const fileName = `${pluginId}-${manifest.version}.fkplugin`;
   const outPath = join(outDir, fileName);
   writeFileSync(outPath, zip);
 
-  const relPath = `plugins/${pluginId}/dist/${fileName}`;
+  const relPath = outOpt ? outPath : `plugins/${pluginId}/dist/${fileName}`;
   console.log(`packaged ${relPath}`);
   console.log(`  id:      ${manifest.id}`);
   console.log(`  version: ${manifest.version}`);

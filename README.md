@@ -86,8 +86,23 @@ test keys.
    `catalog.json`, signs it, and republishes to GitHub Pages. No separate release
    step.
 
-`pluginApi` is currently **0** — see `COMPATIBILITY.md` for what that maps to on the
-core side.
+`pluginApi` is currently **2** (WASM components) — see `COMPATIBILITY.md` for what that
+maps to on the core side.
+
+## WASM plugins (`pluginApi` 2)
+
+A `kind: "process"` plugin with `runtime: "wasm"` ships `plugin.wasm` (a component),
+`plugin.json`, `plugin.json.sig` and a logo, within the host's caps (32 MiB per entry, 48 MiB
+uncompressed, 33 MiB archive). Its code stays in its own `fk-plugin-<name>` repo, which publishes
+`plugin.json`, `plugin.wasm` and the logo as assets of a `v<version>` release. Its version entry's
+`zipUrl` must be that repo's release asset `<id>-<version>.fkplugin`, committed with a zeroed
+`sha256` (held back from the catalog).
+
+Run `Package plugin` with `pluginId` and `version`: it downloads those assets, signs and packages
+them, uploads the `.fkplugin` to the same release and records its sha256. Nothing is stored under
+`dist/` (older archives stay). The workflow needs the secret `PLUGIN_REPO_TOKEN`: a fine-grained
+token with `Contents: read and write` on the plugin repos, since the default `GITHUB_TOKEN` is
+scoped to this repo. The sha256 and the signature remain the install gate.
 
 ## Why "no dependencies"
 

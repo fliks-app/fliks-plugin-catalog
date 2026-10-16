@@ -4,6 +4,10 @@
 # deploy — the only way a plugin download URL survives that is to live in the
 # git tree, same as catalog.json). Signs with CATALOG_SIGNING_KEY, the same key
 # that signs catalog.json — see docs/key-rotation.md for what that buys.
+#
+# With `version` set (a pluginApi 2 wasm plugin) the sources are the assets of the plugin repo's
+# release named by the entry's zipUrl, and the signed archive is uploaded back to that release;
+# nothing is committed under dist/. That cross-repo access needs the PLUGIN_REPO_TOKEN secret.
 name: Package plugin
 
 on:
@@ -12,6 +16,11 @@ on:
       pluginId:
         description: 'Plugin id under plugins/<id>/src/ (matches its directory name)'
         required: true
+        type: string
+      version:
+        description: 'Set for a wasm plugin released from its own repo: reads plugins/<id>/versions/<version>.json'
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -43,11 +52,52 @@ jobs:
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
 
+      - name: Refuse a wasm run without the cross-repo token
+        if: inputs.version != ''
+        run: |
+          if [ -z "${PLUGIN_REPO_TOKEN}" ]; then
+            echo "::error::PLUGIN_REPO_TOKEN is not set: a fine-grained token with Contents read/write on the plugin repo."
+            exit 1
+          fi
+        env:
+          PLUGIN_REPO_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+
+      - name: Fetch the wasm plugin's release assets
+        if: inputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+        run: |
+          URL=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).zipUrl' \
+            "plugins/${{ inputs.pluginId }}/versions/${{ inputs.version }}.json")
+          PATTERN='^https://github.com/([^/]+/[^/]+)/releases/download/([^/]+)/[^/]+$'
+          [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a GitHub Release asset: $URL"; exit 1; }
+          echo "PLUGIN_REPO=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+          echo "PLUGIN_TAG=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"
+          gh release download "${BASH_REMATCH[2]}" -R "${BASH_REMATCH[1]}" -D "$RUNNER_TEMP/src" \
+            -p plugin.json -p plugin.wasm -p 'logo.*'
+
       - name: Build and sign
         id: package
-        run: node scripts/package-plugin.mjs "${{ inputs.pluginId }}"
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            node scripts/package-plugin.mjs "${{ inputs.pluginId }}" --src "$RUNNER_TEMP/src" --out "$RUNNER_TEMP/out"
+          else
+            node scripts/package-plugin.mjs "${{ inputs.pluginId }}"
+          fi
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+
+      - name: Upload the signed archive to the plugin repo's release
+        if: inputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+        run: |
+          if [ "${{ steps.package.outputs.version }}" != "${{ inputs.version }}" ]; then
+            echo "::error::plugin.json version ${{ steps.package.outputs.version }} is not ${{ inputs.version }}"
+            exit 1
+          fi
+          # The signature is deterministic, so a re-run uploads identical bytes.
+          gh release upload "$PLUGIN_TAG" "${{ steps.package.outputs.distPath }}" -R "$PLUGIN_REPO" --clobber
 
       # An Ed25519 signature is key-dependent, so the archive's hash is only
       # knowable once it has been signed with the real key. Writing it here is
@@ -69,8 +119,9 @@ jobs:
         run: |
           git config user.name "fliks-catalog-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add "${{ steps.package.outputs.distPath }}" \
-                  "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
+          # A wasm archive lives on the plugin repo's release, only a data/node one is committed.
+          if [ -z "${{ inputs.version }}" ]; then git add "${{ steps.package.outputs.distPath }}"; fi
+          git add "plugins/${{ inputs.pluginId }}/versions/${{ steps.package.outputs.version }}.json" \
                   catalog.json
           # Re-running a signing that already landed is a legitimate operator action, and an
           # Ed25519 signature over identical bytes is identical: nothing staged means nothing to do.
@@ -85,6 +136,7 @@ jobs:
           git push
 
       - name: Attach to a GitHub Release
+        if: inputs.version == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -105,6 +157,7 @@ jobs:
         run: gh workflow run publish.yml --ref main
 
       - name: Print what plugins/<id>/versions/<version>.json needs
+        if: inputs.version == ''
         run: |
           echo "zipUrl: https://fliks-app.github.io/fliks-plugin-catalog/${{ steps.package.outputs.distPath }}"
           echo "sha256: ${{ steps.package.outputs.sha256 }}"

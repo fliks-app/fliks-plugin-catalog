@@ -6,6 +6,8 @@ import { isValidSemver, hasMandatoryUpperBound } from './semver-lite.mjs';
 
 const ID_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9]+)*$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+// pluginApi 2 archives are GitHub Release assets of the plugin's repo, named after the version.
+const RELEASE_ASSET_URL = /^https:\/\/github\.com\/[^/]+\/[^/]+\/releases\/download\/[^/]+\/([^/]+)$/;
 export const REQUIRED_FIELDS = [
   'id',
   'name',
@@ -65,6 +67,12 @@ export function validateEntry(entry) {
   }
   if (typeof entry.zipUrl !== 'string' || !/^https:\/\//.test(entry.zipUrl)) {
     errors.push('"zipUrl" must be an https URL');
+  }
+  if (entry.pluginApi >= 2 && typeof entry.zipUrl === 'string' && /^https:\/\//.test(entry.zipUrl)) {
+    const asset = RELEASE_ASSET_URL.exec(entry.zipUrl)?.[1];
+    if (asset !== `${entry.id}-${entry.version}.fkplugin`) {
+      errors.push(`"zipUrl" for pluginApi ${entry.pluginApi} must be a GitHub Release asset named "${entry.id}-${entry.version}.fkplugin"`);
+    }
   }
   if ('logo' in entry && (typeof entry.logo !== 'string' || !/^https:\/\//.test(entry.logo))) {
     errors.push('"logo" must be an https URL');
