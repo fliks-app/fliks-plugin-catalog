@@ -6,6 +6,8 @@ import { isValidSemver, hasMandatoryUpperBound } from './semver-lite.mjs';
 
 const ID_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9]+)*$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+// pluginApi 2 process archives are assets of the plugin repo's v<version> release.
+const RELEASE_ASSET_URL = /^https:\/\/github\.com\/fliks-app\/[^/]+\/releases\/download\/([^/]+)\/([^/]+)$/;
 export const REQUIRED_FIELDS = [
   'id',
   'name',
@@ -65,6 +67,15 @@ export function validateEntry(entry) {
   }
   if (typeof entry.zipUrl !== 'string' || !/^https:\/\//.test(entry.zipUrl)) {
     errors.push('"zipUrl" must be an https URL');
+  }
+  if (entry.pluginApi >= 2 && entry.kind === 'process' && typeof entry.zipUrl === 'string' && /^https:\/\//.test(entry.zipUrl)) {
+    const [, tag, asset] = RELEASE_ASSET_URL.exec(entry.zipUrl) ?? [];
+    if (tag !== `v${entry.version}` || asset !== `${entry.id}-${entry.version}.fkplugin`) {
+      errors.push(
+        `"zipUrl" for a pluginApi ${entry.pluginApi} process plugin must be the GitHub Release asset ` +
+          `https://github.com/fliks-app/<repo>/releases/download/v${entry.version}/${entry.id}-${entry.version}.fkplugin`,
+      );
+    }
   }
   if ('logo' in entry && (typeof entry.logo !== 'string' || !/^https:\/\//.test(entry.logo))) {
     errors.push('"logo" must be an https URL');

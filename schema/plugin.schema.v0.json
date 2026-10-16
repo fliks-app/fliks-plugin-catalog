@@ -1,10 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fliks-app.github.io/fliks-plugin-catalog/schema/plugin.schema.v0.json",
-  "title": "Fliks plugin catalog submission (pluginApi 0)",
+  "title": "Fliks plugin catalog submission",
   "description": "One plugins/<id>/versions/<version>.json file. Every field is required by either the consumer's CatalogDocument parser (backend/src/modules/plugins/catalog/catalog.ts) or the install pipeline that reads a catalog version entry (backend/src/modules/plugins/plugin-install.service.ts). name/description/author/kind are plugin-level and must be identical across every version of the same id; the catalog carries one of each per plugin.",
   "type": "object",
   "additionalProperties": false,
+  "if": { "properties": { "pluginApi": { "minimum": 2 }, "kind": { "const": "process" } }, "required": ["pluginApi", "kind"] },
+  "then": {
+    "properties": {
+      "zipUrl": {
+        "pattern": "^https://github\\.com/fliks-app/[^/]+/releases/download/v[^/]+/[^/]+\\.fkplugin$",
+        "description": "pluginApi 2 process archives are assets of the plugin repo's v<version> release, named <id>-<version>.fkplugin (checked by validate-entry.mjs). Data plugins keep the Pages path."
+      }
+    }
+  },
   "required": [
     "id",
     "name",
@@ -54,7 +63,7 @@
     "pluginApi": {
       "type": "integer",
       "minimum": 0,
-      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (currently 0, see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not itself required to equal 0 here \u2014 an old version entry legitimately keeps whatever pluginApi it shipped with."
+      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not required to equal one value here \u2014 an old version entry legitimately keeps whatever pluginApi it shipped with."
     },
     "fliks": {
       "type": "string",

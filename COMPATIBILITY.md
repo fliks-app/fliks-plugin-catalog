@@ -29,6 +29,7 @@ spawned).
 |---|---|---|
 | `0` | `>=2.0.0 <4.0.0` | retired: core 4.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
 | `1` | `>=4.0.0 <5.0.0` | current |
+| `2` | `>=5.0.0 <6.0.0` | current: WASM components (`runtime: "wasm"`, `plugin.wasm`) |
 
 The `0` row records the range its first manifests declared; later `0` submissions raised
 their own floor into the 3.x line without changing the revision, which stayed additive

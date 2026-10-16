@@ -86,8 +86,34 @@ test keys.
    `catalog.json`, signs it, and republishes to GitHub Pages. No separate release
    step.
 
-`pluginApi` is currently **0** — see `COMPATIBILITY.md` for what that maps to on the
-core side.
+`pluginApi` is currently **2** (WASM components) — see `COMPATIBILITY.md` for what that
+maps to on the core side.
+
+## WASM plugins (`pluginApi` 2)
+
+A `kind: "process"` plugin with `runtime: "wasm"` ships `plugin.wasm` (a component),
+`plugin.json`, `plugin.json.sig` and a logo, within the host's caps (32 MiB per entry, 48 MiB
+uncompressed, 33 MiB archive). Its code stays in its own `fk-plugin-<name>` repo, which publishes
+`plugin.wasm` and the logo as assets of a `v<version>` release.
+
+The publishing PR adds two files, both reviewed:
+
+- `plugins/<id>/src/plugin.json`, the manifest built by the plugin repo. Its `files` map holds
+  the sha256 of `plugin.wasm` and of the logo, so it pins every byte the catalog key signs.
+- `plugins/<id>/versions/<version>.json`, with `zipUrl` set to
+  `https://github.com/fliks-app/<repo>/releases/download/v<version>/<id>-<version>.fkplugin` and a
+  zeroed `sha256` (held back from the catalog). Its `id`, `version`, `kind`, `pluginApi` and
+  `fliks` must equal the manifest's.
+
+Once it is merged, run `Package plugin` with `pluginId` and `version`. It downloads only
+`plugin.wasm` and the logo from the release and refuses them unless they match the committed
+`files`. It then checks the manifest and logo as the host does at install, signs, uploads the
+`.fkplugin` to the same release and records its sha256. A re-run can only reproduce the recorded
+archive. Nothing is stored under `dist/` (older archives stay). The upload needs the secret
+`PLUGIN_REPO_TOKEN`, a fine-grained token with `Contents: read and write` on the `fk-plugin-*`
+repos, because the default `GITHUB_TOKEN` is scoped to this repo. The downloads use
+`GITHUB_TOKEN`. A `pluginApi` 2 data plugin keeps the in-repo `src/` and Pages path.
+The sha256 and the signature remain the install gate.
 
 ## Why "no dependencies"
 
