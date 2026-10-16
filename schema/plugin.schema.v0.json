@@ -5,12 +5,12 @@
   "description": "One plugins/<id>/versions/<version>.json file. Every field is required by either the consumer's CatalogDocument parser (backend/src/modules/plugins/catalog/catalog.ts) or the install pipeline that reads a catalog version entry (backend/src/modules/plugins/plugin-install.service.ts). name/description/author/kind are plugin-level and must be identical across every version of the same id; the catalog carries one of each per plugin.",
   "type": "object",
   "additionalProperties": false,
-  "if": { "properties": { "pluginApi": { "minimum": 2 } }, "required": ["pluginApi"] },
+  "if": { "properties": { "pluginApi": { "minimum": 2 }, "kind": { "const": "process" } }, "required": ["pluginApi", "kind"] },
   "then": {
     "properties": {
       "zipUrl": {
-        "pattern": "^https://github\\.com/[^/]+/[^/]+/releases/download/[^/]+/[^/]+\\.fkplugin$",
-        "description": "pluginApi 2 archives are GitHub Release assets of the plugin repo, named <id>-<version>.fkplugin (checked by validate-entry.mjs)."
+        "pattern": "^https://github\\.com/fliks-app/[^/]+/releases/download/v[^/]+/[^/]+\\.fkplugin$",
+        "description": "pluginApi 2 process archives are assets of the plugin repo's v<version> release, named <id>-<version>.fkplugin (checked by validate-entry.mjs). Data plugins keep the Pages path."
       }
     }
   },

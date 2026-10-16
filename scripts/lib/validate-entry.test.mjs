@@ -20,6 +20,11 @@ test('a pluginApi 2 entry refuses any other archive location or name', () => {
     base.zipUrl.replace('1.0.0.fkplugin', '1.0.1.fkplugin'),
     base.zipUrl.replace('fliks.download-', 'fk-plugin-download-'),
     'https://github.com/fliks-app/fk-plugin-download/archive/v1.0.0.zip',
+    base.zipUrl.replace('fliks-app/', 'someone/'),
+    base.zipUrl.replace('/v1.0.0/', '/1.0.0/'),
+    base.zipUrl.replace('/v1.0.0/', '/v1.0.1/'),
+    `${base.zipUrl}?x=1`,
+    `${base.zipUrl}/`,
   ]) {
     assert.match(errors({ ...base, zipUrl }).join(), /GitHub Release asset/, zipUrl);
   }
@@ -29,4 +34,9 @@ test('a pluginApi 1 entry keeps any https zipUrl, and a non-https one is still r
   const v1 = { ...base, pluginApi: 1, fliks: '>=4.0.0 <5.0.0', zipUrl: 'https://example.org/x.fkplugin' };
   assert.equal(validateEntry(v1).ok, true);
   assert.deepEqual(errors({ ...base, zipUrl: 'http://example.org/x' }), ['"zipUrl" must be an https URL']);
+});
+
+test('a pluginApi 2 data entry keeps the Pages path', () => {
+  const zipUrl = 'https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-2.0.0.fkplugin';
+  assert.equal(validateEntry({ ...base, kind: 'data', zipUrl }).ok, true);
 });
