@@ -5,9 +5,9 @@
 # git tree, same as catalog.json). Signs with CATALOG_SIGNING_KEY, the same key
 # that signs catalog.json — see docs/key-rotation.md for what that buys.
 #
-# With `version` set (a pluginApi 2 wasm plugin) the sources are the assets of the plugin repo's
-# release named by the entry's zipUrl, and the signed archive is uploaded back to that release;
-# nothing is committed under dist/. That cross-repo access needs the PLUGIN_REPO_TOKEN secret.
+# With `version` set (a pluginApi 2 wasm plugin) the reviewed plugins/<id>/src/plugin.json is
+# signed with plugin.wasm and the logo from the plugin repo's v<version> release; its `files`
+# sha256s pin those bytes. The archive goes back to that release (PLUGIN_REPO_TOKEN), not dist/.
 name: Package plugin
 
 on:
@@ -18,7 +18,7 @@ on:
         required: true
         type: string
       version:
-        description: 'Set for a wasm plugin released from its own repo: reads plugins/<id>/versions/<version>.json'
+        description: 'Set for a wasm plugin: signs plugins/<id>/src/plugin.json with the v<version> release code'
         required: false
         default: ''
         type: string
@@ -52,31 +52,25 @@ jobs:
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
 
-      - name: Refuse a wasm run without the cross-repo token
-        if: inputs.version != ''
-        run: |
-          if [ -z "${PLUGIN_REPO_TOKEN}" ]; then
-            echo "::error::PLUGIN_REPO_TOKEN is not set: a fine-grained token with Contents read/write on the plugin repo."
-            exit 1
-          fi
-        env:
-          PLUGIN_REPO_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
-
-      - name: Fetch the wasm plugin's release assets
+      # Only the code and the logo come from the release: the committed manifest pins their sha256.
+      - name: Fetch the wasm plugin's code and logo
         if: inputs.version != ''
         env:
-          GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           PLUGIN_ID: ${{ inputs.pluginId }}
           VERSION: ${{ inputs.version }}
         run: |
           URL=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).zipUrl' \
             "plugins/$PLUGIN_ID/versions/$VERSION.json")
-          PATTERN='^https://github.com/([^/]+/[^/]+)/releases/download/([^/]+)/[^/]+$'
-          [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a GitHub Release asset: $URL"; exit 1; }
+          PATTERN='^https://github\.com/(fliks-app/[^/]+)/releases/download/([^/]+)/[^/]+$'
+          [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a fliks-app release asset: $URL"; exit 1; }
+          [ "${BASH_REMATCH[2]}" = "v$VERSION" ] || { echo "::error::zipUrl tag is not v$VERSION: $URL"; exit 1; }
           echo "PLUGIN_REPO=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
           echo "PLUGIN_TAG=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/src"
+          cp "plugins/$PLUGIN_ID/src/plugin.json" "$RUNNER_TEMP/src/"
           gh release download "${BASH_REMATCH[2]}" -R "${BASH_REMATCH[1]}" -D "$RUNNER_TEMP/src" \
-            -p plugin.json -p plugin.wasm -p 'logo.*'
+            -p plugin.wasm -p 'logo.*'
 
       - name: Build and sign
         id: package
@@ -111,6 +105,10 @@ jobs:
           VERSION: ${{ inputs.version }}
           DIST_PATH: ${{ steps.package.outputs.distPath }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::PLUGIN_REPO_TOKEN is not set: a fine-grained token with Contents read/write on the plugin repos."
+            exit 1
+          fi
           if [ "$BUILT_VERSION" != "$VERSION" ]; then
             echo "::error::plugin.json version $BUILT_VERSION is not $VERSION"
             exit 1

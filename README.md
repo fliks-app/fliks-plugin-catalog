@@ -94,15 +94,26 @@ maps to on the core side.
 A `kind: "process"` plugin with `runtime: "wasm"` ships `plugin.wasm` (a component),
 `plugin.json`, `plugin.json.sig` and a logo, within the host's caps (32 MiB per entry, 48 MiB
 uncompressed, 33 MiB archive). Its code stays in its own `fk-plugin-<name>` repo, which publishes
-`plugin.json`, `plugin.wasm` and the logo as assets of a `v<version>` release. Its version entry's
-`zipUrl` must be that repo's release asset `<id>-<version>.fkplugin`, committed with a zeroed
-`sha256` (held back from the catalog).
+`plugin.wasm` and the logo as assets of a `v<version>` release.
 
-Run `Package plugin` with `pluginId` and `version`: it downloads those assets, signs and packages
-them, uploads the `.fkplugin` to the same release and records its sha256. Nothing is stored under
-`dist/` (older archives stay). The workflow needs the secret `PLUGIN_REPO_TOKEN`: a fine-grained
-token with `Contents: read and write` on the plugin repos, since the default `GITHUB_TOKEN` is
-scoped to this repo. The sha256 and the signature remain the install gate.
+The publishing PR adds two files, both reviewed:
+
+- `plugins/<id>/src/plugin.json`, the manifest built by the plugin repo. Its `files` map holds
+  the sha256 of `plugin.wasm` and of the logo, so it pins every byte the catalog key signs.
+- `plugins/<id>/versions/<version>.json`, with `zipUrl` set to
+  `https://github.com/fliks-app/<repo>/releases/download/v<version>/<id>-<version>.fkplugin` and a
+  zeroed `sha256` (held back from the catalog). Its `id`, `version`, `kind`, `pluginApi` and
+  `fliks` must equal the manifest's.
+
+Once it is merged, run `Package plugin` with `pluginId` and `version`. It downloads only
+`plugin.wasm` and the logo from the release and refuses them unless they match the committed
+`files`. It then checks the manifest and logo as the host does at install, signs, uploads the
+`.fkplugin` to the same release and records its sha256. A re-run can only reproduce the recorded
+archive. Nothing is stored under `dist/` (older archives stay). The upload needs the secret
+`PLUGIN_REPO_TOKEN`, a fine-grained token with `Contents: read and write` on the `fk-plugin-*`
+repos, because the default `GITHUB_TOKEN` is scoped to this repo. The downloads use
+`GITHUB_TOKEN`. A `pluginApi` 2 data plugin keeps the in-repo `src/` and Pages path.
+The sha256 and the signature remain the install gate.
 
 ## Why "no dependencies"
 
