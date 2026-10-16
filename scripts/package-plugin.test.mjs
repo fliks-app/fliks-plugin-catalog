@@ -139,6 +139,8 @@ test('buildArchive: refuses a missing logo, both logos, a wrong id and a bad man
   refuses(srcDir({ extraLogoPng: Buffer.from([1]) }), /both logo/);
   refuses(srcDir({ manifest: { id: 'other' } }), /does not match/);
   refuses(srcDir({ manifest: { kind: 'weird' } }), /"kind" must be/);
+  refuses(srcDir({ manifest: { version: '1.0.0\nsha256=x' } }), /"version" must be semver/);
+  refuses(srcDir({ manifest: { version: '../1.0.0' } }), /"version" must be semver/);
   refuses(mkdtempSync(join(tmpdir(), 'pkg-')), /does not exist/);
   const dir = srcDir();
   writeFileSync(join(dir, 'plugin.json'), '{nope');

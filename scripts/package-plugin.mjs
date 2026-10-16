@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
+import { isValidSemver } from './lib/semver-lite.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -210,6 +211,10 @@ export function buildArchive(pluginId, srcDir, privateKey) {
   }
   if (manifest.id !== pluginId) {
     throw new Error(`plugin.json "id" (${JSON.stringify(manifest.id)}) does not match "${pluginId}"`);
+  }
+  // The version names the output file and the workflow's outputs, so it must be plain semver.
+  if (!isValidSemver(manifest.version)) {
+    throw new Error(`plugin.json "version" must be semver (got ${JSON.stringify(manifest.version)})`);
   }
   if (manifest.kind !== 'data' && manifest.kind !== 'process') {
     throw new Error(`plugin.json "kind" must be "data" or "process" (got ${JSON.stringify(manifest.kind)})`);
