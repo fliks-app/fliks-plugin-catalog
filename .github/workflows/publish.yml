@@ -82,15 +82,14 @@ jobs:
           # each time, so an archive not in the git tree would vanish on the
           # next unrelated publish.
           mkdir -p _site/plugins
-          for dir in plugins/*/dist; do
-            [ -d "$dir" ] || continue
-            id=$(basename "$(dirname "$dir")")
+          for dir in plugins/*/; do
+            id=$(basename "$dir")
             mkdir -p "_site/plugins/$id"
-            cp -r "$dir" "_site/plugins/$id/dist"
-            # The catalogue card renders a logo before anything is installed, so the only
-            # reachable copy is one published next to the archive.
-            for logo in "plugins/$id/src"/logo.*; do
-              [ -f "$logo" ] && cp "$logo" "_site/plugins/$id/"
+            if [ -d "plugins/$id/dist" ]; then cp -r "plugins/$id/dist" "_site/plugins/$id/dist"; fi
+            # The catalogue card renders a logo before anything is installed; a wasm plugin's
+            # archive is a release asset, so its reviewed src/ logo is the only copy Pages can serve.
+            for logo in "plugins/$id/src"/logo.svg "plugins/$id/src"/logo.png; do
+              if [ -f "$logo" ]; then cp "$logo" "_site/plugins/$id/"; fi
             done
           done
 
