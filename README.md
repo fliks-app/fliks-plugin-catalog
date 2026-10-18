@@ -23,13 +23,12 @@ inside Fliks itself it is only ever referred to as a **source**, and it holds a
 **catalog**. Using "repository" for all three would make "the plugin repository
 repository" a sentence someone eventually has to say out loud.
 
-**One exception to "no plugin code lives here":** a `kind: "data"` plugin has no
-code — its whole archive is a manifest and a logo. For a `data` plugin owned by
-this org, `fk-plugin-<name>` would be a second repository holding two files.
-`plugins/<id>/src/` keeps that source next to the entry that publishes it;
-`.github/workflows/package-plugin.yml` and `scripts/package-plugin.mjs` build
-and sign the archive from it. A `process` plugin (real code, its own release
-cycle) still gets its own `fk-plugin-<name>` repository.
+**One exception to "no plugin code lives here":** `plugins/<id>/src/` holds what this
+org signs here. A `kind: "data"` plugin has no code, so that is its whole source: a
+manifest and a logo, built and signed by `.github/workflows/package-plugin.yml` and
+`scripts/package-plugin.mjs`. A wasm `process` plugin develops and releases in its own
+`fk-plugin-<name>` repository; only its manifest and logo are committed here, and the
+signed archive is the release's (see "WASM plugins" below).
 
 ## What's in here
 
@@ -68,9 +67,9 @@ test keys.
      "author": "Fliks",
      "kind": "process",
      "version": "1.0.0",
-     "pluginApi": 0,
-     "fliks": ">=2.1.0 <3.0.0",
-     "zipUrl": "https://github.com/fliks-app/fk-plugin-download/releases/download/v1.0.0/fk-plugin-download-1.0.0.fkplugin",
+     "pluginApi": 2,
+     "fliks": ">=5.0.0 <6.0.0",
+     "zipUrl": "https://github.com/fliks-app/fk-plugin-download/releases/download/v1.0.0/fliks.download-1.0.0.fkplugin",
      "sha256": "<sha256 of that exact zip, lowercase hex>"
    }
    ```

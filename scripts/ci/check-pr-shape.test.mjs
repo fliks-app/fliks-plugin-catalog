@@ -16,7 +16,7 @@ test('a legitimate release adds a version and rewrites the source it is built fr
 
 test('VERDICT: refuses touching a published descriptor or archive, however it is touched', () => {
   const cases = [
-    'M\tplugins/fliks.webhooks/versions/1.1.2.json',
+    'M\tplugins/fliks.download/versions/0.9.0.json',
     'D\tplugins/fliks.download/dist/fliks.download-0.1.4.fkplugin',
     'R071\tplugins/fliks.download/versions/0.1.5.json\tplugins/fliks.download/versions/0.1.6.json',
   ];
@@ -26,4 +26,14 @@ test('VERDICT: refuses touching a published descriptor or archive, however it is
 test('a rename away from a published descriptor is caught on its old path', () => {
   const [only] = violationsIn('R071\tplugins/x/versions/1.0.0.json\tplugins/x/versions/1.1.0.json');
   assert.match(only, /versions\/1\.0\.0\.json/);
+});
+
+test('retiring a whole plugin deletes its published versions together', () => {
+  const diff = [
+    'D\tplugins/fliks.webhooks/dist/fliks.webhooks-1.1.2.fkplugin',
+    'D\tplugins/fliks.webhooks/versions/1.1.2.json',
+    'D\tplugins/fliks.webhooks/src/plugin.json',
+  ].join('\n');
+  assert.deepEqual(violationsIn(diff, new Set(['fliks.webhooks'])), []);
+  assert.equal(violationsIn(diff).length, 2, 'a plugin still present keeps every version');
 });
