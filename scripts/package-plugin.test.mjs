@@ -66,12 +66,12 @@ test('signManifest: verifies against the matching public key and rejects a tampe
 });
 
 // --- pluginApi 2: wasm plugins ---------------------------------------------------------------
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  assertEntryCaps, buildArchive, checkAgainstEntry, checkFiles, checkLogo, ENTRY_CAPS, MAX_ARCHIVE_BYTES, MAX_TOTAL_BYTES,
+  assertEntryCaps, buildArchive, checkAgainstEntry, checkFiles, checkManifest, checkLogo, ENTRY_CAPS, MAX_ARCHIVE_BYTES, MAX_TOTAL_BYTES,
 } from './package-plugin.mjs';
 
 const { privateKey: KEY } = generateKeyPairSync('ed25519');
@@ -227,9 +227,17 @@ test('MAX_ARCHIVE_BYTES: the largest archive the entry caps allow fits under 33 
 
 test('buildArchive: the in-repo sources still pass every check against their entries', () => {
   const root = new URL('../plugins/', import.meta.url).pathname;
-  for (const id of ['fliks.download', 'fliks.webhooks']) {
+  for (const id of readdirSync(root).filter((id) => existsSync(join(root, id, 'src', 'plugin.json')))) {
     const dir = join(root, id);
-    buildArchive(id, join(dir, 'src'), KEY, (v) => JSON.parse(readFileSync(join(dir, 'versions', `${v}.json`), 'utf8')));
+    const entryFor = (v) => JSON.parse(readFileSync(join(dir, 'versions', `${v}.json`), 'utf8'));
+    const manifest = JSON.parse(readFileSync(join(dir, 'src', 'plugin.json'), 'utf8'));
+    // A wasm plugin's code and logo come from its release, so only its reviewed manifest is in the tree.
+    if (manifest.runtime === 'wasm') {
+      checkManifest(manifest);
+      checkAgainstEntry(manifest, entryFor(manifest.version));
+    } else {
+      buildArchive(id, join(dir, 'src'), KEY, entryFor);
+    }
   }
 });
 
