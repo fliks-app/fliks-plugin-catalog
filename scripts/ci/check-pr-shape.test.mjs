@@ -27,3 +27,13 @@ test('a rename away from a published descriptor is caught on its old path', () =
   const [only] = violationsIn('R071\tplugins/x/versions/1.0.0.json\tplugins/x/versions/1.1.0.json');
   assert.match(only, /versions\/1\.0\.0\.json/);
 });
+
+test('retiring a whole plugin deletes its published versions together', () => {
+  const diff = [
+    'D\tplugins/fliks.webhooks/dist/fliks.webhooks-1.1.2.fkplugin',
+    'D\tplugins/fliks.webhooks/versions/1.1.2.json',
+    'D\tplugins/fliks.webhooks/src/plugin.json',
+  ].join('\n');
+  assert.deepEqual(violationsIn(diff, new Set(['fliks.webhooks'])), []);
+  assert.equal(violationsIn(diff).length, 2, 'a plugin still present keeps every version');
+});
