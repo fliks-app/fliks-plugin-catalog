@@ -5,9 +5,10 @@
 # git tree, same as catalog.json). Signs with CATALOG_SIGNING_KEY, the same key
 # that signs catalog.json — see docs/key-rotation.md for what that buys.
 #
-# With `version` set (a pluginApi 2 wasm plugin) the reviewed plugins/<id>/src/plugin.json is
-# signed with plugin.wasm and the logo from the plugin repo's v<version> release; its `files`
-# sha256s pin those bytes. The archive goes back to that release (PLUGIN_REPO_TOKEN), not dist/.
+# With `version` set (a pluginApi 2 wasm plugin) the plugin repo's v<version> release carries one
+# unsigned `<id>-<version>.fkplugin` (cargo xtask package). Its plugin.json must equal the reviewed
+# plugins/<id>/src/plugin.json, whose `files` sha256s pin plugin.wasm and the logo. The signed
+# archive replaces it on that release (PLUGIN_REPO_TOKEN), not dist/.
 name: Package plugin
 
 on:
@@ -52,8 +53,8 @@ jobs:
         env:
           CATALOG_SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
 
-      # Only the code and the logo come from the release: the committed manifest pins their sha256.
-      - name: Fetch the wasm plugin's code and logo
+      # The release holds the verified unsigned archive; the committed manifest must match its own.
+      - name: Fetch the wasm plugin's archive
         if: inputs.version != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,21 +63,22 @@ jobs:
         run: |
           URL=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).zipUrl' \
             "plugins/$PLUGIN_ID/versions/$VERSION.json")
-          PATTERN='^https://github\.com/(fliks-app/[^/]+)/releases/download/([^/]+)/[^/]+$'
+          PATTERN='^https://github\.com/(fliks-app/[^/]+)/releases/download/([^/]+)/([^/]+)$'
           [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a fliks-app release asset: $URL"; exit 1; }
           [ "${BASH_REMATCH[2]}" = "v$VERSION" ] || { echo "::error::zipUrl tag is not v$VERSION: $URL"; exit 1; }
+          [ "${BASH_REMATCH[3]}" = "$PLUGIN_ID-$VERSION.fkplugin" ] || { echo "::error::zipUrl asset is not $PLUGIN_ID-$VERSION.fkplugin: $URL"; exit 1; }
           echo "PLUGIN_REPO=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
           echo "PLUGIN_TAG=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/src"
-          cp "plugins/$PLUGIN_ID/src/plugin.json" "$RUNNER_TEMP/src/"
-          gh release download "${BASH_REMATCH[2]}" -R "${BASH_REMATCH[1]}" -D "$RUNNER_TEMP/src" \
-            -p plugin.wasm -p 'logo.*'
+          mkdir -p "$RUNNER_TEMP/release"
+          gh release download "${BASH_REMATCH[2]}" -R "${BASH_REMATCH[1]}" -D "$RUNNER_TEMP/release" \
+            -p "${BASH_REMATCH[3]}"
+          echo "ARCHIVE=$RUNNER_TEMP/release/${BASH_REMATCH[3]}" >> "$GITHUB_ENV"
 
       - name: Build and sign
         id: package
         run: |
           if [ -n "$VERSION" ]; then
-            node scripts/package-plugin.mjs "$PLUGIN_ID" --src "$RUNNER_TEMP/src" --out "$RUNNER_TEMP/out"
+            node scripts/package-plugin.mjs "$PLUGIN_ID" --archive "$ARCHIVE" --out "$RUNNER_TEMP/out"
           else
             node scripts/package-plugin.mjs "$PLUGIN_ID"
           fi

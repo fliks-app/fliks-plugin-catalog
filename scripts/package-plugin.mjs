@@ -10,7 +10,8 @@
 // A `runtime: "wasm"` plugin ships `plugin.wasm` instead of `plugin.js` (plugins.md rules 14, 16).
 // `.github/workflows/package-plugin.yml` calls this rather than duplicating it.
 import { createHash, createPrivateKey, createPublicKey, sign as ed25519Sign, verify as ed25519Verify } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, posix, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
@@ -132,6 +133,57 @@ export function buildPluginZip(entries) {
   ]);
 
   return Buffer.concat([...parts, centralDirectory, eocd]);
+}
+
+/**
+ * Entries of an unsigned `.fkplugin` as built by `cargo xtask package`: the store-only layout
+ * buildPluginZip writes, refused on anything else. A `plugin.json.sig` is dropped, since this
+ * script re-signs (a re-run reads back the archive it published).
+ */
+export function readPluginZip(zip) {
+  const bad = (what) => {
+    throw new Error(`archive ${what}`);
+  };
+  const eocd = zip.length - 22;
+  if (eocd < 0 || zip.readUInt32LE(eocd) !== 0x06054b50 || zip.readUInt16LE(eocd + 20) !== 0) bad('has no end record at its tail (or carries a comment)');
+  const count = zip.readUInt16LE(eocd + 10);
+  if (count < 1 || count > 4) bad(`has ${count} entries, the host takes 1 to 4`);
+  const out = new Map();
+  let at = zip.readUInt32LE(eocd + 16);
+  for (let i = 0; i < count; i++) {
+    if (zip.readUInt32LE(at) !== 0x02014b50) bad('has a malformed central directory');
+    const [flags, method] = [zip.readUInt16LE(at + 8), zip.readUInt16LE(at + 10)];
+    const [crc, size, usize] = [zip.readUInt32LE(at + 16), zip.readUInt32LE(at + 20), zip.readUInt32LE(at + 24)];
+    const [nameLen, extraLen, commentLen] = [zip.readUInt16LE(at + 28), zip.readUInt16LE(at + 30), zip.readUInt16LE(at + 32)];
+    const name = zip.toString('utf8', at + 46, at + 46 + nameLen);
+    if (flags & 0x09) bad(`entry ${name} is encrypted or uses a data descriptor`);
+    if (method !== 0 || size !== usize) bad(`entry ${name} is not stored`);
+    if (extraLen !== 0) bad(`entry ${name} has an extra field (ZIP64)`);
+    const local = zip.readUInt32LE(at + 42);
+    if (zip.readUInt32LE(local) !== 0x04034b50 || zip.readUInt16LE(local + 28) !== 0) bad(`entry ${name} has a malformed local header`);
+    const start = local + 30 + zip.readUInt16LE(local + 26);
+    const content = zip.subarray(start, start + size);
+    if (content.length !== size || (crc32(content) >>> 0) !== crc) bad(`entry ${name} fails its CRC-32`);
+    if (out.has(name)) bad(`has ${name} twice`);
+    out.set(name, content);
+    at += 46 + nameLen + extraLen + commentLen;
+  }
+  out.delete('plugin.json.sig');
+  const legal = ['plugin.json', 'plugin.wasm', ...LOGO_NAMES];
+  const stray = [...out.keys()].filter((n) => !legal.includes(n));
+  if (stray.length > 0) bad(`has entries the catalog does not take: ${stray.join(', ')}`);
+  return out;
+}
+
+/** Unpacks the archive into a fresh directory, refusing one whose manifest is not the reviewed one. */
+export function unpackReviewed(zip, reviewedManifest) {
+  const entries = readPluginZip(zip);
+  if (!entries.get('plugin.json')?.equals(reviewedManifest)) {
+    throw new Error('the archive plugin.json differs from the reviewed plugins/<id>/src/plugin.json');
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'fkplugin-'));
+  for (const [name, content] of entries) writeFileSync(join(dir, name), content);
+  return dir;
 }
 
 // plugins.md rules 1-4, 14 and 16: what the host refuses at inspect, checked before signing.
@@ -324,10 +376,11 @@ function main() {
   const srcOpt = opt('--src');
   const outOpt = opt('--out');
   const versionsOpt = opt('--versions');
+  const archiveOpt = opt('--archive');
   const pluginId = args[0];
-  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId> [--src <dir> --out <dir> --versions <dir>]');
+  if (!pluginId) fail('usage: node scripts/package-plugin.mjs <pluginId> [--archive <file.fkplugin>] [--src <dir> --out <dir> --versions <dir>]');
 
-  const srcDir = srcOpt ?? join(ROOT, 'plugins', pluginId, 'src');
+  let srcDir = srcOpt ?? join(ROOT, 'plugins', pluginId, 'src');
   const versionsDir = versionsOpt ?? join(ROOT, 'plugins', pluginId, 'versions');
   const entryFor = (version) => {
     const path = join(versionsDir, `${version}.json`);
@@ -336,6 +389,7 @@ function main() {
   };
   let built;
   try {
+    if (archiveOpt) srcDir = unpackReviewed(readFileSync(archiveOpt), readFileSync(join(srcDir, 'plugin.json')));
     built = buildArchive(pluginId, srcDir, loadSigningKey(process.env.CATALOG_SIGNING_KEY), entryFor);
   } catch (err) {
     fail(err.message);
