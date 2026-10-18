@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { buildPluginZip, signManifest } from './package-plugin.mjs';
+import { buildPluginZip, readPluginZip, signManifest, unpackReviewed } from './package-plugin.mjs';
 
 const EOCD_SIG = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
 const ZIP64_EXTRA_ID = Buffer.from([0x01, 0x00]);
@@ -265,4 +265,65 @@ test('cli: a wasm plugin refuses to package without --out, and writes the archiv
   const ok = run('--out', out, '--versions', versions);
   assert.equal(ok.status, 0, ok.stderr);
   assert.ok(existsSync(join(out, 'fliks.x-1.0.0.fkplugin')));
+});
+
+// --- the unsigned archive `cargo xtask package` publishes --------------------------------------
+const MANIFEST_BYTES = Buffer.from(JSON.stringify(MANIFEST));
+const release = (extra = []) =>
+  buildPluginZip([
+    { name: 'plugin.json', content: MANIFEST_BYTES },
+    { name: 'plugin.wasm', content: WASM },
+    { name: 'logo.svg', content: LOGO },
+    ...extra,
+  ]);
+
+test('readPluginZip: reads the entries and drops a previous signature', () => {
+  const signed = release([{ name: 'plugin.json.sig', content: Buffer.from('sig\n') }]);
+  assert.deepEqual([...readPluginZip(signed).keys()], ['plugin.json', 'plugin.wasm', 'logo.svg']);
+});
+
+test('readPluginZip: refuses a stray entry, a data descriptor, an extra field and a bad CRC', () => {
+  assert.throws(() => readPluginZip(release([{ name: 'plugin.js', content: Buffer.from('x') }])), /does not take: plugin\.js/);
+  const flagged = Buffer.from(release());
+  flagged.writeUInt16LE(0x0808, flagged.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02])) + 8);
+  assert.throws(() => readPluginZip(flagged), /data descriptor/);
+  const extra = Buffer.from(release());
+  extra.writeUInt16LE(4, extra.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02])) + 30);
+  assert.throws(() => readPluginZip(extra), /extra field/);
+  const corrupt = Buffer.from(release());
+  corrupt[corrupt.indexOf(WASM)] ^= 0xff;
+  assert.throws(() => readPluginZip(corrupt), /CRC-32/);
+  assert.throws(() => readPluginZip(Buffer.from('PK')), /end record/);
+});
+
+test('unpackReviewed: the archive manifest must be the reviewed one', () => {
+  assert.throws(() => unpackReviewed(release(), Buffer.from('{}')), /differs from the reviewed/);
+  const dir = unpackReviewed(release(), MANIFEST_BYTES);
+  assert.ok(readFileSync(join(dir, 'plugin.wasm')).equals(WASM));
+});
+
+test('cli: --archive signs the release archive against the committed manifest', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const key = KEY.export({ format: 'der', type: 'pkcs8' }).toString('base64');
+  const versions = mkdtempSync(join(tmpdir(), 'versions-'));
+  writeFileSync(join(versions, '1.0.0.json'), JSON.stringify(ENTRY));
+  const src = mkdtempSync(join(tmpdir(), 'src-'));
+  writeFileSync(join(src, 'plugin.json'), MANIFEST_BYTES);
+  const archive = join(mkdtempSync(join(tmpdir(), 'rel-')), 'fliks.x-1.0.0.fkplugin');
+  writeFileSync(archive, release());
+  const out = mkdtempSync(join(tmpdir(), 'out-'));
+  const run = () =>
+    spawnSync('node', [new URL('./package-plugin.mjs', import.meta.url).pathname, 'fliks.x', '--archive', archive, '--src', src, '--out', out, '--versions', versions], {
+      env: { ...process.env, CATALOG_SIGNING_KEY: key, GITHUB_OUTPUT: '' },
+      encoding: 'utf8',
+    });
+  const first = run();
+  assert.equal(first.status, 0, first.stderr);
+  const signed = readFileSync(join(out, 'fliks.x-1.0.0.fkplugin'));
+  assert.deepEqual([...readPluginZip(signed).keys()], ['plugin.json', 'plugin.wasm', 'logo.svg']);
+  assert.equal(names(signed).join(), 'plugin.json,plugin.json.sig,plugin.wasm,logo.svg');
+  // A re-run reads back the signed archive it published and reproduces it byte for byte.
+  writeFileSync(archive, signed);
+  assert.equal(run().status, 0);
+  assert.ok(readFileSync(join(out, 'fliks.x-1.0.0.fkplugin')).equals(signed));
 });
