@@ -63,7 +63,7 @@
     "pluginApi": {
       "type": "integer",
       "minimum": 0,
-      "description": "CatalogVersionEntry.pluginApi. Checked for exact equality against PLUGIN_API_VERSION (see backend/src/common/plugin-contract/protocol.ts) at catalog, install and handshake time. Not required to equal one value here \u2014 an old version entry legitimately keeps whatever pluginApi it shipped with."
+      "description": "CatalogVersionEntry.pluginApi. Checked at catalog and install time against the versions core supports (SUPPORTED_PLUGIN_API_VERSIONS in fliks server/crates/server/src/plugins/manifest.rs, currently 2; see COMPATIBILITY.md). Not required to equal one value here \u2014 an old version entry legitimately keeps whatever pluginApi it shipped with."
     },
     "fliks": {
       "type": "string",
