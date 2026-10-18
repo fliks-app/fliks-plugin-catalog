@@ -28,7 +28,7 @@ spawned).
 | `pluginApi` | Compatible `fliks` core versions | Status |
 |---|---|---|
 | `0` | `>=2.0.0 <4.0.0` | retired: core 4.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
-| `1` | `>=4.0.0 <5.0.0` | current |
+| `1` | `>=4.0.0 <5.0.0` | retired: core 5.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
 | `2` | `>=5.0.0 <6.0.0` | current: WASM components (`runtime: "wasm"`, `plugin.wasm`) |
 
 The `0` row records the range its first manifests declared; later `0` submissions raised
@@ -38,9 +38,8 @@ core applies the whole quality profile itself, and a removal inside one revision
 handed an acquisition plugin an absent bound it filtered releases on. A `0` plugin is refused
 with `incompatible-api` from that release, which is the loud form of the same news.
 
-Source of truth: `SUPPORTED_PLUGIN_API_VERSIONS` (what core accepts) and
-`PLUGIN_API_VERSION` (what core sends at `hello`) in
-`backend/src/common/plugin-contract/protocol.ts` in the `fliks-app/fliks` repo.
+Source of truth: `SUPPORTED_PLUGIN_API_VERSIONS` (what core accepts) in
+`server/crates/server/src/plugins/manifest.rs` in the `fliks-app/fliks` repo.
 
 ## When this table changes
 
