@@ -12,7 +12,7 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "b53d718e12055ded6f4bcf2311e66fef6c374d13fc5367e1ebb79aa4273107da"
+    "plugin.wasm": "8952f4a264f44b12ebe77e958b342b01e4b1d681c4913a8c3276714cd5295ee2"
   },
   "fliks": ">=5.0.0 <6.0.0",
   "i18n": {
@@ -23,9 +23,11 @@
       "download.config.download_clients.fields.password": "Password",
       "download.config.download_clients.fields.port": "Port",
       "download.config.download_clients.fields.series_category": "Series category",
+      "download.config.download_clients.fields.url_base": "URL base",
       "download.config.download_clients.fields.use_ssl": "Use HTTPS",
       "download.config.download_clients.fields.username": "Username",
       "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
+      "download.config.download_clients.implementations.transmission": "Transmission",
       "download.config.download_clients.labels.create_title": "New download client",
       "download.config.download_clients.labels.delete_confirm": "Delete this download client?",
       "download.config.download_clients.labels.edit_title": "Edit download client",
@@ -208,9 +210,11 @@
       "download.config.download_clients.fields.password": "Mot de passe",
       "download.config.download_clients.fields.port": "Port",
       "download.config.download_clients.fields.series_category": "Catégorie séries",
+      "download.config.download_clients.fields.url_base": "Chemin de base",
       "download.config.download_clients.fields.use_ssl": "Utiliser HTTPS",
       "download.config.download_clients.fields.username": "Nom d’utilisateur",
       "download.config.download_clients.implementations.qbittorrent": "qBittorrent",
+      "download.config.download_clients.implementations.transmission": "Transmission",
       "download.config.download_clients.labels.create_title": "Nouveau client de téléchargement",
       "download.config.download_clients.labels.delete_confirm": "Supprimer ce client de téléchargement ?",
       "download.config.download_clients.labels.edit_title": "Modifier le client de téléchargement",
@@ -1461,5 +1465,5 @@
       }
     }
   },
-  "version": "1.0.1"
+  "version": "1.1.0"
 }
