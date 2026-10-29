@@ -7,12 +7,29 @@
       "seasons",
       "users"
     ],
-    "schema": true
+    "schema": true,
+    "secrets": [
+      {
+        "column": "settings",
+        "jsonPath": "apiKey",
+        "table": "indexers"
+      },
+      {
+        "column": "settings",
+        "jsonPath": "apiKey",
+        "table": "indexer_sources"
+      },
+      {
+        "column": "settings",
+        "jsonPath": "password",
+        "table": "download_clients"
+      }
+    ]
   },
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "8952f4a264f44b12ebe77e958b342b01e4b1d681c4913a8c3276714cd5295ee2"
+    "plugin.wasm": "f3a2545fd27805be3af32987ec9257595adda526fb416183c5593313255a554f"
   },
   "fliks": ">=5.0.0 <6.0.0",
   "i18n": {
@@ -1465,5 +1482,5 @@
       }
     }
   },
-  "version": "1.1.0"
+  "version": "1.2.0"
 }
