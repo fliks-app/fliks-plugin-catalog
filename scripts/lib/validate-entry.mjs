@@ -6,8 +6,12 @@ import { isValidSemver, hasMandatoryUpperBound } from './semver-lite.mjs';
 
 const ID_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9]+)*$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-// pluginApi 2 process archives are assets of the plugin repo's v<version> release.
+// pluginApi 2 process archives are assets of a plugin repo's v<version> or <folder>-v<version> release.
 const RELEASE_ASSET_URL = /^https:\/\/github\.com\/fliks-app\/[^/]+\/releases\/download\/([^/]+)\/([^/]+)$/;
+const isReleaseTag = (tag, version) => {
+  const suffix = `-v${version}`;
+  return tag === `v${version}` || (tag?.endsWith(suffix) && /^[a-z0-9][a-z0-9-]*$/.test(tag.slice(0, -suffix.length)));
+};
 export const REQUIRED_FIELDS = [
   'id',
   'name',
@@ -70,10 +74,10 @@ export function validateEntry(entry) {
   }
   if (entry.pluginApi >= 2 && entry.kind === 'process' && typeof entry.zipUrl === 'string' && /^https:\/\//.test(entry.zipUrl)) {
     const [, tag, asset] = RELEASE_ASSET_URL.exec(entry.zipUrl) ?? [];
-    if (tag !== `v${entry.version}` || asset !== `${entry.id}-${entry.version}.fkplugin`) {
+    if (!isReleaseTag(tag, entry.version) || asset !== `${entry.id}-${entry.version}.fkplugin`) {
       errors.push(
         `"zipUrl" for a pluginApi ${entry.pluginApi} process plugin must be the GitHub Release asset ` +
-          `https://github.com/fliks-app/<repo>/releases/download/v${entry.version}/${entry.id}-${entry.version}.fkplugin`,
+          `https://github.com/fliks-app/<repo>/releases/download/[<folder>-]v${entry.version}/${entry.id}-${entry.version}.fkplugin`,
       );
     }
   }

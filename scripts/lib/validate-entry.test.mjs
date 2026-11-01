@@ -14,6 +14,14 @@ test('a pluginApi 2 entry pointing at its release asset is valid, with the zeroe
   assert.equal(validateEntry({ ...base, sha256: '0'.repeat(64) }).ok, true);
 });
 
+test('a monorepo release tag <folder>-v<version> is accepted, a mismatched one is not', () => {
+  const folder = (tag) => base.zipUrl.replace('fk-plugin-download', 'plugins').replace('/v1.0.0/', `/${tag}/`);
+  assert.equal(validateEntry({ ...base, zipUrl: folder('download-v1.0.0') }).ok, true);
+  for (const tag of ['download-v1.0.1', 'download-1.0.0', '-v1.0.0', 'Download-v1.0.0', 'a/b-v1.0.0', 'download-v1x0x0']) {
+    assert.match(errors({ ...base, zipUrl: folder(tag) }).join(), /GitHub Release asset/, tag);
+  }
+});
+
 test('a pluginApi 2 entry refuses any other archive location or name', () => {
   for (const zipUrl of [
     'https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/dist/fliks.download-1.0.0.fkplugin',

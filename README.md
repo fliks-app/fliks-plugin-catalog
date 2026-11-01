@@ -92,16 +92,17 @@ maps to on the core side.
 
 A `kind: "process"` plugin with `runtime: "wasm"` ships `plugin.wasm` (a component),
 `plugin.json`, `plugin.json.sig` and a logo, within the host's caps (32 MiB per entry, 48 MiB
-uncompressed, 33 MiB archive). Its code stays in its own `fk-plugin-<name>` repo, whose `v<version>`
-release publishes one asset, the unsigned `<id>-<version>.fkplugin` built and verified by
-`cargo xtask package`.
+uncompressed, 33 MiB archive). Its code stays in the `fliks-app/plugins` monorepo (or a
+`fk-plugin-<name>` repo), whose `<folder>-v<version>` (or `v<version>`) release publishes one
+asset, the unsigned `<id>-<version>.fkplugin` built and verified by `cargo xtask package`.
 
 The publishing PR adds two files, both reviewed:
 
 - `plugins/<id>/src/plugin.json`, the manifest inside that archive. Its `files` map holds
   the sha256 of `plugin.wasm` and of the logo, so it pins every byte the catalog key signs.
 - `plugins/<id>/versions/<version>.json`, with `zipUrl` set to
-  `https://github.com/fliks-app/<repo>/releases/download/v<version>/<id>-<version>.fkplugin` and a
+  `https://github.com/fliks-app/<repo>/releases/download/<tag>/<id>-<version>.fkplugin` (`<tag>` is
+  `v<version>`, or `<folder>-v<version>` for the `fliks-app/plugins` monorepo) and a
   zeroed `sha256` (held back from the catalog). Its `id`, `version`, `kind`, `pluginApi` and
   `fliks` must equal the manifest's.
 
@@ -111,8 +112,8 @@ a logo whose `plugin.json` is byte-identical to the committed one. It then check
 `files` and logo as the host does at install, signs, replaces the asset on the same release with
 the signed `.fkplugin` and records its sha256. A re-run can only reproduce the recorded
 archive. Nothing is stored under `dist/` (older archives stay). The upload needs the secret
-`PLUGIN_REPO_TOKEN`, a fine-grained token with `Contents: read and write` on the `fk-plugin-*`
-repos, because the default `GITHUB_TOKEN` is scoped to this repo. The downloads use
+`PLUGIN_REPO_TOKEN`, a fine-grained token with `Contents: read and write` on `fliks-app/plugins`
+and the `fk-plugin-*` repos, because the default `GITHUB_TOKEN` is scoped to this repo. The downloads use
 `GITHUB_TOKEN`. A `pluginApi` 2 data plugin keeps the in-repo `src/` and Pages path.
 The sha256 and the signature remain the install gate.
 
