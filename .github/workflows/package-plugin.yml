@@ -5,7 +5,7 @@
 # git tree, same as catalog.json). Signs with CATALOG_SIGNING_KEY, the same key
 # that signs catalog.json — see docs/key-rotation.md for what that buys.
 #
-# With `version` set (a pluginApi 2 wasm plugin) the plugin repo's v<version> release carries one
+# With `version` set (a pluginApi 2 wasm plugin) the plugin repo's v<version> (or <folder>-v<version>) release carries one
 # unsigned `<id>-<version>.fkplugin` (cargo xtask package). Its plugin.json must equal the reviewed
 # plugins/<id>/src/plugin.json, whose `files` sha256s pin plugin.wasm and the logo. The signed
 # archive replaces it on that release (PLUGIN_REPO_TOKEN), not dist/.
@@ -65,7 +65,10 @@ jobs:
             "plugins/$PLUGIN_ID/versions/$VERSION.json")
           PATTERN='^https://github\.com/(fliks-app/[^/]+)/releases/download/([^/]+)/([^/]+)$'
           [[ "$URL" =~ $PATTERN ]] || { echo "::error::zipUrl is not a fliks-app release asset: $URL"; exit 1; }
-          [ "${BASH_REMATCH[2]}" = "v$VERSION" ] || { echo "::error::zipUrl tag is not v$VERSION: $URL"; exit 1; }
+          case "${BASH_REMATCH[2]}" in
+            "v$VERSION"|[a-z0-9]*-"v$VERSION") ;;
+            *) echo "::error::zipUrl tag is not v$VERSION or <folder>-v$VERSION: $URL"; exit 1 ;;
+          esac
           [ "${BASH_REMATCH[3]}" = "$PLUGIN_ID-$VERSION.fkplugin" ] || { echo "::error::zipUrl asset is not $PLUGIN_ID-$VERSION.fkplugin: $URL"; exit 1; }
           echo "PLUGIN_REPO=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
           echo "PLUGIN_TAG=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"

@@ -9,8 +9,8 @@
   "then": {
     "properties": {
       "zipUrl": {
-        "pattern": "^https://github\\.com/fliks-app/[^/]+/releases/download/v[^/]+/[^/]+\\.fkplugin$",
-        "description": "pluginApi 2 process archives are assets of the plugin repo's v<version> release, named <id>-<version>.fkplugin (checked by validate-entry.mjs). Data plugins keep the Pages path."
+        "pattern": "^https://github\\.com/fliks-app/[^/]+/releases/download/([a-z0-9][a-z0-9-]*-)?v[^/]+/[^/]+\\.fkplugin$",
+        "description": "pluginApi 2 process archives are assets of a plugin repo's v<version> or <folder>-v<version> release, named <id>-<version>.fkplugin (checked by validate-entry.mjs). Data plugins keep the Pages path."
       }
     }
   },
