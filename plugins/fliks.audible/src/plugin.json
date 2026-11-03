@@ -1,0 +1,51 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Audiobook metadata from the unofficial Audible catalog: search and editions by ASIN.",
+  "files": {
+    "logo.svg": "71b798ae1d53a6d6ba40f17562bb4dbe5dca4f748713d4d51c143cb44960a1f2",
+    "plugin.wasm": "347d305f0cee5d0223e278a20063c309e67052a7646d0a98639d60c5f063c8a7"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "id": "fliks.audible",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "Audible",
+  "pluginApi": 3,
+  "provider": {
+    "editionNamespaces": [
+      "asin"
+    ],
+    "imageHosts": [
+      "m.media-amazon.com"
+    ],
+    "kinds": {
+      "book": [
+        "search",
+        "edition"
+      ]
+    },
+    "limits": {
+      "burst": 1,
+      "ratePerSec": 1
+    },
+    "namespaces": [
+      {
+        "name": "audible"
+      }
+    ],
+    "snapshotTtlSecs": {
+      "edition": 2592000
+    }
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "version": "0.2.0"
+}

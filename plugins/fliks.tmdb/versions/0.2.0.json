@@ -1,0 +1,12 @@
+{
+  "id": "fliks.tmdb",
+  "name": "TMDB",
+  "description": "Movie and series metadata, images, people and lists from The Movie Database.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "0.2.0",
+  "pluginApi": 3,
+  "fliks": ">=6.0.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v0.2.0/fliks.tmdb-0.2.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

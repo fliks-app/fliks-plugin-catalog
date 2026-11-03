@@ -205,7 +205,7 @@ const ID_PATTERN = /^[a-z][a-z0-9]*(\.[a-z0-9]+)*$/;
 const MAX_ID_LENGTH = 51;
 const RESERVED_IDS = ['ui', 'metrics', 'sources', 'import'];
 const BASE_KEYS = ['id', 'pluginApi', 'name', 'version', 'fliks', 'author', 'description', 'license', 'logo', 'homepage', 'ui', 'events', 'i18n', 'kind'];
-const PROCESS_KEYS = [...BASE_KEYS, 'runtime', 'memoryMb', 'files', 'database', 'routes', 'scopes', 'ingestRoots', 'jobs', 'permissions', 'checklist', 'network'];
+const PROCESS_KEYS = [...BASE_KEYS, 'runtime', 'memoryMb', 'files', 'database', 'routes', 'scopes', 'ingestRoots', 'jobs', 'permissions', 'checklist', 'network', 'provider'];
 const SCOPES = ['media:read', 'acquisition:candidates', 'releases:score', 'requests:progress', 'ingest:write', 'events:emit', 'config:rw'];
 
 const isRecord = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -251,10 +251,11 @@ export function checkManifest(m) {
   const isRoute = (r) =>
     isRecord(r) && ['method', 'path', 'policy'].every((k) => typeof r[k] === 'string') && ['undefined', 'string'].includes(typeof r.objectGuard);
   if (!Array.isArray(m.routes) || !m.routes.every(isRoute)) bad('"routes" must be [{method, path, policy, objectGuard?}]');
-  if (!isStrings(m.scopes) || m.scopes.length === 0 || !m.scopes.every((s) => SCOPES.includes(s))) {
-    bad(`"scopes" must be a non-empty subset of ${SCOPES.join(' ')}`);
+  if (!isStrings(m.scopes) || (m.scopes.length === 0 && m.provider === undefined) || !m.scopes.every((s) => SCOPES.includes(s))) {
+    bad(`"scopes" must be a subset (non-empty unless "provider" is set) of ${SCOPES.join(' ')}`);
   }
   if (!isStrings(m.ingestRoots) || !m.ingestRoots.every(isIngestRoot)) bad('"ingestRoots" must be absolute, normalised, not volume roots');
+  if (m.provider !== undefined && (m.pluginApi < 3 || !isRecord(m.provider))) bad('"provider" must be an object, from pluginApi 3');
   if (m.network !== undefined && JSON.stringify(m.network) !== '{"internal":true}') bad('"network" must be {"internal": true}');
 }
 
@@ -317,7 +318,7 @@ function readCodeEntry(srcDir, manifest) {
   }
   if (hasJs && hasWasm) throw new Error('a process-tier plugin ships plugin.js or plugin.wasm, not both');
   if (manifest.runtime === 'wasm') {
-    if (manifest.pluginApi !== 2) throw new Error('runtime "wasm" requires pluginApi 2');
+    if (manifest.pluginApi < 2) throw new Error('runtime "wasm" requires pluginApi 2 or later');
     if (!hasWasm) throw new Error('a wasm process-tier plugin must ship plugin.wasm');
     return 'plugin.wasm';
   }
