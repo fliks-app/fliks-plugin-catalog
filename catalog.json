@@ -284,6 +284,22 @@
       ]
     },
     {
+      "id": "fliks.openlibrary",
+      "name": "OpenLibrary",
+      "description": "Book metadata from OpenLibrary: search, works and their editions.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/openlibrary-v0.2.0/fliks.openlibrary-0.2.0.fkplugin",
+          "sha256": "3e14451ec6d97340d59ed7423f9e2a516abd178289197d76ac1b5eac14f5c93e"
+        }
+      ]
+    },
+    {
       "id": "fliks.tmdb",
       "name": "TMDB",
       "description": "Movie and series metadata, images, people and lists from The Movie Database.",
