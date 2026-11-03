@@ -298,6 +298,22 @@
           "sha256": "7eebde51c6ef690de722e65535e30903ff79dbd6d3c1bc617bbe15c1061c03bc"
         }
       ]
+    },
+    {
+      "id": "fliks.tvdb",
+      "name": "TheTVDB",
+      "description": "Movie and series metadata, images, people and credits from TheTVDB.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v0.2.0/fliks.tvdb-0.2.0.fkplugin",
+          "sha256": "e371e221826f8e3291b90d674df92d79e7afea66b86db9df68c7e9df764ab667"
+        }
+      ]
     }
   ]
 }
