@@ -250,6 +250,22 @@
           "sha256": "b622a10f7937d67213ea87355cd54bb9244f1c9b87e20d76a3e2e394d04f04e3"
         }
       ]
+    },
+    {
+      "id": "fliks.tmdb",
+      "name": "TMDB",
+      "description": "Movie and series metadata, images, people and lists from The Movie Database.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v0.2.0/fliks.tmdb-0.2.0.fkplugin",
+          "sha256": "7eebde51c6ef690de722e65535e30903ff79dbd6d3c1bc617bbe15c1061c03bc"
+        }
+      ]
     }
   ]
 }
