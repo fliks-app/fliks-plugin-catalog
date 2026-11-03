@@ -137,7 +137,6 @@ jobs:
             entry.sha256 = sha;
             fs.writeFileSync(file, JSON.stringify(entry, null, 2) + "\n");
           ' "$ENTRY" "$SHA256"
-          node scripts/build-catalog.mjs
 
       - name: Commit the archive and the updated entry
         env:
@@ -150,8 +149,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           # A wasm archive lives on the plugin repo's release, only a data/node one is committed.
           if [ -z "$VERSION" ]; then git add "$DIST_PATH"; fi
-          git add "plugins/$PLUGIN_ID/versions/$BUILT_VERSION.json" \
-                  catalog.json
+          git add "plugins/$PLUGIN_ID/versions/$BUILT_VERSION.json"
           # Re-running a signing that already landed is a legitimate operator action, and an
           # Ed25519 signature over identical bytes is identical: nothing staged means nothing to do.
           if git diff --cached --quiet; then
@@ -159,10 +157,13 @@ jobs:
             exit 0
           fi
           git commit -m "chore($PLUGIN_ID): publish $BUILT_VERSION archive"
-          # Another id's run may have pushed between our checkout and here; its commit touches
-          # different files, so replaying ours on top is safe and beats failing the whole job.
-          git pull --rebase --autostash origin main
-          git push
+          # Runs for other ids push concurrently and touch only their own files; publish.yml
+          # rebuilds and signs catalog.json, so replaying ours on top is safe.
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
 
       - name: Attach to a GitHub Release
         if: inputs.version == ''
