@@ -1,0 +1,62 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Book metadata from OpenLibrary: search, works and their editions.",
+  "files": {
+    "logo.svg": "4580aada406fe6dd9d3f1870eebc0f84da37c4e66fee2571039622fbca6f1b14",
+    "plugin.wasm": "576974bf20edeaadbc6e7d65ce8124dbc96f5cf485c2849bda697e9ae4202306"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "id": "fliks.openlibrary",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "OpenLibrary",
+  "pluginApi": 3,
+  "provider": {
+    "editionNamespaces": [
+      "isbn",
+      "openlibrary"
+    ],
+    "findBy": [
+      "isbn"
+    ],
+    "imageHosts": [
+      "covers.openlibrary.org",
+      "archive.org"
+    ],
+    "kinds": {
+      "book": [
+        "search",
+        "work",
+        "children",
+        "childStubs",
+        "edition",
+        "findBy"
+      ]
+    },
+    "limits": {
+      "burst": 1,
+      "ratePerSec": 1
+    },
+    "namespaces": [
+      {
+        "name": "openlibrary"
+      }
+    ],
+    "snapshotTtlSecs": {
+      "children": 2592000,
+      "edition": 2592000,
+      "work": 2592000
+    }
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "version": "0.2.0"
+}

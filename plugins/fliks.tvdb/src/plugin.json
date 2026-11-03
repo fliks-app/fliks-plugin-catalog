@@ -1,0 +1,113 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Movie and series metadata, images, people and credits from TheTVDB.",
+  "files": {
+    "logo.svg": "4e1ebd85099e941eb71aa419a6334a1365dd4e310220b3968e0d011e95d227a8",
+    "plugin.wasm": "fb0331b194aa2a8a071bce84112a0088938ec522985f9c9ae0b15160d7eff58e"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "en": {
+      "tvdb.config.apiKey": "API key",
+      "tvdb.config.apiKey_hint": "Your own TheTVDB API key. Leave it empty to use the key Fliks ships with.",
+      "tvdb.config.subtitle": "Movie and series metadata from TheTVDB.",
+      "tvdb.config.title": "TheTVDB"
+    },
+    "fr": {
+      "tvdb.config.apiKey": "Clé d'API",
+      "tvdb.config.apiKey_hint": "Votre propre clé d'API TheTVDB. Laissez vide pour utiliser la clé fournie avec Fliks.",
+      "tvdb.config.subtitle": "Métadonnées de films et de séries de TheTVDB.",
+      "tvdb.config.title": "TheTVDB"
+    }
+  },
+  "id": "fliks.tvdb",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "TheTVDB",
+  "pluginApi": 3,
+  "provider": {
+    "findBy": [
+      "imdb"
+    ],
+    "imageHosts": [
+      "artworks.thetvdb.com"
+    ],
+    "kinds": {
+      "movie": [
+        "search",
+        "work",
+        "person",
+        "credits",
+        "findBy"
+      ],
+      "series": [
+        "search",
+        "work",
+        "children",
+        "childStubs",
+        "person",
+        "credits",
+        "findBy"
+      ]
+    },
+    "limits": {
+      "burst": 10,
+      "ratePerSec": 10
+    },
+    "namespaces": [
+      {
+        "name": "tvdb"
+      }
+    ],
+    "requestTimeoutMs": 10000,
+    "requires": [
+      "apiKey"
+    ],
+    "snapshotTtlSecs": {
+      "children": 0,
+      "work": 0
+    }
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "ui": {
+    "configPages": [
+      {
+        "fields": [
+          {
+            "default": "fliks:apiKey",
+            "hint": "tvdb.config.apiKey_hint",
+            "key": "apiKey",
+            "labelKey": "tvdb.config.apiKey",
+            "secret": true,
+            "type": "text"
+          }
+        ],
+        "id": "general",
+        "labelKey": "tvdb.config.title",
+        "subtitleKey": "tvdb.config.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.tvdb/general"
+        },
+        "id": "fliks-tvdb.settings.general",
+        "labelKey": "tvdb.config.title",
+        "slot": "settings.page",
+        "weight": 100
+      }
+    ]
+  },
+  "version": "0.2.0"
+}

@@ -1,0 +1,49 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Book metadata from the BnF general catalogue: search and editions by ISBN or notice id.",
+  "files": {
+    "logo.svg": "a6661272632b18116185baa7db25927f17f7660bc0ea1737e57d9889dc92d617",
+    "plugin.wasm": "4a34b0a722218458bf276db369760e3d242144f7380450cc42550b09ff1391f1"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "id": "fliks.bnf",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "BnF",
+  "pluginApi": 3,
+  "provider": {
+    "editionNamespaces": [
+      "isbn",
+      "bnf"
+    ],
+    "kinds": {
+      "book": [
+        "search",
+        "edition"
+      ]
+    },
+    "limits": {
+      "burst": 1,
+      "ratePerSec": 1
+    },
+    "namespaces": [
+      {
+        "name": "bnf"
+      }
+    ],
+    "snapshotTtlSecs": {
+      "edition": 2592000
+    }
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "version": "0.2.0"
+}
