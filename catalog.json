@@ -344,6 +344,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v0.2.0/fliks.tmdb-0.2.0.fkplugin",
           "sha256": "7eebde51c6ef690de722e65535e30903ff79dbd6d3c1bc617bbe15c1061c03bc"
+        },
+        {
+          "version": "0.2.1",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v0.2.1/fliks.tmdb-0.2.1.fkplugin",
+          "sha256": "d8ddc4efe53db03d26835a4388c4f5b2a10a7ac5b0fdd7fb1e95da5efec454f2"
         }
       ]
     },
