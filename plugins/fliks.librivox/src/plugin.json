@@ -1,0 +1,170 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Search LibriVox and add its free audiobooks to the library.",
+  "files": {
+    "logo.svg": "8c66d78df1a00526c898582fb7c5318a31f4eb6492a7d41b79f9930c1695add9",
+    "plugin.wasm": "e47d4f5fa531b42fa14ddb7a806c5c4713f64a27a06c283cefee3012bbaa8941"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "en": {
+      "librivox.actions.add": "Add to library",
+      "librivox.actions.add_confirm": "Add this audiobook to the library? Its sections are downloaded in the background.",
+      "librivox.columns.authors": "Authors",
+      "librivox.columns.language": "Language",
+      "librivox.columns.title": "Title",
+      "librivox.search_placeholder": "Title or author",
+      "librivox.settings.library_id": "Library id",
+      "librivox.settings.library_id_hint": "Only needed when several libraries accept books.",
+      "librivox.settings.subtitle": "Where the audiobooks you add are stored.",
+      "librivox.settings.title": "LibriVox",
+      "librivox.subtitle": "Search LibriVox and add an audiobook to the library.",
+      "librivox.title": "Free audiobooks"
+    }
+  },
+  "id": "fliks.librivox",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 384,
+  "name": "LibriVox",
+  "permissions": [
+    "books"
+  ],
+  "pluginApi": 3,
+  "provider": {
+    "kinds": {
+      "book": [
+        "search",
+        "work"
+      ]
+    },
+    "limits": {
+      "burst": 2,
+      "ratePerSec": 1
+    },
+    "namespaces": [
+      {
+        "idPattern": "^[1-9][0-9]{0,7}$",
+        "label": "LibriVox",
+        "name": "fliks.librivox:id"
+      }
+    ],
+    "snapshotTtlSecs": {
+      "work": 2592000
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/search",
+      "policy": "read:plugin:fliks.librivox:books"
+    },
+    {
+      "method": "POST",
+      "path": "/add/:id",
+      "policy": "create:plugin:fliks.librivox:books"
+    }
+  ],
+  "runtime": "wasm",
+  "scopes": [
+    "media:read",
+    "media:create",
+    "ingest:write"
+  ],
+  "ui": {
+    "configPages": [
+      {
+        "columns": [
+          {
+            "key": "title",
+            "labelKey": "librivox.columns.title"
+          },
+          {
+            "key": "authors",
+            "labelKey": "librivox.columns.authors"
+          },
+          {
+            "key": "language",
+            "labelKey": "librivox.columns.language",
+            "nowrap": true
+          }
+        ],
+        "filters": [
+          {
+            "key": "q",
+            "kind": "search",
+            "placeholderKey": "librivox.search_placeholder"
+          }
+        ],
+        "icon": "headphones",
+        "id": "search",
+        "kind": "table",
+        "labelKey": "librivox.title",
+        "list": "/search",
+        "rowActions": [
+          {
+            "confirmKey": "librivox.actions.add_confirm",
+            "kind": "proxy",
+            "labelKey": "librivox.actions.add",
+            "method": "POST",
+            "path": "/add/:id",
+            "when": [
+              "hasPermission:create:plugin:fliks.librivox:books"
+            ]
+          }
+        ],
+        "subtitleKey": "librivox.subtitle"
+      },
+      {
+        "fields": [
+          {
+            "hint": "librivox.settings.library_id_hint",
+            "key": "libraryId",
+            "labelKey": "librivox.settings.library_id",
+            "min": 1,
+            "type": "number"
+          }
+        ],
+        "icon": "headphones",
+        "id": "settings",
+        "kind": "form",
+        "labelKey": "librivox.settings.title",
+        "subtitleKey": "librivox.settings.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/plugins/fliks.librivox/search"
+        },
+        "icon": "headphones",
+        "id": "fliks-librivox.nav.search",
+        "labelKey": "librivox.title",
+        "slot": "nav.acquisition",
+        "weight": 410,
+        "when": [
+          "hasPermission:read:plugin:fliks.librivox:books"
+        ]
+      },
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.librivox/settings"
+        },
+        "icon": "headphones",
+        "id": "fliks-librivox.settings.general",
+        "labelKey": "librivox.settings.title",
+        "slot": "settings.page",
+        "weight": 410
+      }
+    ]
+  },
+  "version": "0.2.0"
+}
