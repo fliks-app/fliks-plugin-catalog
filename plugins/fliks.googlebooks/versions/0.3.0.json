@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.0.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v0.3.0/fliks.googlebooks-0.3.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "eb81304086e85078c3c93d5820ee3f70cacb31d3a6fd75f64e7f0bc476ada43e"
 }
