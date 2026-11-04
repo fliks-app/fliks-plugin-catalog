@@ -2,9 +2,9 @@
   "author": "Fliks",
   "database": {
     "coreRefs": [
-      "episodes",
+      "item_groups",
+      "items",
       "media",
-      "seasons",
       "users"
     ],
     "schema": true,
@@ -29,12 +29,14 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "f3a2545fd27805be3af32987ec9257595adda526fb416183c5593313255a554f"
+    "plugin.wasm": "2433f2f9cd978220b42c2ffc3955ce37b093a175ef1e9c90f16783765b30e710"
   },
-  "fliks": ">=5.0.0 <6.0.0",
+  "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
     "en": {
+      "download.config.download_clients.fields.audiobook_category": "Audiobook category",
       "download.config.download_clients.fields.category": "Category",
+      "download.config.download_clients.fields.ebook_category": "Ebook category",
       "download.config.download_clients.fields.host": "Host",
       "download.config.download_clients.fields.movie_category": "Movie category",
       "download.config.download_clients.fields.password": "Password",
@@ -182,6 +184,7 @@
       "download.grab.errors.quality_not_allowed": "This release's quality is not allowed by the profile",
       "download.grab.errors.releases_unobtainable": "No release could be fetched. Last reason: {{detail}}",
       "download.grab.errors.unprofiled": "This title has no quality profile — nothing to grab",
+      "download.grab.errors.unsupported_kind": "This plugin only downloads movies and series",
       "download.http.errors.bad_body": "Invalid or missing field in the request body",
       "download.http.errors.bad_param": "Invalid or missing path parameter",
       "download.http.errors.download_client": "The download client returned: {{detail}}",
@@ -221,7 +224,9 @@
       "download.status.importing": "Importing"
     },
     "fr": {
+      "download.config.download_clients.fields.audiobook_category": "Catégorie livres audio",
       "download.config.download_clients.fields.category": "Catégorie",
+      "download.config.download_clients.fields.ebook_category": "Catégorie livres",
       "download.config.download_clients.fields.host": "Hôte",
       "download.config.download_clients.fields.movie_category": "Catégorie films",
       "download.config.download_clients.fields.password": "Mot de passe",
@@ -369,6 +374,7 @@
       "download.grab.errors.quality_not_allowed": "La qualité de cette release n’est pas autorisée par le profil",
       "download.grab.errors.releases_unobtainable": "Aucune release n’a pu être récupérée. Dernière raison : {{detail}}",
       "download.grab.errors.unprofiled": "Ce titre n’a pas de profil de qualité — rien à télécharger",
+      "download.grab.errors.unsupported_kind": "Ce plugin ne télécharge que des films et des séries",
       "download.http.errors.bad_body": "Champ invalide ou manquant dans le corps de la requête",
       "download.http.errors.bad_param": "Paramètre d’URL invalide ou manquant",
       "download.http.errors.download_client": "Le client de téléchargement a retourné : {{detail}}",
@@ -460,7 +466,7 @@
     "queue-control",
     "blocklist"
   ],
-  "pluginApi": 2,
+  "pluginApi": 3,
   "routes": [
     {
       "method": "GET",
@@ -1468,19 +1474,29 @@
       }
     ],
     "releasePicker": {
-      "episode": {
-        "grab": "/:id/episodes/:episodeId/grab",
-        "search": "/:id/episodes/:episodeId/releases"
+      "book": {
+        "work": {
+          "grab": "/:id/grab",
+          "search": "/:id/releases"
+        }
       },
       "movie": {
-        "grab": "/:id/grab",
-        "search": "/:id/releases"
+        "work": {
+          "grab": "/:id/grab",
+          "search": "/:id/releases"
+        }
       },
-      "season": {
-        "grab": "/:id/seasons/:seasonId/grab",
-        "search": "/:id/seasons/:seasonId/releases"
+      "series": {
+        "group": {
+          "grab": "/:id/seasons/:seasonId/grab",
+          "search": "/:id/seasons/:seasonId/releases"
+        },
+        "item": {
+          "grab": "/:id/episodes/:episodeId/grab",
+          "search": "/:id/episodes/:episodeId/releases"
+        }
       }
     }
   },
-  "version": "1.2.0"
+  "version": "2.1.0"
 }
