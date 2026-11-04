@@ -425,6 +425,13 @@
           "fliks": ">=5.0.0 <6.0.0",
           "zipUrl": "https://github.com/fliks-app/fk-plugin-notify/releases/download/v1.0.0/fliks.notify-1.0.0.fkplugin",
           "sha256": "b622a10f7937d67213ea87355cd54bb9244f1c9b87e20d76a3e2e394d04f04e3"
+        },
+        {
+          "version": "2.0.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/notify-v2.0.0/fliks.notify-2.0.0.fkplugin",
+          "sha256": "fb24e11c7e34e16b957b85e6e0e755f3a75d282a73290ea1a3132c10d1ff928e"
         }
       ]
     },
@@ -464,6 +471,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v0.2.0/fliks.thexem-0.2.0.fkplugin",
           "sha256": "c994462c78341a8126fdf8a851e85d9d1841a0929e847a07efd9c0dbaeeefedf"
+        },
+        {
+          "version": "0.2.1",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v0.2.1/fliks.thexem-0.2.1.fkplugin",
+          "sha256": "53a401469a8e8959aa6100ebe8c04a36a33aa298cad3653f4df4c1ed773946d3"
         }
       ]
     },
