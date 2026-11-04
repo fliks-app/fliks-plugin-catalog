@@ -1,0 +1,91 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Maps the season and episode numbers of release names to the aired ones for series released under another numbering, from TheXEM.",
+  "files": {
+    "logo.svg": "88746fa326d959c470faa68de15050c2a428d489867cb2267c617d6f2f4c1aef",
+    "plugin.wasm": "f1a8ffc1706a5e60a203926ba0408f6966fba8620e0e92c4045de2f35d863081"
+  },
+  "fliks": ">=6.0.0 <7.0.0",
+  "homepage": "https://thexem.info",
+  "i18n": {
+    "en": {
+      "thexem.config.baseUrl": "Base URL",
+      "thexem.config.baseUrl_hint": "Leave empty for https://thexem.info.",
+      "thexem.config.subtitle": "Scene numbering of series released under another numbering than the library's.",
+      "thexem.config.title": "TheXEM"
+    },
+    "fr": {
+      "thexem.config.baseUrl": "URL de base",
+      "thexem.config.baseUrl_hint": "Laissez vide pour https://thexem.info.",
+      "thexem.config.subtitle": "Numérotation scene des séries diffusées sous une autre numérotation que celle de la bibliothèque.",
+      "thexem.config.title": "TheXEM"
+    }
+  },
+  "id": "fliks.thexem",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "TheXEM scene numbering",
+  "pluginApi": 3,
+  "provider": {
+    "kinds": {
+      "series": [
+        "scene"
+      ]
+    },
+    "limits": {
+      "burst": 1,
+      "ratePerSec": 1
+    },
+    "namespaces": [
+      {
+        "idPattern": "^[1-9][0-9]{0,8}$",
+        "label": "TheXEM",
+        "name": "fliks.thexem:xem"
+      }
+    ],
+    "requestTimeoutMs": 20000,
+    "sceneNamespaces": [
+      "tvdb"
+    ]
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "ui": {
+    "configPages": [
+      {
+        "fields": [
+          {
+            "hint": "thexem.config.baseUrl_hint",
+            "key": "baseUrl",
+            "labelKey": "thexem.config.baseUrl",
+            "type": "text"
+          }
+        ],
+        "id": "general",
+        "labelKey": "thexem.config.title",
+        "subtitleKey": "thexem.config.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.thexem/general"
+        },
+        "id": "fliks-thexem.settings.general",
+        "labelKey": "thexem.config.title",
+        "slot": "settings.page",
+        "weight": 100
+      }
+    ]
+  },
+  "version": "0.2.0"
+}
