@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.0.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v0.3.0/fliks.tvdb-0.3.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "77e0481c1dba09ebeef4e040918241e1ac0d8158c1be43b768b91d7bbed066b6"
 }
