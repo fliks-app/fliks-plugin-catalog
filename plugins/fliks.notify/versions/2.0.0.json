@@ -1,0 +1,13 @@
+{
+  "id": "fliks.notify",
+  "name": "Notify",
+  "description": "Forwards Fliks domain events to an admin-configured HTTPS webhook, with bounded retry.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "2.0.0",
+  "pluginApi": 3,
+  "fliks": ">=6.0.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/notify-v2.0.0/fliks.notify-2.0.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.notify/logo.svg"
+}
