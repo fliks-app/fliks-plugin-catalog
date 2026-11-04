@@ -7,7 +7,7 @@
   "description": "Comic volume and issue metadata from Comic Vine, for non-commercial use only. Needs your own API key.",
   "files": {
     "logo.svg": "88746fa326d959c470faa68de15050c2a428d489867cb2267c617d6f2f4c1aef",
-    "plugin.wasm": "355b69ac615c9e46b8999470ca32099db211fbaf30e441ef3a0d1ca782f087cc"
+    "plugin.wasm": "76b24b08a744c4f0b328a2f45634288152d7d4ebf78c9ce7b27ba83e418947ea"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "homepage": "https://comicvine.gamespot.com",
@@ -103,5 +103,5 @@
       }
     ]
   },
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

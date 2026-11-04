@@ -7,7 +7,7 @@
   "description": "Book metadata from OpenLibrary: search, works and their editions.",
   "files": {
     "logo.svg": "4580aada406fe6dd9d3f1870eebc0f84da37c4e66fee2571039622fbca6f1b14",
-    "plugin.wasm": "576974bf20edeaadbc6e7d65ce8124dbc96f5cf485c2849bda697e9ae4202306"
+    "plugin.wasm": "e5bdacc2b710d599aac4df47cb995fe47c3ddfd04f32e150a642133e7291a4b7"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "id": "fliks.openlibrary",
@@ -58,5 +58,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

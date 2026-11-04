@@ -7,7 +7,7 @@
   "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
   "files": {
     "logo.svg": "142066be1cb157698d8e1976e5c74b1b9154bb02fa6e5889d3cc1ecf97f64807",
-    "plugin.wasm": "363ea3e1aa780f7107c83d6142e9d4a7e20d80cb8352d5d6b0646a1e1d293e30"
+    "plugin.wasm": "995e002f0205bdcbe759ef85b2f04c7737572a326f97aed7ba25416e579ce468"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "id": "fliks.googlebooks",
@@ -48,5 +48,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
