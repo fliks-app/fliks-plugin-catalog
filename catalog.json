@@ -49,6 +49,22 @@
       ]
     },
     {
+      "id": "fliks.comicvine",
+      "name": "Comic Vine",
+      "description": "Comic volume and issue metadata from Comic Vine, for non-commercial use only. Needs your own API key.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v0.2.0/fliks.comicvine-0.2.0.fkplugin",
+          "sha256": "93140bde520ad59b855556d8eeb4374da2a47803e72c309d942998047b03d803"
+        }
+      ]
+    },
+    {
       "id": "fliks.download",
       "name": "Download",
       "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
@@ -295,6 +311,22 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v0.2.0/fliks.googlebooks-0.2.0.fkplugin",
           "sha256": "4e83b8df3b1b4d0ae20420debe8ce987f6e4c9a204225b360c21e2b83a2157da"
+        }
+      ]
+    },
+    {
+      "id": "fliks.metron",
+      "name": "Metron",
+      "description": "Comic series and issue metadata from Metron (CC BY-SA 4.0). Needs your own Metron API token.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v0.2.0/fliks.metron-0.2.0.fkplugin",
+          "sha256": "eccc2ec41533c3642bdb5efe537b8085c59f2fa37060c86841966862250e3100"
         }
       ]
     },
