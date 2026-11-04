@@ -87,7 +87,8 @@ function main() {
   for (const id of pluginIds) {
     const entries = byId.get(id);
     for (const field of ['name', 'description', 'author', 'kind', 'logo']) {
-      const values = new Set(entries.map((e) => e[field]));
+      // A version without a logo (wasm archives carry their own) does not contradict one that has it.
+      const values = new Set(entries.map((e) => e[field]).filter((v) => field !== 'logo' || v !== undefined));
       if (values.size > 1) {
         errors.push(`plugin "${id}": "${field}" differs across versions (${[...values].map((v) => JSON.stringify(v)).join(' vs ')})`);
       }
@@ -105,7 +106,7 @@ function main() {
       author: entries[0].author,
       kind: entries[0].kind,
       // Plugin-level, not per-version: the card shows one logo whichever version it offers.
-      ...(entries[0].logo ? { logo: entries[0].logo } : {}),
+      ...(entries.find((e) => e.logo) ? { logo: entries.find((e) => e.logo).logo } : {}),
       versions: sorted.map((e) => ({
         version: e.version,
         pluginApi: e.pluginApi,
