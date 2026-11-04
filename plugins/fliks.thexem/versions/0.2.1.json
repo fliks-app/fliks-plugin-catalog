@@ -1,0 +1,12 @@
+{
+  "id": "fliks.thexem",
+  "name": "TheXEM scene numbering",
+  "description": "Maps the season and episode numbers of release names to the aired ones for series released under another numbering, from TheXEM.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "0.2.1",
+  "pluginApi": 3,
+  "fliks": ">=6.0.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v0.2.1/fliks.thexem-0.2.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
