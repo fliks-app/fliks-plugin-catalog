@@ -413,6 +413,22 @@
       ]
     },
     {
+      "id": "fliks.thexem",
+      "name": "TheXEM scene numbering",
+      "description": "Maps the season and episode numbers of release names to the aired ones for series released under another numbering, from TheXEM.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v0.2.0/fliks.thexem-0.2.0.fkplugin",
+          "sha256": "c994462c78341a8126fdf8a851e85d9d1841a0929e847a07efd9c0dbaeeefedf"
+        }
+      ]
+    },
+    {
       "id": "fliks.tmdb",
       "name": "TMDB",
       "description": "Movie and series metadata, images, people and lists from The Movie Database.",
