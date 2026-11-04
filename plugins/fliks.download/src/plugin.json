@@ -29,13 +29,14 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "2433f2f9cd978220b42c2ffc3955ce37b093a175ef1e9c90f16783765b30e710"
+    "plugin.wasm": "9a564a5d8d1cc62a1314ae17c6e9c40da06eac59d8b38ebc4af119d63a4ee2fe"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
     "en": {
       "download.config.download_clients.fields.audiobook_category": "Audiobook category",
       "download.config.download_clients.fields.category": "Category",
+      "download.config.download_clients.fields.comic_category": "Comic category",
       "download.config.download_clients.fields.ebook_category": "Ebook category",
       "download.config.download_clients.fields.host": "Host",
       "download.config.download_clients.fields.movie_category": "Movie category",
@@ -226,6 +227,7 @@
     "fr": {
       "download.config.download_clients.fields.audiobook_category": "Catégorie livres audio",
       "download.config.download_clients.fields.category": "Catégorie",
+      "download.config.download_clients.fields.comic_category": "Catégorie bandes dessinées",
       "download.config.download_clients.fields.ebook_category": "Catégorie livres",
       "download.config.download_clients.fields.host": "Hôte",
       "download.config.download_clients.fields.movie_category": "Catégorie films",
@@ -1498,5 +1500,5 @@
       }
     }
   },
-  "version": "2.1.0"
+  "version": "2.2.0"
 }
