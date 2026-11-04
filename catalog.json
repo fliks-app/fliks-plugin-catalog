@@ -323,6 +323,13 @@
           "fliks": ">=5.0.0 <6.0.0",
           "zipUrl": "https://github.com/fliks-app/fk-plugin-download/releases/download/v1.2.0/fliks.download-1.2.0.fkplugin",
           "sha256": "7bbb7ca53a029bb16c2537c3b8d65c75db6d42e1ff0ae6f0b63f319cb711d678"
+        },
+        {
+          "version": "2.1.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v2.1.0/fliks.download-2.1.0.fkplugin",
+          "sha256": "ca2fead1f13090507b972d2fcabf846f731e79f0ada5908b02c9062b5540de65"
         }
       ]
     },
@@ -346,6 +353,38 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v0.3.0/fliks.googlebooks-0.3.0.fkplugin",
           "sha256": "eb81304086e85078c3c93d5820ee3f70cacb31d3a6fd75f64e7f0bc476ada43e"
+        }
+      ]
+    },
+    {
+      "id": "fliks.gutenberg",
+      "name": "Project Gutenberg",
+      "description": "Search Project Gutenberg and add its free ebooks to the library.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v0.2.0/fliks.gutenberg-0.2.0.fkplugin",
+          "sha256": "0048ae333795edfe1bb6727f25c36a64b3226ad11dac014bac7671b6c633b4cc"
+        }
+      ]
+    },
+    {
+      "id": "fliks.librivox",
+      "name": "LibriVox",
+      "description": "Search LibriVox and add its free audiobooks to the library.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v0.2.0/fliks.librivox-0.2.0.fkplugin",
+          "sha256": "85e70ab434e2326fc649d68fce7c4ba0c81aab0c6ea191a9e4808395a78ee342"
         }
       ]
     },
