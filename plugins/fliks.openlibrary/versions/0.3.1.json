@@ -1,0 +1,12 @@
+{
+  "id": "fliks.openlibrary",
+  "name": "OpenLibrary",
+  "description": "Book metadata from OpenLibrary: search, works and their editions.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "0.3.1",
+  "pluginApi": 3,
+  "fliks": ">=6.0.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/openlibrary-v0.3.1/fliks.openlibrary-0.3.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
