@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.0.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v2.4.0/fliks.download-2.4.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "b746f814dd8a011fcd8d9590f850f7ae309807a7ce2c0f2ba582d0a1e42d62a2"
 }
