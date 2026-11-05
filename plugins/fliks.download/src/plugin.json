@@ -29,7 +29,7 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "9a564a5d8d1cc62a1314ae17c6e9c40da06eac59d8b38ebc4af119d63a4ee2fe"
+    "plugin.wasm": "1886497a9457afa3cc3bbe17ae681204556ef76642f3d41522c65c9e3d1b66de"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
@@ -186,6 +186,8 @@
       "download.grab.errors.releases_unobtainable": "No release could be fetched. Last reason: {{detail}}",
       "download.grab.errors.unprofiled": "This title has no quality profile — nothing to grab",
       "download.grab.errors.unsupported_kind": "This plugin only downloads movies and series",
+      "download.group.grab_best": "Download the season",
+      "download.group.search_releases": "View packs",
       "download.http.errors.bad_body": "Invalid or missing field in the request body",
       "download.http.errors.bad_param": "Invalid or missing path parameter",
       "download.http.errors.download_client": "The download client returned: {{detail}}",
@@ -219,8 +221,6 @@
       "download.queue.errors.not_retryable": "Only a failed import can be retried",
       "download.queue.removed_by_user": "Removed from the queue by a user",
       "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it",
-      "download.season.grab_best": "Download the season",
-      "download.season.search_releases": "View packs",
       "download.status.import_failed": "Import failed",
       "download.status.importing": "Importing"
     },
@@ -377,6 +377,8 @@
       "download.grab.errors.releases_unobtainable": "Aucune release n’a pu être récupérée. Dernière raison : {{detail}}",
       "download.grab.errors.unprofiled": "Ce titre n’a pas de profil de qualité — rien à télécharger",
       "download.grab.errors.unsupported_kind": "Ce plugin ne télécharge que des films et des séries",
+      "download.group.grab_best": "Télécharger la saison",
+      "download.group.search_releases": "Voir les packs",
       "download.http.errors.bad_body": "Champ invalide ou manquant dans le corps de la requête",
       "download.http.errors.bad_param": "Paramètre d’URL invalide ou manquant",
       "download.http.errors.download_client": "Le client de téléchargement a retourné : {{detail}}",
@@ -410,8 +412,6 @@
       "download.queue.errors.not_retryable": "Seul un import en échec peut être relancé",
       "download.queue.removed_by_user": "Retiré de la file d'attente par un utilisateur",
       "download.queue.retired_unverifiable": "Retiré de la file d'attente, aucun client de téléchargement n'a pu le confirmer",
-      "download.season.grab_best": "Télécharger la saison",
-      "download.season.search_releases": "Voir les packs",
       "download.status.import_failed": "Échec de l’import",
       "download.status.importing": "Import en cours"
     }
@@ -485,25 +485,25 @@
     {
       "method": "GET",
       "objectGuard": "mediaAccessible:id",
-      "path": "/:id/seasons/:seasonId/releases",
+      "path": "/:id/groups/:groupId/releases",
       "policy": "read:plugin:fliks.download:releases"
     },
     {
       "method": "POST",
       "objectGuard": "mediaAccessible:id",
-      "path": "/:id/seasons/:seasonId/grab",
+      "path": "/:id/groups/:groupId/grab",
       "policy": "grab:plugin:fliks.download:releases"
     },
     {
       "method": "GET",
       "objectGuard": "mediaAccessible:id",
-      "path": "/:id/episodes/:episodeId/releases",
+      "path": "/:id/items/:itemId/releases",
       "policy": "read:plugin:fliks.download:releases"
     },
     {
       "method": "POST",
       "objectGuard": "mediaAccessible:id",
-      "path": "/:id/episodes/:episodeId/grab",
+      "path": "/:id/items/:itemId/grab",
       "policy": "grab:plugin:fliks.download:releases"
     },
     {
@@ -1446,13 +1446,13 @@
       },
       {
         "action": {
-          "actionId": "season.search-releases",
+          "actionId": "group.search-releases",
           "kind": "action"
         },
         "icon": "package",
-        "id": "fliks-download.season.search-releases",
-        "labelKey": "download.season.search_releases",
-        "slot": "media.season.actions",
+        "id": "fliks-download.group.search-releases",
+        "labelKey": "download.group.search_releases",
+        "slot": "media.group.actions",
         "weight": 500,
         "when": [
           "hasPermission:media.grab",
@@ -1461,13 +1461,43 @@
       },
       {
         "action": {
-          "actionId": "season.grab-best",
+          "actionId": "group.grab-best",
           "kind": "action"
         },
         "icon": "download",
-        "id": "fliks-download.season.grab-best",
-        "labelKey": "download.season.grab_best",
-        "slot": "media.season.actions",
+        "id": "fliks-download.group.grab-best",
+        "labelKey": "download.group.grab_best",
+        "slot": "media.group.actions",
+        "weight": 600,
+        "when": [
+          "hasPermission:media.grab",
+          "hasQualityProfile"
+        ]
+      },
+      {
+        "action": {
+          "actionId": "item.search-releases",
+          "kind": "action"
+        },
+        "icon": "search",
+        "id": "fliks-download.item.search-releases",
+        "labelKey": "download.media.search_releases",
+        "slot": "media.item.actions",
+        "weight": 500,
+        "when": [
+          "hasPermission:media.grab",
+          "hasQualityProfile"
+        ]
+      },
+      {
+        "action": {
+          "actionId": "item.grab-best",
+          "kind": "action"
+        },
+        "icon": "download",
+        "id": "fliks-download.item.grab-best",
+        "labelKey": "download.media.grab_best",
+        "slot": "media.item.actions",
         "weight": 600,
         "when": [
           "hasPermission:media.grab",
@@ -1482,6 +1512,16 @@
           "search": "/:id/releases"
         }
       },
+      "comic": {
+        "item": {
+          "grab": "/:id/items/:itemId/grab",
+          "search": "/:id/items/:itemId/releases"
+        },
+        "work": {
+          "grab": "/:id/grab",
+          "search": "/:id/releases"
+        }
+      },
       "movie": {
         "work": {
           "grab": "/:id/grab",
@@ -1490,15 +1530,15 @@
       },
       "series": {
         "group": {
-          "grab": "/:id/seasons/:seasonId/grab",
-          "search": "/:id/seasons/:seasonId/releases"
+          "grab": "/:id/groups/:groupId/grab",
+          "search": "/:id/groups/:groupId/releases"
         },
         "item": {
-          "grab": "/:id/episodes/:episodeId/grab",
-          "search": "/:id/episodes/:episodeId/releases"
+          "grab": "/:id/items/:itemId/grab",
+          "search": "/:id/items/:itemId/releases"
         }
       }
     }
   },
-  "version": "2.2.0"
+  "version": "2.3.0"
 }
