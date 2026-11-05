@@ -552,6 +552,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v0.3.0/fliks.tvdb-0.3.0.fkplugin",
           "sha256": "77e0481c1dba09ebeef4e040918241e1ac0d8158c1be43b768b91d7bbed066b6"
+        },
+        {
+          "version": "0.3.1",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v0.3.1/fliks.tvdb-0.3.1.fkplugin",
+          "sha256": "add8d9ffd06debdf8e0c18cb5bdab9571e1de9d7a9238345d5d4431dca5ee218"
         }
       ]
     }
