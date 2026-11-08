@@ -358,6 +358,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v2.4.1/fliks.download-2.4.1.fkplugin",
           "sha256": "1e8bb167a2046b67da4951da6395452d7f5b7b8a63849c2e963c5414d06493e7"
+        },
+        {
+          "version": "2.5.0",
+          "pluginApi": 3,
+          "fliks": ">=6.0.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v2.5.0/fliks.download-2.5.0.fkplugin",
+          "sha256": "888198935b9d5c0baee1413200ffbfd49fa961f21da278f843030845acc6cc68"
         }
       ]
     },
@@ -468,6 +475,29 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.2.0/fliks.musicbrainz-0.2.0.fkplugin",
           "sha256": "60f852b26bef2d5af48b4fbdb4020b1fefaaf0f152fcebfa7a71fbfbfff2d9db"
+        },
+        {
+          "version": "0.3.0",
+          "pluginApi": 3,
+          "fliks": ">=6.1.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.3.0/fliks.musicbrainz-0.3.0.fkplugin",
+          "sha256": "4076e5922eb94221cecd226743c50491a8da843050154dbd0cf9953464528912"
+        }
+      ]
+    },
+    {
+      "id": "fliks.musiclists",
+      "name": "Music lists",
+      "description": "Follow the albums and tracks of ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.1.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/music-lists-v0.2.0/fliks.musiclists-0.2.0.fkplugin",
+          "sha256": "641ec0fae070929c930cb95dab52ea1af746fe77b22aa6fbd85758a6606f7951"
         }
       ]
     },
