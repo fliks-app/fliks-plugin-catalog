@@ -206,7 +206,7 @@ const MAX_ID_LENGTH = 51;
 const RESERVED_IDS = ['ui', 'metrics', 'sources', 'import'];
 const BASE_KEYS = ['id', 'pluginApi', 'name', 'version', 'fliks', 'author', 'description', 'license', 'logo', 'homepage', 'ui', 'events', 'i18n', 'kind'];
 const PROCESS_KEYS = [...BASE_KEYS, 'runtime', 'memoryMb', 'files', 'database', 'routes', 'scopes', 'ingestRoots', 'jobs', 'permissions', 'checklist', 'network', 'provider'];
-const SCOPES = ['media:read', 'media:create', 'acquisition:candidates', 'releases:score', 'ingest:write', 'events:emit', 'config:rw'];
+const SCOPES = ['media:read', 'media:create', 'acquisition:candidates', 'releases:score', 'ingest:write', 'events:emit', 'config:rw', 'playlists:write'];
 
 const isRecord = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isStrings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
