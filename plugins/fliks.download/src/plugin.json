@@ -29,11 +29,12 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "d688c72b3856d5536e516d70fa34582686f6c174668963a48347ef06b264165f"
+    "plugin.wasm": "5171b61a22956bfbf805067cd36191602742fc70fe2ba7a66a28c5830626c392"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
     "en": {
+      "download.config.download_clients.fields.album_category": "Album category",
       "download.config.download_clients.fields.audiobook_category": "Audiobook category",
       "download.config.download_clients.fields.category": "Category",
       "download.config.download_clients.fields.comic_category": "Comic category",
@@ -234,6 +235,7 @@
       "download.status.importing": "Importing"
     },
     "fr": {
+      "download.config.download_clients.fields.album_category": "Catégorie albums",
       "download.config.download_clients.fields.audiobook_category": "Catégorie livres audio",
       "download.config.download_clients.fields.category": "Catégorie",
       "download.config.download_clients.fields.comic_category": "Catégorie bandes dessinées",
@@ -1600,6 +1602,16 @@
       }
     ],
     "releasePicker": {
+      "album": {
+        "item": {
+          "grab": "/:id/items/:itemId/grab",
+          "search": "/:id/items/:itemId/releases"
+        },
+        "work": {
+          "grab": "/:id/grab",
+          "search": "/:id/releases"
+        }
+      },
       "book": {
         "work": {
           "grab": "/:id/grab",
@@ -1634,5 +1646,5 @@
       }
     }
   },
-  "version": "2.4.1"
+  "version": "2.5.0"
 }
