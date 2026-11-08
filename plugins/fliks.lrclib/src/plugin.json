@@ -1,0 +1,84 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Synced and plain lyrics from LRCLIB, matched on title, artist, album and duration.",
+  "files": {
+    "logo.svg": "9a5fd56ccae3a608ab1fe06f2a8d9b45f664407c7ee58e8bb1f97a93cc1279de",
+    "plugin.wasm": "75e6dd8427e4d46e659d69df1d7ddcfee3f3792dacf19d6a934ac85dbcf55890"
+  },
+  "fliks": ">=6.1.0 <7.0.0",
+  "homepage": "https://lrclib.net",
+  "i18n": {
+    "en": {
+      "lrclib.config.attribution": "Lyrics from LRCLIB (https://lrclib.net).",
+      "lrclib.config.subtitle": "Synced and plain lyrics from LRCLIB. No account or key needed.",
+      "lrclib.config.title": "LRCLIB"
+    },
+    "fr": {
+      "lrclib.config.attribution": "Paroles de LRCLIB (https://lrclib.net).",
+      "lrclib.config.subtitle": "Paroles synchronisées et simples de LRCLIB. Aucun compte ni clé nécessaire.",
+      "lrclib.config.title": "LRCLIB"
+    }
+  },
+  "id": "fliks.lrclib",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "LRCLIB",
+  "pluginApi": 3,
+  "provider": {
+    "kinds": {
+      "album": [
+        "lyrics"
+      ]
+    },
+    "limits": {
+      "burst": 2,
+      "ratePerSec": 1.5
+    },
+    "namespaces": [
+      {
+        "idPattern": "^[1-9][0-9]{0,11}$",
+        "label": "LRCLIB",
+        "name": "fliks.lrclib:lrclib"
+      }
+    ],
+    "requestTimeoutMs": 15000
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "ui": {
+    "configPages": [
+      {
+        "fields": [
+          {
+            "kind": "caption",
+            "textKey": "lrclib.config.attribution"
+          }
+        ],
+        "id": "general",
+        "labelKey": "lrclib.config.title",
+        "subtitleKey": "lrclib.config.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.lrclib/general"
+        },
+        "id": "fliks-lrclib.settings.general",
+        "labelKey": "lrclib.config.title",
+        "slot": "settings.page",
+        "weight": 100
+      }
+    ]
+  },
+  "version": "0.2.0"
+}
