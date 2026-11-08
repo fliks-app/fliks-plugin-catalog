@@ -362,6 +362,22 @@
       ]
     },
     {
+      "id": "fliks.fanarttv",
+      "name": "Fanart.tv",
+      "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.1.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v0.2.0/fliks.fanarttv-0.2.0.fkplugin",
+          "sha256": "dd99bad027a86dbd0dd1c428a1a62a93e4841659a4decf575fe6d0922199d730"
+        }
+      ]
+    },
+    {
       "id": "fliks.googlebooks",
       "name": "Google Books",
       "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
@@ -436,6 +452,22 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v0.3.0/fliks.metron-0.3.0.fkplugin",
           "sha256": "e60068e0d6035bab01aeca8799f3d1b288aaddf3ed7e139983820fbaec97699e"
+        }
+      ]
+    },
+    {
+      "id": "fliks.musicbrainz",
+      "name": "MusicBrainz",
+      "description": "Album, release and artist metadata from MusicBrainz, with cover art from the Cover Art Archive and optional ListenBrainz popularity.",
+      "author": "Fliks",
+      "kind": "process",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "pluginApi": 3,
+          "fliks": ">=6.1.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.2.0/fliks.musicbrainz-0.2.0.fkplugin",
+          "sha256": "60f852b26bef2d5af48b4fbdb4020b1fefaaf0f152fcebfa7a71fbfbfff2d9db"
         }
       ]
     },
