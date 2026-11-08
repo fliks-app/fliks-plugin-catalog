@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.1.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v0.2.0/fliks.fanarttv-0.2.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "dd99bad027a86dbd0dd1c428a1a62a93e4841659a4decf575fe6d0922199d730"
 }
