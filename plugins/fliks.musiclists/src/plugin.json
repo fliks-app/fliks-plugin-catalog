@@ -29,7 +29,7 @@
   "description": "Follow the albums and tracks of ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
   "files": {
     "logo.svg": "65f52a6d256d4c29bd3342ae78b81400d804f1d5342db919e72710e7abf7a6aa",
-    "plugin.wasm": "28988dd7c15d20fef8245b3e61ab4c3dc60a3980b64b4556d4bef2e742648b15"
+    "plugin.wasm": "6305930711d04bc41d28e5d2b8b7673e69171e5cf46586563535f8e538817861"
   },
   "fliks": ">=6.1.0 <7.0.0",
   "i18n": {
@@ -43,7 +43,7 @@
       "musiclists.config.subtitle": "Follow the albums and tracks of your ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
       "musiclists.config.title": "Music lists",
       "musiclists.fields.actions": "Actions",
-      "musiclists.fields.actions_hint": "Albums and tracks are wanted; the playlist mirror also wants the tracks it adds. A track without an ISRC or a recording id in the library is skipped.",
+      "musiclists.fields.actions_hint": "Albums and tracks are wanted; the playlist mirror only adds tracks already in the library (the first sync after upgrading creates a new playlist; delete the old one). A track without an ISRC or a recording id in the library is skipped.",
       "musiclists.fields.apiKey": "API key",
       "musiclists.fields.clientId": "Client id",
       "musiclists.fields.clientSecret": "Client secret",
@@ -97,7 +97,7 @@
       "musiclists.config.subtitle": "Suivez les albums et titres de vos listes ListenBrainz, Last.fm, Spotify, Deezer et MusicBrainz.",
       "musiclists.config.title": "Listes musicales",
       "musiclists.fields.actions": "Actions",
-      "musiclists.fields.actions_hint": "Les albums et titres sont souhaités; le miroir de playlist souhaite aussi les titres qu'il ajoute. Un titre sans ISRC ni identifiant d'enregistrement dans la bibliothèque est ignoré.",
+      "musiclists.fields.actions_hint": "Les albums et titres sont souhaités; le miroir de playlist n'ajoute que les titres déjà dans la bibliothèque (la première synchronisation après la mise à jour crée une nouvelle playlist; supprimez l'ancienne). Un titre sans ISRC ni identifiant d'enregistrement dans la bibliothèque est ignoré.",
       "musiclists.fields.apiKey": "Clé d'API",
       "musiclists.fields.clientId": "Identifiant client",
       "musiclists.fields.clientSecret": "Secret client",
@@ -262,5 +262,5 @@
       }
     ]
   },
-  "version": "0.2.0"
+  "version": "0.2.1"
 }
