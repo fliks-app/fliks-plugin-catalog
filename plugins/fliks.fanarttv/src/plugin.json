@@ -1,0 +1,120 @@
+{
+  "author": "Fliks",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
+  "files": {
+    "logo.svg": "4db8b44752ed30780c060568836e22e21d9dfe2eef0e8c58106afe95b1db93a6",
+    "plugin.wasm": "f4f6e6932e54b8262c4a1579ceba9deaa911d8ba7fd3638cd8f7257ab12b7a92"
+  },
+  "fliks": ">=6.1.0 <7.0.0",
+  "homepage": "https://fanart.tv",
+  "i18n": {
+    "en": {
+      "fanarttv.config.apiKey": "API key",
+      "fanarttv.config.apiKey_hint": "Fliks ships a project key. Type your own to use it instead.",
+      "fanarttv.config.attribution": "Images from Fanart.tv (https://fanart.tv).",
+      "fanarttv.config.clientKey": "Personal key",
+      "fanarttv.config.clientKey_hint": "Optional. Your Fanart.tv personal API key, sent with every request.",
+      "fanarttv.config.subtitle": "Artist images and album covers from Fanart.tv.",
+      "fanarttv.config.title": "Fanart.tv"
+    },
+    "fr": {
+      "fanarttv.config.apiKey": "Clé d'API",
+      "fanarttv.config.apiKey_hint": "Fliks fournit une clé de projet. Saisissez la vôtre pour l'utiliser à la place.",
+      "fanarttv.config.attribution": "Images de Fanart.tv (https://fanart.tv).",
+      "fanarttv.config.clientKey": "Clé personnelle",
+      "fanarttv.config.clientKey_hint": "Facultatif. Votre clé d'API personnelle Fanart.tv, envoyée avec chaque requête.",
+      "fanarttv.config.subtitle": "Images d'artistes et pochettes d'albums de Fanart.tv.",
+      "fanarttv.config.title": "Fanart.tv"
+    }
+  },
+  "id": "fliks.fanarttv",
+  "ingestRoots": [],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 64,
+  "name": "Fanart.tv",
+  "pluginApi": 3,
+  "provider": {
+    "findBy": [
+      "musicbrainz"
+    ],
+    "imageHosts": [
+      "assets.fanart.tv"
+    ],
+    "kinds": {
+      "album": [
+        "work",
+        "person",
+        "findBy"
+      ]
+    },
+    "limits": {
+      "burst": 2,
+      "ratePerSec": 2
+    },
+    "namespaces": [
+      {
+        "name": "fanarttv"
+      }
+    ],
+    "requestTimeoutMs": 15000,
+    "requires": [
+      "apiKey"
+    ],
+    "snapshotTtlSecs": {
+      "person": 2592000,
+      "work": 2592000
+    }
+  },
+  "routes": [],
+  "runtime": "wasm",
+  "scopes": [],
+  "ui": {
+    "configPages": [
+      {
+        "fields": [
+          {
+            "default": "fliks:apiKey",
+            "hint": "fanarttv.config.apiKey_hint",
+            "key": "apiKey",
+            "labelKey": "fanarttv.config.apiKey",
+            "secret": true,
+            "type": "text"
+          },
+          {
+            "hint": "fanarttv.config.clientKey_hint",
+            "key": "clientKey",
+            "labelKey": "fanarttv.config.clientKey",
+            "secret": true,
+            "type": "text"
+          },
+          {
+            "kind": "caption",
+            "textKey": "fanarttv.config.attribution"
+          }
+        ],
+        "id": "general",
+        "labelKey": "fanarttv.config.title",
+        "subtitleKey": "fanarttv.config.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.fanarttv/general"
+        },
+        "id": "fliks-fanarttv.settings.general",
+        "labelKey": "fanarttv.config.title",
+        "slot": "settings.page",
+        "weight": 100
+      }
+    ]
+  },
+  "version": "0.2.0"
+}
