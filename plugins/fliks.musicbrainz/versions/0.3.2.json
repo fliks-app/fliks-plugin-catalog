@@ -1,0 +1,12 @@
+{
+  "id": "fliks.musicbrainz",
+  "name": "MusicBrainz",
+  "description": "Album, release and artist metadata from MusicBrainz, with cover art from the Cover Art Archive and optional ListenBrainz popularity.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "0.3.2",
+  "pluginApi": 3,
+  "fliks": ">=6.1.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.3.2/fliks.musicbrainz-0.3.2.fkplugin",
+  "sha256": "8f3124f766a732c69aa91dac1f99eee6173f6c9c61ef23e02308d28fe889970f"
+}
