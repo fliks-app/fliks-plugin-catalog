@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEntry } from './validate-entry.mjs';
+import { validateCategories, validateEntry } from './validate-entry.mjs';
 
 const base = {
   id: 'fliks.download', name: 'n', description: 'd', author: 'a', kind: 'process', version: '1.0.0',
@@ -47,4 +47,10 @@ test('a pluginApi 1 entry keeps any https zipUrl, and a non-https one is still r
 test('a pluginApi 2 data entry keeps the Pages path', () => {
   const zipUrl = 'https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.webhooks/dist/fliks.webhooks-2.0.0.fkplugin';
   assert.equal(validateEntry({ ...base, kind: 'data', zipUrl }).ok, true);
+});
+
+test('categories.json names known plugins with known categories', () => {
+  assert.deepEqual(validateCategories({ 'fliks.download': 'download' }, ['fliks.download', 'fliks.tmdb']), []);
+  assert.match(validateCategories({ 'fliks.download': 'indexers' }, ['fliks.download']).join(), /must be one of/);
+  assert.match(validateCategories({ 'fliks.gone': 'other' }, ['fliks.download']).join(), /is no plugin/);
 });

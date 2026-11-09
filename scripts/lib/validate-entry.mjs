@@ -28,6 +28,21 @@ export const REQUIRED_FIELDS = [
 /** Accepted but not required — an entry without one simply renders no logo. */
 export const OPTIONAL_FIELDS = ['logo'];
 
+/** The rows of the client's installed-plugins page (`categories.json`). */
+export const CATEGORIES = ['metadata', 'download', 'notifications', 'other'];
+
+/** `categories.json` against the plugin ids the catalog builds: every value known, no stray id. */
+export function validateCategories(categories, pluginIds) {
+  const errors = [];
+  for (const [id, category] of Object.entries(categories)) {
+    if (!pluginIds.includes(id)) errors.push(`categories.json: "${id}" is no plugin of this catalog`);
+    if (!CATEGORIES.includes(category)) {
+      errors.push(`categories.json: "${id}" must be one of ${CATEGORIES.join(', ')} (got ${JSON.stringify(category)})`);
+    }
+  }
+  return errors;
+}
+
 /** @returns {{ ok: true } | { ok: false, errors: string[] }} */
 export function validateEntry(entry) {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {

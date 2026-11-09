@@ -37,6 +37,8 @@ catalog.json            generated — the signed index Fliks fetches
 catalog.json.sig        generated — Ed25519 signature over catalog.json's exact bytes
 schema/                 JSON Schema for a submitted plugins/*/versions/*.json file
 COMPATIBILITY.md         pluginApi <-> Fliks core version table
+categories.json         plugin id -> row of Fliks' plugins page (metadata, download,
+                        notifications, other); a plugin left out is placed by its capabilities
 keys/                   published Ed25519 public keys, one file per key id, never deleted
 scripts/                the build/sign/verify pipeline (plain Node, no dependencies)
 plugins/<id>/versions/<version>.json   one file per published plugin version

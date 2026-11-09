@@ -1,0 +1,20 @@
+{
+  "fliks.audible": "metadata",
+  "fliks.audnexus": "metadata",
+  "fliks.bnf": "metadata",
+  "fliks.comicvine": "metadata",
+  "fliks.download": "download",
+  "fliks.fanarttv": "metadata",
+  "fliks.googlebooks": "metadata",
+  "fliks.gutenberg": "download",
+  "fliks.librivox": "download",
+  "fliks.lrclib": "metadata",
+  "fliks.metron": "metadata",
+  "fliks.musicbrainz": "metadata",
+  "fliks.musiclists": "other",
+  "fliks.notify": "notifications",
+  "fliks.openlibrary": "metadata",
+  "fliks.thexem": "metadata",
+  "fliks.tmdb": "metadata",
+  "fliks.tvdb": "metadata"
+}

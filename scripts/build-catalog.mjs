@@ -6,12 +6,14 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateEntry } from './lib/validate-entry.mjs';
+import { validateCategories, validateEntry } from './lib/validate-entry.mjs';
 import { compareSemver } from './lib/semver-lite.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PLUGINS_DIR = join(ROOT, 'plugins');
 const OUT_FILE = join(ROOT, 'catalog.json');
+/** Plugin id to the row of the client's installed-plugins page; optional per plugin. */
+const CATEGORIES_FILE = join(ROOT, 'categories.json');
 
 /**
  * What a descriptor carries between being committed and the packaging workflow signing its
@@ -83,6 +85,8 @@ function main() {
 
   const pluginIds = [...byId.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const plugins = [];
+  const categories = existsSync(CATEGORIES_FILE) ? JSON.parse(readFileSync(CATEGORIES_FILE, 'utf8')) : {};
+  errors.push(...validateCategories(categories, pluginIds));
 
   for (const id of pluginIds) {
     const entries = byId.get(id);
@@ -107,6 +111,7 @@ function main() {
       kind: entries[0].kind,
       // Plugin-level, not per-version: the card shows one logo whichever version it offers.
       ...(entries.find((e) => e.logo) ? { logo: entries.find((e) => e.logo).logo } : {}),
+      ...(categories[id] ? { category: categories[id] } : {}),
       versions: sorted.map((e) => ({
         version: e.version,
         pluginApi: e.pluginApi,
