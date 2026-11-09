@@ -6,6 +6,7 @@
       "description": "Audiobook metadata from the unofficial Audible catalog: search and editions by ASIN.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -29,6 +30,7 @@
       "description": "Audiobook metadata and chapters from Audnexus, by ASIN.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -52,6 +54,7 @@
       "description": "Book metadata from the BnF general catalogue: search and editions by ISBN or notice id.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -75,6 +78,7 @@
       "description": "Comic volume and issue metadata from Comic Vine, for non-commercial use only. Needs your own API key.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -99,6 +103,7 @@
       "author": "Fliks",
       "kind": "process",
       "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.download/logo.svg",
+      "category": "download",
       "versions": [
         {
           "version": "0.1.4",
@@ -374,6 +379,7 @@
       "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -390,6 +396,7 @@
       "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -413,6 +420,7 @@
       "description": "Search Project Gutenberg and add its free ebooks to the library.",
       "author": "Fliks",
       "kind": "process",
+      "category": "download",
       "versions": [
         {
           "version": "0.2.0",
@@ -429,6 +437,7 @@
       "description": "Search LibriVox and add its free audiobooks to the library.",
       "author": "Fliks",
       "kind": "process",
+      "category": "download",
       "versions": [
         {
           "version": "0.2.0",
@@ -445,6 +454,7 @@
       "description": "Synced and plain lyrics from LRCLIB, matched on title, artist, album and duration.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -461,6 +471,7 @@
       "description": "Comic series and issue metadata from Metron (CC BY-SA 4.0). Needs your own Metron API token.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -484,6 +495,7 @@
       "description": "Album, release and artist metadata from MusicBrainz, with cover art from the Cover Art Archive and optional ListenBrainz popularity.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -535,6 +547,7 @@
       "description": "Follow the albums and tracks of ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
       "author": "Fliks",
       "kind": "process",
+      "category": "other",
       "versions": [
         {
           "version": "0.2.0",
@@ -559,6 +572,7 @@
       "author": "Fliks",
       "kind": "process",
       "logo": "https://fliks-app.github.io/fliks-plugin-catalog/plugins/fliks.notify/logo.svg",
+      "category": "notifications",
       "versions": [
         {
           "version": "1.0.0",
@@ -582,6 +596,7 @@
       "description": "Book metadata from OpenLibrary: search, works and their editions.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -612,6 +627,7 @@
       "description": "Maps the season and episode numbers of release names to the aired ones for series released under another numbering, from TheXEM.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -635,6 +651,7 @@
       "description": "Movie and series metadata, images, people and lists from The Movie Database.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
@@ -665,6 +682,7 @@
       "description": "Movie and series metadata, images, people and credits from TheTVDB.",
       "author": "Fliks",
       "kind": "process",
+      "category": "metadata",
       "versions": [
         {
           "version": "0.2.0",
