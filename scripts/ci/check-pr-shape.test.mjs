@@ -37,3 +37,10 @@ test('retiring a whole plugin deletes its published versions together', () => {
   assert.deepEqual(violationsIn(diff, new Set(['fliks.webhooks'])), []);
   assert.equal(violationsIn(diff).length, 2, 'a plugin still present keeps every version');
 });
+
+test('a new wasm-era version must leave sha256 at zeros', () => {
+  const line = 'A\tplugins/x/versions/1.0.0.json';
+  const read = (sha) => () => JSON.stringify({ pluginApi: 3, sha256: sha });
+  assert.deepEqual(violationsIn(line, new Set(), read('0'.repeat(64))), []);
+  assert.match(violationsIn(line, new Set(), read('a'.repeat(64)))[0], /leave sha256 at zeros/);
+});
