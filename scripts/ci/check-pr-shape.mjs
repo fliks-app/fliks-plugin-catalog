@@ -10,11 +10,24 @@ const PUBLISHED = /^plugins\/[^/]+\/(versions\/.*\.json|dist\/.*)$/;
 
 /** Exported for `check-pr-shape.test.mjs`: the rule is the parse, not the `git diff` around it.
  *  `retired`: ids whose `plugins/<id>/` no longer exists at head. */
-export function violationsIn(nameStatusDiff, retired = new Set()) {
+const ZEROS = '0'.repeat(64);
+const NEW_VERSION = /^plugins\/[^/]+\/versions\/.*\.json$/;
+
+/** `readAtHead(path)`: the added descriptor's text; a new wasm-era version must leave sha256 at zeros,
+ *  because `Package plugin` signs the archive and records the real checksum itself. */
+export function violationsIn(nameStatusDiff, retired = new Set(), readAtHead = () => null) {
   const out = [];
   for (const line of nameStatusDiff.split('\n').filter(Boolean)) {
     const [status, ...pathParts] = line.split('\t');
-    if (status === 'A') continue;
+    if (status === 'A') {
+      const path = pathParts[0];
+      const text = NEW_VERSION.test(path) ? readAtHead(path) : null;
+      const entry = text && JSON.parse(text);
+      if (entry && entry.pluginApi >= 2 && entry.sha256 !== ZEROS) {
+        out.push(`${path}: a new version must leave sha256 at zeros; Package plugin fills it after signing`);
+      }
+      continue;
+    }
     // A rename moves a published file away; its destination is an addition, not a violation.
     const touched = status.startsWith('R') ? pathParts.slice(0, 1) : pathParts;
     for (const path of touched) {
@@ -49,7 +62,7 @@ function main() {
   const retired = new Set(
     [...deleted].filter((id) => execSync(`git ls-tree --name-only ${head} plugins/${id}`, { encoding: 'utf8' }).trim() === ''),
   );
-  const violations = violationsIn(diff, retired);
+  const violations = violationsIn(diff, retired, (p) => execSync(`git show ${head}:${p}`, { encoding: 'utf8' }));
 
   if (violations.length > 0) {
     console.error(`check-pr-shape: ${violations.length} violation(s):\n${violations.map((v) => `  - ${v}`).join('\n')}`);

@@ -74,6 +74,9 @@ test keys.
    }
    ```
 
+   For `pluginApi` 2 and above, PR shape refuses a new version whose `sha256` is not all zeros:
+   leave it at zeros, `Package plugin` signs the archive and records the real checksum.
+
    `name`, `description`, `author` and `kind` must be identical across every version
    of the same plugin `id` — the catalog carries one of each per plugin, not per
    version.
