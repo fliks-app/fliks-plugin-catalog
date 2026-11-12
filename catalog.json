@@ -538,6 +538,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.4.0/fliks.musicbrainz-0.4.0.fkplugin",
           "sha256": "051ca7064b5674f962fdeac58a879b1df379dbc26c36d3e990f648f807cdf54a"
+        },
+        {
+          "version": "0.4.1",
+          "pluginApi": 3,
+          "fliks": ">=6.1.0 <7.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.4.1/fliks.musicbrainz-0.4.1.fkplugin",
+          "sha256": "446130b7f113868d171904d81686e9e6885107356ef84385e2237751de55a2e1"
         }
       ]
     },
