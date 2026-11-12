@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.1.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.5.0/fliks.musicbrainz-0.5.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "b080bf76b1b61adaea2b0ca71338dab13cfca3f241a07a7e0d5cc686297fa63e"
 }
