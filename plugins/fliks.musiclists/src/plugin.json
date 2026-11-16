@@ -29,10 +29,13 @@
   "description": "Follow the albums and tracks of ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
   "files": {
     "logo.svg": "65f52a6d256d4c29bd3342ae78b81400d804f1d5342db919e72710e7abf7a6aa",
-    "plugin.wasm": "6305930711d04bc41d28e5d2b8b7673e69171e5cf46586563535f8e538817861"
+    "plugin.wasm": "8b462b62b0a5b4fe8d5208e77f41495e2ffb4ab7a940d81f2de3aed5c8b44de1"
   },
   "fliks": ">=6.1.0 <7.0.0",
   "i18n": {
+    "de": {
+      "musiclists.description": "Folgt den Alben und Titeln von Listen aus ListenBrainz, Last.fm, Spotify, Deezer und MusicBrainz."
+    },
     "en": {
       "musiclists.actions.albums": "Want the albums",
       "musiclists.actions.playlist": "Mirror into a playlist",
@@ -87,6 +90,9 @@
       "musiclists.test.failed": "The list could not be read",
       "musiclists.test.ok": "The list answers"
     },
+    "es": {
+      "musiclists.description": "Sigue los álbumes y las canciones de listas de ListenBrainz, Last.fm, Spotify, Deezer y MusicBrainz."
+    },
     "fr": {
       "musiclists.actions.albums": "Souhaiter les albums",
       "musiclists.actions.playlist": "Refléter dans une playlist",
@@ -96,6 +102,7 @@
       "musiclists.attribution": "Listes de ListenBrainz, Last.fm, Spotify, Deezer et MusicBrainz.",
       "musiclists.config.subtitle": "Suivez les albums et titres de vos listes ListenBrainz, Last.fm, Spotify, Deezer et MusicBrainz.",
       "musiclists.config.title": "Listes musicales",
+      "musiclists.description": "Suivez les albums et les morceaux des listes ListenBrainz, Last.fm, Spotify, Deezer et MusicBrainz.",
       "musiclists.fields.actions": "Actions",
       "musiclists.fields.actions_hint": "Les albums et titres sont souhaités; le miroir de playlist n'ajoute que les titres déjà dans la bibliothèque (la première synchronisation après la mise à jour crée une nouvelle playlist; supprimez l'ancienne). Un titre sans ISRC ni identifiant d'enregistrement dans la bibliothèque est ignoré.",
       "musiclists.fields.apiKey": "Clé d'API",
@@ -140,6 +147,12 @@
       "musiclists.sources.user-albums": "Albums favoris",
       "musiclists.test.failed": "La liste n'a pas pu être lue",
       "musiclists.test.ok": "La liste répond"
+    },
+    "it": {
+      "musiclists.description": "Segue gli album e i brani delle liste di ListenBrainz, Last.fm, Spotify, Deezer e MusicBrainz."
+    },
+    "pt": {
+      "musiclists.description": "Acompanha os álbuns e as faixas das listas do ListenBrainz, Last.fm, Spotify, Deezer e MusicBrainz."
     }
   },
   "id": "fliks.musiclists",
@@ -262,5 +275,5 @@
       }
     ]
   },
-  "version": "0.2.1"
+  "version": "0.2.2"
 }
