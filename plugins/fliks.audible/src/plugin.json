@@ -7,9 +7,26 @@
   "description": "Audiobook metadata from the unofficial Audible catalog: search and editions by ASIN.",
   "files": {
     "logo.svg": "71b798ae1d53a6d6ba40f17562bb4dbe5dca4f748713d4d51c143cb44960a1f2",
-    "plugin.wasm": "4b36a30c37650932595fac73fa4a8c550bfcbda4691f4cd81d1a674d01803aa5"
+    "plugin.wasm": "7c6e641796d236f317f00dd383f46fae76d939ad2387be189abde634783fefa6"
   },
   "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "de": {
+      "audible.description": "Hörbuch-Metadaten aus dem inoffiziellen Audible-Katalog: Suche und Ausgaben nach ASIN."
+    },
+    "es": {
+      "audible.description": "Metadatos de audiolibros del catálogo no oficial de Audible: búsqueda y ediciones por ASIN."
+    },
+    "fr": {
+      "audible.description": "Métadonnées de livres audio depuis le catalogue Audible non officiel : recherche et éditions par ASIN."
+    },
+    "it": {
+      "audible.description": "Metadati di audiolibri dal catalogo Audible non ufficiale: ricerca ed edizioni per ASIN."
+    },
+    "pt": {
+      "audible.description": "Metadados de audiolivros do catálogo não oficial da Audible: pesquisa e edições por ASIN."
+    }
+  },
   "id": "fliks.audible",
   "ingestRoots": [],
   "kind": "process",
@@ -47,5 +64,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }

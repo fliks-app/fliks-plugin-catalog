@@ -1,0 +1,12 @@
+{
+  "id": "fliks.lrclib",
+  "name": "LRCLIB",
+  "description": "Synced and plain lyrics from LRCLIB, matched on title, artist, album and duration.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "0.2.1",
+  "pluginApi": 3,
+  "fliks": ">=6.1.0 <7.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/lrclib-v0.2.1/fliks.lrclib-0.2.1.fkplugin",
+  "sha256": "313413eed52af97425aaed751a62d0491dcbdece416b008985fc61eb09236a28"
+}

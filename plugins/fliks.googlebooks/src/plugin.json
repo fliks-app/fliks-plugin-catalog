@@ -7,9 +7,26 @@
   "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
   "files": {
     "logo.svg": "142066be1cb157698d8e1976e5c74b1b9154bb02fa6e5889d3cc1ecf97f64807",
-    "plugin.wasm": "995e002f0205bdcbe759ef85b2f04c7737572a326f97aed7ba25416e579ce468"
+    "plugin.wasm": "a4a79627f085bfc01c845e1418244729b503d74513cc802b23475bcbbde4e986"
   },
   "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "de": {
+      "googlebooks.description": "Buch-Metadaten von Google Books: Suche und Ausgaben nach ISBN oder Band-ID."
+    },
+    "es": {
+      "googlebooks.description": "Metadatos de libros de Google Books: búsqueda y ediciones por ISBN o identificador de volumen."
+    },
+    "fr": {
+      "googlebooks.description": "Métadonnées de livres depuis Google Books : recherche et éditions par ISBN ou identifiant de volume."
+    },
+    "it": {
+      "googlebooks.description": "Metadati di libri da Google Books: ricerca ed edizioni per ISBN o identificativo del volume."
+    },
+    "pt": {
+      "googlebooks.description": "Metadados de livros do Google Books: pesquisa e edições por ISBN ou identificador de volume."
+    }
+  },
   "id": "fliks.googlebooks",
   "ingestRoots": [],
   "kind": "process",
@@ -48,5 +65,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
