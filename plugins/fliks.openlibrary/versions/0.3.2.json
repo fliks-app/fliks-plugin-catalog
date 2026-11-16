@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.0.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/openlibrary-v0.3.2/fliks.openlibrary-0.3.2.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "7257ebeb0045e19b5802cb80aee60a487ba4e6dc56476b08d95eea68fea0375a"
 }
