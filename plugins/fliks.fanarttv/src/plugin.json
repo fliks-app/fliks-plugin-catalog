@@ -7,11 +7,14 @@
   "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
   "files": {
     "logo.svg": "4db8b44752ed30780c060568836e22e21d9dfe2eef0e8c58106afe95b1db93a6",
-    "plugin.wasm": "f4f6e6932e54b8262c4a1579ceba9deaa911d8ba7fd3638cd8f7257ab12b7a92"
+    "plugin.wasm": "a76a9928adfa7a49a838a74ab2f0c0df3572ae369890488d4da2bc2b2c6c6864"
   },
   "fliks": ">=6.1.0 <7.0.0",
   "homepage": "https://fanart.tv",
   "i18n": {
+    "de": {
+      "fanarttv.description": "Künstlerbilder und Albumcover von Fanart.tv, anhand von MusicBrainz-IDs."
+    },
     "en": {
       "fanarttv.config.apiKey": "API key",
       "fanarttv.config.apiKey_hint": "Fliks ships a project key. Type your own to use it instead.",
@@ -21,6 +24,9 @@
       "fanarttv.config.subtitle": "Artist images and album covers from Fanart.tv.",
       "fanarttv.config.title": "Fanart.tv"
     },
+    "es": {
+      "fanarttv.description": "Imágenes de artistas y portadas de álbumes de Fanart.tv, por identificadores de MusicBrainz."
+    },
     "fr": {
       "fanarttv.config.apiKey": "Clé d'API",
       "fanarttv.config.apiKey_hint": "Fliks fournit une clé de projet. Saisissez la vôtre pour l'utiliser à la place.",
@@ -28,7 +34,14 @@
       "fanarttv.config.clientKey": "Clé personnelle",
       "fanarttv.config.clientKey_hint": "Facultatif. Votre clé d'API personnelle Fanart.tv, envoyée avec chaque requête.",
       "fanarttv.config.subtitle": "Images d'artistes et pochettes d'albums de Fanart.tv.",
-      "fanarttv.config.title": "Fanart.tv"
+      "fanarttv.config.title": "Fanart.tv",
+      "fanarttv.description": "Images d'artistes et pochettes d'albums depuis Fanart.tv, par identifiants MusicBrainz."
+    },
+    "it": {
+      "fanarttv.description": "Immagini di artisti e copertine di album da Fanart.tv, tramite gli identificativi MusicBrainz."
+    },
+    "pt": {
+      "fanarttv.description": "Imagens de artistas e capas de álbuns do Fanart.tv, por identificadores do MusicBrainz."
     }
   },
   "id": "fliks.fanarttv",
@@ -116,5 +129,5 @@
       }
     ]
   },
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

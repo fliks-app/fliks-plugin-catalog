@@ -7,21 +7,34 @@
   "description": "Movie and series metadata, images, people and credits from TheTVDB.",
   "files": {
     "logo.svg": "4e1ebd85099e941eb71aa419a6334a1365dd4e310220b3968e0d011e95d227a8",
-    "plugin.wasm": "4b9f01c89595f7db9be9c95e874744effdba813680199d45027b2b3afe93c88a"
+    "plugin.wasm": "ffa5dac1bc864bf51ae6339bc132482ab21dcdbe2b17b02b1cbe08e458842b2f"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
+    "de": {
+      "tvdb.description": "Film- und Serien-Metadaten, Bilder, Personen und Mitwirkende von TheTVDB."
+    },
     "en": {
       "tvdb.config.apiKey": "API key",
       "tvdb.config.apiKey_hint": "Your own TheTVDB API key. Leave it empty to use the key Fliks ships with.",
       "tvdb.config.subtitle": "Movie and series metadata from TheTVDB.",
       "tvdb.config.title": "TheTVDB"
     },
+    "es": {
+      "tvdb.description": "Metadatos de películas y series, imágenes, personas y créditos de TheTVDB."
+    },
     "fr": {
       "tvdb.config.apiKey": "Clé d'API",
       "tvdb.config.apiKey_hint": "Votre propre clé d'API TheTVDB. Laissez vide pour utiliser la clé fournie avec Fliks.",
       "tvdb.config.subtitle": "Métadonnées de films et de séries de TheTVDB.",
-      "tvdb.config.title": "TheTVDB"
+      "tvdb.config.title": "TheTVDB",
+      "tvdb.description": "Métadonnées de films et de séries, images, personnes et génériques depuis TheTVDB."
+    },
+    "it": {
+      "tvdb.description": "Metadati di film e serie, immagini, persone e crediti da TheTVDB."
+    },
+    "pt": {
+      "tvdb.description": "Metadados de filmes e séries, imagens, pessoas e créditos do TheTVDB."
     }
   },
   "id": "fliks.tvdb",
@@ -109,5 +122,5 @@
       }
     ]
   },
-  "version": "0.3.1"
+  "version": "0.3.2"
 }

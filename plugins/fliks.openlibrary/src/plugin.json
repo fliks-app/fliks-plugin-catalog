@@ -7,9 +7,26 @@
   "description": "Book metadata from OpenLibrary: search, works and their editions.",
   "files": {
     "logo.svg": "4580aada406fe6dd9d3f1870eebc0f84da37c4e66fee2571039622fbca6f1b14",
-    "plugin.wasm": "2c5512d317a29468ea3e97482dcad1b7c473d9d58d8dfc031de16e1a91f2c909"
+    "plugin.wasm": "85d57acf8b47a965f5297b4fa31b988d8adccf00c7f17d44ed7fb53f2e130377"
   },
   "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "de": {
+      "openlibrary.description": "Buch-Metadaten von OpenLibrary: Suche, Werke und ihre Ausgaben."
+    },
+    "es": {
+      "openlibrary.description": "Metadatos de libros de OpenLibrary: búsqueda, obras y sus ediciones."
+    },
+    "fr": {
+      "openlibrary.description": "Métadonnées de livres depuis OpenLibrary : recherche, œuvres et leurs éditions."
+    },
+    "it": {
+      "openlibrary.description": "Metadati di libri da OpenLibrary: ricerca, opere e relative edizioni."
+    },
+    "pt": {
+      "openlibrary.description": "Metadados de livros do OpenLibrary: pesquisa, obras e as suas edições."
+    }
+  },
   "id": "fliks.openlibrary",
   "ingestRoots": [],
   "kind": "process",
@@ -58,5 +75,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.1"
+  "version": "0.3.2"
 }

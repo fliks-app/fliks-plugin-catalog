@@ -7,7 +7,7 @@
   "description": "Album, release and artist metadata from MusicBrainz, with cover art from the Cover Art Archive and optional ListenBrainz popularity.",
   "files": {
     "logo.svg": "9cbfc0dd7d312ae4e40bb0cc211b94e546ab3c7fb188b0299cdc59bd1e361a43",
-    "plugin.wasm": "94736591161e1b06ec93414242bbaef84f7008dd70c72e8f117582bf72ac60e4"
+    "plugin.wasm": "100629912efae4965bcef8b9af130d0d58f4e446f6ebb5e61bb47f48afcbe398"
   },
   "fliks": ">=6.1.0 <7.0.0",
   "homepage": "https://musicbrainz.org",
@@ -79,6 +79,7 @@
         "findBy",
         "artistSearch",
         "recordingSearch",
+        "recordingReleases",
         "lists"
       ]
     },
@@ -143,5 +144,5 @@
       }
     ]
   },
-  "version": "0.6.1"
+  "version": "0.6.2"
 }

@@ -7,9 +7,26 @@
   "description": "Book metadata from the BnF general catalogue: search and editions by ISBN or notice id.",
   "files": {
     "logo.svg": "a6661272632b18116185baa7db25927f17f7660bc0ea1737e57d9889dc92d617",
-    "plugin.wasm": "ed6e927f183cf2c132e2f21f1a84c16f80431a3b6eae64e15360dd7d7243f295"
+    "plugin.wasm": "772a8e87f2bde916c57e5d62470b598b0718c2db747b4149032d1053b4dafac0"
   },
   "fliks": ">=6.0.0 <7.0.0",
+  "i18n": {
+    "de": {
+      "bnf.description": "Buch-Metadaten aus dem Gesamtkatalog der BnF: Suche und Ausgaben nach ISBN oder Datensatznummer."
+    },
+    "es": {
+      "bnf.description": "Metadatos de libros del catálogo general de la BnF: búsqueda y ediciones por ISBN o número de registro."
+    },
+    "fr": {
+      "bnf.description": "Métadonnées de livres depuis le catalogue général de la BnF : recherche et éditions par ISBN ou numéro de notice."
+    },
+    "it": {
+      "bnf.description": "Metadati di libri dal catalogo generale della BnF: ricerca ed edizioni per ISBN o numero di scheda."
+    },
+    "pt": {
+      "bnf.description": "Metadados de livros do catálogo geral da BnF: pesquisa e edições por ISBN ou número de registro."
+    }
+  },
   "id": "fliks.bnf",
   "ingestRoots": [],
   "kind": "process",
@@ -45,5 +62,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
