@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=6.1.0 <7.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/music-lists-v0.2.2/fliks.musiclists-0.2.2.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "f7c9a15f512f8ae2d6f40e7ff9db9177dea21b0a6ceaeb0b396b0dadfee761a6"
 }
