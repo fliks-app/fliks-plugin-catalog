@@ -1,0 +1,159 @@
+{
+  "acquisition": {
+    "queueActions": {
+      "remove": "/queue/remove"
+    }
+  },
+  "author": "Clément Delestre",
+  "database": {
+    "coreRefs": [],
+    "schema": false
+  },
+  "description": "Download albums from a Deezer account as an acquisition provider.",
+  "files": {
+    "logo.svg": "f8253f5cf5fbb14f18fee7a9d03d12a110e1f8f0cbe07dc6a03b989b310a7376",
+    "plugin.wasm": "8b3c1f291cf2c0d6adec9f97fdf0f8c18126b756cd7bac4e7e4e487eef771e6d"
+  },
+  "fliks": ">=6.1.0 <7.0.0",
+  "i18n": {
+    "en": {
+      "deezer.jobs.report": "Report downloads to the queue",
+      "deezer.settings.arl": "ARL",
+      "deezer.settings.arl_hint": "The arl cookie of a logged-in Deezer session. Stored as a secret.",
+      "deezer.settings.max_quality": "Maximum quality",
+      "deezer.settings.max_quality_hint": "Capped by what the account can download.",
+      "deezer.settings.q_128": "MP3 128",
+      "deezer.settings.q_320": "MP3 320",
+      "deezer.settings.q_flac": "FLAC",
+      "deezer.settings.subtitle": "The Deezer account albums are downloaded from.",
+      "deezer.settings.title": "Deezer"
+    }
+  },
+  "id": "fliks.deezer",
+  "ingestRoots": [],
+  "jobs": [
+    {
+      "cron": "*/5 * * * *",
+      "labelKey": "deezer.jobs.report",
+      "name": "Report",
+      "triggerable": true
+    }
+  ],
+  "kind": "process",
+  "license": "AGPL-3.0-or-later",
+  "logo": "logo.svg",
+  "memoryMb": 128,
+  "name": "Deezer",
+  "permissions": [
+    "releases",
+    "queue"
+  ],
+  "pluginApi": 3,
+  "routes": [
+    {
+      "method": "GET",
+      "objectGuard": "mediaAccessible:id",
+      "path": "/:id/releases",
+      "policy": "read:plugin:fliks.deezer:releases"
+    },
+    {
+      "method": "POST",
+      "objectGuard": "mediaAccessible:id",
+      "path": "/:id/grab",
+      "policy": "grab:plugin:fliks.deezer:releases"
+    },
+    {
+      "method": "GET",
+      "objectGuard": "mediaAccessible:id",
+      "path": "/:id/items/:itemId/releases",
+      "policy": "read:plugin:fliks.deezer:releases"
+    },
+    {
+      "method": "POST",
+      "objectGuard": "mediaAccessible:id",
+      "path": "/:id/items/:itemId/grab",
+      "policy": "grab:plugin:fliks.deezer:releases"
+    },
+    {
+      "method": "POST",
+      "path": "/queue/remove",
+      "policy": "manage:plugin:fliks.deezer:queue"
+    }
+  ],
+  "runtime": "wasm",
+  "scopes": [
+    "media:read",
+    "config:rw",
+    "acquisition:candidates",
+    "releases:score",
+    "ingest:write",
+    "events:emit"
+  ],
+  "ui": {
+    "configPages": [
+      {
+        "fields": [
+          {
+            "hint": "deezer.settings.arl_hint",
+            "key": "arl",
+            "labelKey": "deezer.settings.arl",
+            "secret": true,
+            "type": "password"
+          },
+          {
+            "default": "FLAC",
+            "hint": "deezer.settings.max_quality_hint",
+            "key": "maxQuality",
+            "labelKey": "deezer.settings.max_quality",
+            "options": [
+              {
+                "labelKey": "deezer.settings.q_flac",
+                "value": "FLAC"
+              },
+              {
+                "labelKey": "deezer.settings.q_320",
+                "value": "MP3_320"
+              },
+              {
+                "labelKey": "deezer.settings.q_128",
+                "value": "MP3_128"
+              }
+            ],
+            "type": "select"
+          }
+        ],
+        "icon": "music",
+        "id": "settings",
+        "kind": "form",
+        "labelKey": "deezer.settings.title",
+        "subtitleKey": "deezer.settings.subtitle"
+      }
+    ],
+    "contributions": [
+      {
+        "action": {
+          "kind": "route",
+          "path": "/admin/settings/plugins/fliks.deezer/settings"
+        },
+        "icon": "music",
+        "id": "fliks-deezer.settings.general",
+        "labelKey": "deezer.settings.title",
+        "slot": "settings.page",
+        "weight": 500
+      }
+    ],
+    "releasePicker": {
+      "album": {
+        "item": {
+          "grab": "/:id/items/:itemId/grab",
+          "search": "/:id/items/:itemId/releases"
+        },
+        "work": {
+          "grab": "/:id/grab",
+          "search": "/:id/releases"
+        }
+      }
+    }
+  },
+  "version": "0.2.0"
+}

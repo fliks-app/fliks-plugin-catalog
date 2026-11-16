@@ -1,0 +1,12 @@
+{
+  "id": "fliks.deezer",
+  "name": "Deezer",
+  "description": "Download albums from a Deezer account as an acquisition provider.",
+  "author": "Clément Delestre",
+  "kind": "process",
+  "version": "0.2.0",
+  "pluginApi": 3,
+  "fliks": ">=6.1.0 <7.0.0",
+  "zipUrl": "https://github.com/clementdelestre/fliks-plugin-deezer/releases/download/v0.2.0/fliks.deezer-0.2.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
