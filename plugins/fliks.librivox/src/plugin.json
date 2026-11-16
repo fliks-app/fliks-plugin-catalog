@@ -7,10 +7,13 @@
   "description": "Search LibriVox and add its free audiobooks to the library.",
   "files": {
     "logo.svg": "8c66d78df1a00526c898582fb7c5318a31f4eb6492a7d41b79f9930c1695add9",
-    "plugin.wasm": "e47d4f5fa531b42fa14ddb7a806c5c4713f64a27a06c283cefee3012bbaa8941"
+    "plugin.wasm": "afc50af4283a79d39772c013768dc58705937b586a07a435b086bd62dbb2327b"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "i18n": {
+    "de": {
+      "librivox.description": "Durchsucht LibriVox und fügt dessen kostenlose Hörbücher der Bibliothek hinzu."
+    },
     "en": {
       "librivox.actions.add": "Add to library",
       "librivox.actions.add_confirm": "Add this audiobook to the library? Its sections are downloaded in the background.",
@@ -24,6 +27,18 @@
       "librivox.settings.title": "LibriVox",
       "librivox.subtitle": "Search LibriVox and add an audiobook to the library.",
       "librivox.title": "Free audiobooks"
+    },
+    "es": {
+      "librivox.description": "Busca en LibriVox y añade sus audiolibros gratuitos a la biblioteca."
+    },
+    "fr": {
+      "librivox.description": "Recherchez dans LibriVox et ajoutez ses livres audio gratuits à la bibliothèque."
+    },
+    "it": {
+      "librivox.description": "Cerca in LibriVox e aggiunge i suoi audiolibri gratuiti alla libreria."
+    },
+    "pt": {
+      "librivox.description": "Pesquisa no LibriVox e adiciona os seus audiolivros gratuitos à biblioteca."
     }
   },
   "id": "fliks.librivox",
@@ -166,5 +181,5 @@
       }
     ]
   },
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

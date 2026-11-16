@@ -7,11 +7,14 @@
   "description": "Comic volume and issue metadata from Comic Vine, for non-commercial use only. Needs your own API key.",
   "files": {
     "logo.svg": "88746fa326d959c470faa68de15050c2a428d489867cb2267c617d6f2f4c1aef",
-    "plugin.wasm": "76b24b08a744c4f0b328a2f45634288152d7d4ebf78c9ce7b27ba83e418947ea"
+    "plugin.wasm": "3e8408c771130968fc83616aca43f1303cb42804cd05cbe28e0fc8566dd1662e"
   },
   "fliks": ">=6.0.0 <7.0.0",
   "homepage": "https://comicvine.gamespot.com",
   "i18n": {
+    "de": {
+      "comicvine.description": "Metadaten zu Comic-Bänden und -Ausgaben von Comic Vine, nur für die nicht-kommerzielle Nutzung. Erfordert einen eigenen API-Schlüssel."
+    },
     "en": {
       "comicvine.config.apiKey": "API key",
       "comicvine.config.apiKey_hint": "Your own Comic Vine API key (comicvine.gamespot.com/api). Fliks ships no key: without one the provider stays inactive. Comic Vine allows 200 requests per resource per hour.",
@@ -19,12 +22,22 @@
       "comicvine.config.subtitle": "Comic metadata from Comic Vine, for non-commercial use only.",
       "comicvine.config.title": "Comic Vine"
     },
+    "es": {
+      "comicvine.description": "Metadatos de volúmenes y números de cómics de Comic Vine, solo para uso no comercial. Requiere tu propia clave de API."
+    },
     "fr": {
       "comicvine.config.apiKey": "Clé d'API",
       "comicvine.config.apiKey_hint": "Votre propre clé d'API Comic Vine (comicvine.gamespot.com/api). Fliks n'en fournit aucune : sans clé, le fournisseur reste inactif. Comic Vine autorise 200 requêtes par ressource et par heure.",
       "comicvine.config.attribution": "Données et images de Comic Vine (https://comicvine.gamespot.com). Usage limité au non commercial.",
       "comicvine.config.subtitle": "Métadonnées de bandes dessinées de Comic Vine, pour un usage non commercial uniquement.",
-      "comicvine.config.title": "Comic Vine"
+      "comicvine.config.title": "Comic Vine",
+      "comicvine.description": "Métadonnées de séries et de numéros de comics depuis Comic Vine, pour un usage non commercial uniquement. Nécessite votre propre clé d'API."
+    },
+    "it": {
+      "comicvine.description": "Metadati di volumi e numeri di fumetti da Comic Vine, solo per uso non commerciale. Richiede una chiave API personale."
+    },
+    "pt": {
+      "comicvine.description": "Metadados de volumes e edições de quadrinhos do Comic Vine, apenas para uso não comercial. Requer a sua própria chave de API."
     }
   },
   "id": "fliks.comicvine",
@@ -103,5 +116,5 @@
       }
     ]
   },
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
