@@ -7,9 +7,9 @@
   "description": "Comic series and issue metadata from Metron (CC BY-SA 4.0). Needs your own Metron API token.",
   "files": {
     "logo.svg": "aea865bbaee74e0be1a553596f3c1bfeac16aa7489dc6e234d39bcee4bb6eb36",
-    "plugin.wasm": "4ae149c599eab4dad8e5e753de69ef3d0c38acfbb6e5bdb1f9f1baf0be786acf"
+    "plugin.wasm": "39348eb8efc680daef19bf11de76be959aa57da5da03b55d57a0cb7fbf967dbf"
   },
-  "fliks": ">=6.0.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "homepage": "https://metron.cloud",
   "i18n": {
     "de": {
@@ -117,5 +117,5 @@
       }
     ]
   },
-  "version": "0.3.1"
+  "version": "1.0.0"
 }

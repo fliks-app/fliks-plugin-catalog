@@ -1,0 +1,12 @@
+{
+  "id": "fliks.metron",
+  "name": "Metron",
+  "description": "Comic series and issue metadata from Metron (CC BY-SA 4.0). Needs your own Metron API token.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.0",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v1.0.0/fliks.metron-1.0.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
