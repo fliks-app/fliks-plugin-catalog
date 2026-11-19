@@ -59,6 +59,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audnexus-v0.3.1/fliks.audnexus-0.3.1.fkplugin",
           "sha256": "e296ed22dd4f76db2ecdaf7e32fb500c8a5906a65d544773230b8de334381af1"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audnexus-v1.0.0/fliks.audnexus-1.0.0.fkplugin",
+          "sha256": "d55e94c579f3b252b627e589f349bdc01840322671e9dc7526e52b5a1dac7ad1"
         }
       ]
     },
@@ -90,6 +97,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/bnf-v0.3.1/fliks.bnf-0.3.1.fkplugin",
           "sha256": "da2ee39cb23a822b2f73d7e9e67d78962144056db5b0e9e16cd9cb5ffc8489be"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/bnf-v1.0.0/fliks.bnf-1.0.0.fkplugin",
+          "sha256": "49240c67e428bf14c6ae822576999ac56788b50685d11559fa93fa32fadbde70"
         }
       ]
     },
@@ -560,6 +574,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/lrclib-v0.2.1/fliks.lrclib-0.2.1.fkplugin",
           "sha256": "313413eed52af97425aaed751a62d0491dcbdece416b008985fc61eb09236a28"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/lrclib-v1.0.0/fliks.lrclib-1.0.0.fkplugin",
+          "sha256": "9e5a6c5d0fe9fdff94d06ece3ab477cd241b86e11781ff029198f614b4a87b43"
         }
       ]
     },
@@ -713,6 +734,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v0.7.2/fliks.musicbrainz-0.7.2.fkplugin",
           "sha256": "b83c40cedb472d96ba2db786abb83669b45765cd9653982e59c6f5e9588a9c79"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v1.0.0/fliks.musicbrainz-1.0.0.fkplugin",
+          "sha256": "7b9dc585271df3df478b608ec4ce1564b96f5f7d253a03a18f393f7042d4bc51"
         }
       ]
     },
@@ -935,6 +963,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v0.3.2/fliks.tvdb-0.3.2.fkplugin",
           "sha256": "e60cd6db25dbafde430c9ecbd9240bf785c14cbfc271c453529cef16483fae2c"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v1.0.0/fliks.tvdb-1.0.0.fkplugin",
+          "sha256": "fa1b964ea95001eaaf3b720df358df892556a842ed6950a37a8c7747a65d2ba5"
         }
       ]
     }
