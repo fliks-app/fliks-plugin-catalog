@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v1.0.0/fliks.metron-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "a0e6d9ccf59d71dc88afbe4ceaed6c2ca71f72a32c99ecdeaeb6d885c63faeff"
 }
