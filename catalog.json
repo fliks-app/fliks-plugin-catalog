@@ -901,6 +901,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v0.2.2/fliks.thexem-0.2.2.fkplugin",
           "sha256": "66a684962fe7387561b74564afcfd4c73b869542fd4a9042d1c89e8b1adc1c6a"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/thexem-v1.0.0/fliks.thexem-1.0.0.fkplugin",
+          "sha256": "c5c0afa85179f09e1308bbbb2cc0f53d586c1e5f17b76afe8b3c9bf9369f65d3"
         }
       ]
     },
