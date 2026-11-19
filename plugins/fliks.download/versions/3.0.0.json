@@ -1,0 +1,12 @@
+{
+  "id": "fliks.download",
+  "name": "Download",
+  "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "3.0.0",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.0.0/fliks.download-3.0.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
