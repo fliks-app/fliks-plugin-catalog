@@ -30,7 +30,7 @@ spawned).
 | `0` | `>=2.0.0 <4.0.0` | retired: core 4.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
 | `1` | `>=4.0.0 <5.0.0` | retired: core 5.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS` |
 | `2` | `>=5.0.0 <6.0.0` | retired: core 6.0.0 dropped it from `SUPPORTED_PLUGIN_API_VERSIONS`; WASM components (`runtime: "wasm"`, `plugin.wasm`) |
-| `3` | `>=6.0.0 <7.0.0` | current: kinds, families and units, `provider` plugins (metadata providers, WIT 3) |
+| `3` | `>=6.0.0 <8.0.0` | current: kinds, families and units, `provider` plugins (metadata providers, WIT 3); see the core 7 note below |
 
 The `0` row records the range its first manifests declared; later `0` submissions raised
 their own floor into the 3.x line without changing the revision, which stayed additive
@@ -38,6 +38,19 @@ throughout. It ends at core 4.0.0: the upgrade window left `AcquisitionTarget.wa
 core applies the whole quality profile itself, and a removal inside one revision would have
 handed an acquisition plugin an absent bound it filtered releases on. A `0` plugin is refused
 with `incompatible-api` from that release, which is the loud form of the same news.
+
+### `pluginApi` 3 on core 7.0.0
+
+Core 7.0.0 keeps `pluginApi` 3 in `SUPPORTED_PLUGIN_API_VERSIONS`, but its WIT changed inside
+that revision: `progress-set` and `download-progress` were removed (replaced by `queue-set` and
+`queue-entry`) and the `unit` record was extended. A wasm component built before 7.0.0 imports the
+old interface and does not link, whatever its `fliks` range says. The `fliks` range is the guard:
+
+- An entry whose `fliks` range admits core 7 (`>=7.0.0 <8.0.0`) must be built against the
+  7.0.0 WIT, that is a `fliks-app/fliks` rev at or after the 7.0.0 changes.
+- An entry built before that keeps `<7.0.0` and is not offered to core 7.
+- Raising a range to admit core 7 without rebuilding is the failure this rule exists to prevent:
+  it installs clean and dies at load.
 
 Source of truth: `SUPPORTED_PLUGIN_API_VERSIONS` (what core accepts) in
 `server/crates/server/src/plugins/manifest.rs` in the `fliks-app/fliks` repo.
