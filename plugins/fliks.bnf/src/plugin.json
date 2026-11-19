@@ -7,9 +7,9 @@
   "description": "Book metadata from the BnF general catalogue: search and editions by ISBN or notice id.",
   "files": {
     "logo.svg": "a6661272632b18116185baa7db25927f17f7660bc0ea1737e57d9889dc92d617",
-    "plugin.wasm": "772a8e87f2bde916c57e5d62470b598b0718c2db747b4149032d1053b4dafac0"
+    "plugin.wasm": "de216eecf089f86521af9081a4acce5fb72c3c98b014db161be4774942b2e621"
   },
-  "fliks": ">=6.0.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
       "bnf.description": "Buch-Metadaten aus dem Gesamtkatalog der BnF: Suche und Ausgaben nach ISBN oder Datensatznummer."
@@ -62,5 +62,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.1"
+  "version": "1.0.0"
 }
