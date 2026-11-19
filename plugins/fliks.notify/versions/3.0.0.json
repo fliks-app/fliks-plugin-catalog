@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/notify-v3.0.0/fliks.notify-3.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "dfe85a3c01c49710e62ae9db3390ab9a23ff8911dd06f094062394650780385f"
 }
