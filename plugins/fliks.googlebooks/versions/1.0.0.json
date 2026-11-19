@@ -1,0 +1,12 @@
+{
+  "id": "fliks.googlebooks",
+  "name": "Google Books",
+  "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.0",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v1.0.0/fliks.googlebooks-1.0.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
