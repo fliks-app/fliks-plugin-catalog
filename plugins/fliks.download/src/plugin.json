@@ -37,9 +37,9 @@
   "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "4f26de04ecdb1e0415f1d0d9d6a218034b46828fb21816d74c7f9c8589b3cd35"
+    "plugin.wasm": "29c0072ab89dd5efb24f3ab99846d7b85ac3da64c0879759983edf1a76c6ecdb"
   },
-  "fliks": ">=6.1.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
       "download.description": "Indexer-Suche, Verwaltung der Download-Clients und die Beschaffungskette von Fliks."
@@ -858,5 +858,5 @@
       }
     }
   },
-  "version": "2.10.0"
+  "version": "3.0.0"
 }
