@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audnexus-v1.0.0/fliks.audnexus-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "d55e94c579f3b252b627e589f349bdc01840322671e9dc7526e52b5a1dac7ad1"
 }
