@@ -464,6 +464,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v0.2.1/fliks.fanarttv-0.2.1.fkplugin",
           "sha256": "42fdac58a4d11e25b48a07ec37dc7c4b38314a69918394678b05a6aaaf21ebc1"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v1.0.0/fliks.fanarttv-1.0.0.fkplugin",
+          "sha256": "6b37aadfbdbb97cbe05e0f8b68d3e71a52f318b0352b4846d6a96607d82e386d"
         }
       ]
     },
