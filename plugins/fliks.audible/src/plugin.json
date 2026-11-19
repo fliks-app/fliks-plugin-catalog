@@ -7,9 +7,9 @@
   "description": "Audiobook metadata from the unofficial Audible catalog: search and editions by ASIN.",
   "files": {
     "logo.svg": "71b798ae1d53a6d6ba40f17562bb4dbe5dca4f748713d4d51c143cb44960a1f2",
-    "plugin.wasm": "7c6e641796d236f317f00dd383f46fae76d939ad2387be189abde634783fefa6"
+    "plugin.wasm": "3d9b543f3906af82b6d0a2a9d7246c9f366f2832ad3c230369f6c10617cea58f"
   },
-  "fliks": ">=6.0.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
       "audible.description": "Hörbuch-Metadaten aus dem inoffiziellen Audible-Katalog: Suche und Ausgaben nach ASIN."
@@ -64,5 +64,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.1"
+  "version": "1.0.0"
 }
