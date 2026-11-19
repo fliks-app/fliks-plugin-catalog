@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v1.0.0/fliks.librivox-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "3c5a48b52ca584e8f2d0352ef55adc85b7dc78bd1af20522419b0a39bb0b8405"
 }
