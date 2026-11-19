@@ -7,9 +7,9 @@
   "description": "Synced and plain lyrics from LRCLIB, matched on title, artist, album and duration.",
   "files": {
     "logo.svg": "9a5fd56ccae3a608ab1fe06f2a8d9b45f664407c7ee58e8bb1f97a93cc1279de",
-    "plugin.wasm": "7921f2c00603cd89fbbd4467b71869c149dc7b164d145c8febd60c962f2a69cb"
+    "plugin.wasm": "c08f85726d924885247aa2acb9d5a07dfffca9b242d171e2e2d0474b51b857b9"
   },
-  "fliks": ">=6.1.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "homepage": "https://lrclib.net",
   "i18n": {
     "de": {
@@ -93,5 +93,5 @@
       }
     ]
   },
-  "version": "0.2.1"
+  "version": "1.0.0"
 }
