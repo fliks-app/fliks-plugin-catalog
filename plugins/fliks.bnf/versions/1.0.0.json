@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/bnf-v1.0.0/fliks.bnf-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "49240c67e428bf14c6ae822576999ac56788b50685d11559fa93fa32fadbde70"
 }
