@@ -7,9 +7,9 @@
   "description": "Audiobook metadata and chapters from Audnexus, by ASIN.",
   "files": {
     "logo.svg": "f8f3466636045347300b0c2f8e60c4dc0539cd701f7b22ec31a40a908d175b61",
-    "plugin.wasm": "50a525aeb1774acc453d0cc12b563f316ed3f52c94235ee85102dee53554d68e"
+    "plugin.wasm": "b12e510a9aef3936c60e9568f519d867dbfb13d79c3f22ec9fb0097de9371d7a"
   },
-  "fliks": ">=6.0.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
       "audnexus.description": "Hörbuch-Metadaten und Kapitel von Audnexus, nach ASIN."
@@ -69,5 +69,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.1"
+  "version": "1.0.0"
 }
