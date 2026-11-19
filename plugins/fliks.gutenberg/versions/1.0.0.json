@@ -1,0 +1,12 @@
+{
+  "id": "fliks.gutenberg",
+  "name": "Project Gutenberg",
+  "description": "Search Project Gutenberg and add its free ebooks to the library.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.0",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v1.0.0/fliks.gutenberg-1.0.0.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
