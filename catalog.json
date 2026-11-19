@@ -28,6 +28,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audible-v0.3.1/fliks.audible-0.3.1.fkplugin",
           "sha256": "94beefcb0c3135d96c35a4cdfc88551f0a0cd7ec1f7a1b031840a9821b6e0afd"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audible-v1.0.0/fliks.audible-1.0.0.fkplugin",
+          "sha256": "74f0ae85c05e3eabe47c43bbd6b131dcd513286eb2875cc2505f4d59e30445f9"
         }
       ]
     },
@@ -488,6 +495,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v0.3.1/fliks.googlebooks-0.3.1.fkplugin",
           "sha256": "a20d7c368e80dda6a69ebb032c8f061d24deb4f3081d3948cfbcf41f93668a13"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v1.0.0/fliks.googlebooks-1.0.0.fkplugin",
+          "sha256": "576618432c00a953ced91964335a290f535d74e76e90c95a8df22ec3f15e16c8"
         }
       ]
     },
@@ -925,6 +939,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v0.3.1/fliks.tmdb-0.3.1.fkplugin",
           "sha256": "baa3fcdab8a05e2cd9397464066dbe5db497473fee95839bbef50461ada9b255"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v1.0.0/fliks.tmdb-1.0.0.fkplugin",
+          "sha256": "0ac3d463766e6ef0df82aca834a861e99df174613ca376906196abfacc50a74b"
         }
       ]
     },
