@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/lrclib-v1.0.0/fliks.lrclib-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "9e5a6c5d0fe9fdff94d06ece3ab477cd241b86e11781ff029198f614b4a87b43"
 }
