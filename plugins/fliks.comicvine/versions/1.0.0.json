@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v1.0.0/fliks.comicvine-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "77bb6770053c533e6070db4999e23eb409e7051b79f69c06b760a8fab45dc465"
 }
