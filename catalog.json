@@ -121,6 +121,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v0.3.1/fliks.comicvine-0.3.1.fkplugin",
           "sha256": "dfefc3ae3222752616206a72025ba3e5d6f5d18165e783b72900cc4c802bbfb2"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v1.0.0/fliks.comicvine-1.0.0.fkplugin",
+          "sha256": "77bb6770053c533e6070db4999e23eb409e7051b79f69c06b760a8fab45dc465"
         }
       ]
     },
@@ -405,6 +412,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v2.10.0/fliks.download-2.10.0.fkplugin",
           "sha256": "091c4bc8ac217cdadba93f825a117beb9d966d113885feb567aacf43ad02d5f8"
+        },
+        {
+          "version": "3.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.0.0/fliks.download-3.0.0.fkplugin",
+          "sha256": "6d742aba2f0d6c9dc218ab919b2bc4a1618cedaf1711475fecc36d2e69fcc098"
         }
       ]
     },
@@ -484,6 +498,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v0.2.1/fliks.gutenberg-0.2.1.fkplugin",
           "sha256": "3031ae267590d04fc86bde89aee8770519b80c6ffc303de4307cc5d28f8f6d49"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v1.0.0/fliks.gutenberg-1.0.0.fkplugin",
+          "sha256": "69c703d482e1f0519486f1ca2ee329980ab88fd4fba0d42a67fe99df18795376"
         }
       ]
     },
@@ -508,6 +529,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v0.2.1/fliks.librivox-0.2.1.fkplugin",
           "sha256": "3c406593d1cd7b386ba659cc93be703dc33145948673e5e561577cdc3498a1db"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v1.0.0/fliks.librivox-1.0.0.fkplugin",
+          "sha256": "3c5a48b52ca584e8f2d0352ef55adc85b7dc78bd1af20522419b0a39bb0b8405"
         }
       ]
     },
@@ -563,6 +591,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v0.3.1/fliks.metron-0.3.1.fkplugin",
           "sha256": "b97d7ac3d27d8056b6b141abb0aa0c92bc4e1f41a40d5170807ec88e749a08a3"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/metron-v1.0.0/fliks.metron-1.0.0.fkplugin",
+          "sha256": "a0e6d9ccf59d71dc88afbe4ceaed6c2ca71f72a32c99ecdeaeb6d885c63faeff"
         }
       ]
     },
@@ -709,6 +744,13 @@
           "fliks": ">=6.1.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/music-lists-v0.2.2/fliks.musiclists-0.2.2.fkplugin",
           "sha256": "f7c9a15f512f8ae2d6f40e7ff9db9177dea21b0a6ceaeb0b396b0dadfee761a6"
+        },
+        {
+          "version": "1.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/music-lists-v1.0.0/fliks.musiclists-1.0.0.fkplugin",
+          "sha256": "cdbabe33ee4e58319fafa262695cf642963daf67b52318136816a9b2f55069db"
         }
       ]
     },
@@ -741,6 +783,13 @@
           "fliks": ">=6.0.0 <7.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/notify-v2.0.1/fliks.notify-2.0.1.fkplugin",
           "sha256": "379d297e57f7980d2a61203cbdd509af016cd66d300c41e8aa47b89ceeca0609"
+        },
+        {
+          "version": "3.0.0",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/notify-v3.0.0/fliks.notify-3.0.0.fkplugin",
+          "sha256": "dfe85a3c01c49710e62ae9db3390ab9a23ff8911dd06f094062394650780385f"
         }
       ]
     },
