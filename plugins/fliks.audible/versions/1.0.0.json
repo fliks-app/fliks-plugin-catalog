@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/audible-v1.0.0/fliks.audible-1.0.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "74f0ae85c05e3eabe47c43bbd6b131dcd513286eb2875cc2505f4d59e30445f9"
 }
