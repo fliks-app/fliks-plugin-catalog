@@ -7,9 +7,9 @@
   "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
   "files": {
     "logo.svg": "142066be1cb157698d8e1976e5c74b1b9154bb02fa6e5889d3cc1ecf97f64807",
-    "plugin.wasm": "a4a79627f085bfc01c845e1418244729b503d74513cc802b23475bcbbde4e986"
+    "plugin.wasm": "5e91bae89afabf700a0a5fc9b723b7cb14c4d671dafdb10388e6689bfdcdb5f3"
   },
-  "fliks": ">=6.0.0 <7.0.0",
+  "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
       "googlebooks.description": "Buch-Metadaten von Google Books: Suche und Ausgaben nach ISBN oder Band-ID."
@@ -65,5 +65,5 @@
   "routes": [],
   "runtime": "wasm",
   "scopes": [],
-  "version": "0.3.1"
+  "version": "1.0.0"
 }
