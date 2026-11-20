@@ -34,15 +34,15 @@
       }
     ]
   },
-  "description": "Indexer search, download-client management and the acquisition grab pipeline for Fliks.",
+  "description": "Torrent search on Torznab indexers, torrent client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "29c0072ab89dd5efb24f3ab99846d7b85ac3da64c0879759983edf1a76c6ecdb"
+    "plugin.wasm": "c04b743011fcd7a295b9fe8fce8a58eb1c81d1a71616b9f0bd84469639c8d745"
   },
   "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
     "de": {
-      "download.description": "Indexer-Suche, Verwaltung der Download-Clients und die Beschaffungskette von Fliks."
+      "download.description": "Torrent-Suche auf Torznab-Indexern, Verwaltung der Torrent-Clients und die Beschaffungskette von Fliks."
     },
     "en": {
       "download.config.download_clients.fields.album_category": "Album category",
@@ -180,7 +180,7 @@
       "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it"
     },
     "es": {
-      "download.description": "Búsqueda en indexadores, gestión de clientes de descarga y cadena de adquisición de Fliks."
+      "download.description": "Búsqueda de torrents en indexadores Torznab, gestión de clientes torrent y cadena de adquisición de Fliks."
     },
     "fr": {
       "download.config.download_clients.fields.album_category": "Catégorie albums",
@@ -273,7 +273,7 @@
       "download.config.stall.min_speed_kib_hint": "Une vérification sous cette moyenne depuis la précédente compte comme bloquée, même si le téléchargement avance encore.",
       "download.config.stall.samples": "Vérifications avant nettoyage d’un téléchargement bloqué",
       "download.config.stall.samples_hint": "Laissez vide pour ne jamais nettoyer les téléchargements bloqués. Supprimer un torrent efface aussi ses fichiers.",
-      "download.description": "Recherche sur les indexeurs, gestion des clients de téléchargement et chaîne d'acquisition de Fliks.",
+      "download.description": "Recherche de torrents sur les indexeurs Torznab, gestion des clients torrent et chaîne d'acquisition de Fliks.",
       "download.download_clients.block.reason": "Bloqué depuis la file d’activité",
       "download.download_clients.test.auth_failed": "Authentification échouée — vérifiez les identifiants",
       "download.download_clients.test.host_missing": "L’hôte est obligatoire",
@@ -319,10 +319,10 @@
       "download.queue.retired_unverifiable": "Retiré de la file d'attente, aucun client de téléchargement n'a pu le confirmer"
     },
     "it": {
-      "download.description": "Ricerca sugli indicizzatori, gestione dei client di download e catena di acquisizione di Fliks."
+      "download.description": "Ricerca di torrent sugli indicizzatori Torznab, gestione dei client torrent e catena di acquisizione di Fliks."
     },
     "pt": {
-      "download.description": "Pesquisa em indexadores, gestão de clientes de download e cadeia de aquisição do Fliks."
+      "download.description": "Pesquisa de torrents em indexadores Torznab, gestão de clientes torrent e cadeia de aquisição do Fliks."
     }
   },
   "id": "fliks.download",
@@ -359,7 +359,7 @@
   "license": "AGPL-3.0-or-later",
   "logo": "logo.svg",
   "memoryMb": 128,
-  "name": "Download",
+  "name": "Torrent manager",
   "network": {
     "internal": true
   },
@@ -858,5 +858,5 @@
       }
     }
   },
-  "version": "3.0.0"
+  "version": "3.1.0"
 }

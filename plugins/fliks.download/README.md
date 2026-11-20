@@ -1,4 +1,4 @@
-# Download
+# Torrent manager
 
 Searches your trackers, picks the release that matches a title's quality and language profiles,
 sends it to qBittorrent, and files the finished download into your library.
