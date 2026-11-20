@@ -79,9 +79,9 @@ test keys.
    For `pluginApi` 2 and above, PR shape refuses a new version whose `sha256` is not all zeros:
    leave it at zeros, `Package plugin` signs the archive and records the real checksum.
 
-   `name`, `description`, `author` and `kind` must be identical across every version
-   of the same plugin `id` — the catalog carries one of each per plugin, not per
-   version.
+   `author` and `kind` must be identical across every version of the same plugin `id`.
+   The catalog carries one `name` and `description` per plugin, taken from its newest
+   published version, so a rename shows once that version is signed.
 3. Open a PR. `.github/workflows/validate-pr.yml` runs the cheapest checks first —
    PR shape, schema, `pluginApi` present in `COMPATIBILITY.md`, a mandatory `fliks`
    upper bound, deterministic regeneration — and refuses long before it would need to

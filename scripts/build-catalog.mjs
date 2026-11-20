@@ -29,6 +29,11 @@ export function isPlaceholderChecksum(sha256) {
   return sha256 === PLACEHOLDER_SHA256;
 }
 
+/** Exported for `build-catalog.test.mjs`: a rename shows from the newest published version on. */
+export function newestEntry(entries) {
+  return entries.reduce((a, b) => (compareSemver(a.version, b.version) >= 0 ? a : b));
+}
+
 /** @returns {{ path: string, pluginDir: string }[]} */
 function listVersionFiles() {
   if (!existsSync(PLUGINS_DIR)) return [];
@@ -90,7 +95,7 @@ function main() {
 
   for (const id of pluginIds) {
     const entries = byId.get(id);
-    for (const field of ['name', 'description', 'author', 'kind', 'logo']) {
+    for (const field of ['author', 'kind', 'logo']) {
       // A version without a logo (wasm archives carry their own) does not contradict one that has it.
       const values = new Set(entries.map((e) => e[field]).filter((v) => field !== 'logo' || v !== undefined));
       if (values.size > 1) {
@@ -105,8 +110,8 @@ function main() {
     const sorted = [...entries].sort((a, b) => compareSemver(a.version, b.version));
     plugins.push({
       id,
-      name: entries[0].name,
-      description: entries[0].description,
+      name: newestEntry(entries).name,
+      description: newestEntry(entries).description,
       author: entries[0].author,
       kind: entries[0].kind,
       // Plugin-level, not per-version: the card shows one logo whichever version it offers.
