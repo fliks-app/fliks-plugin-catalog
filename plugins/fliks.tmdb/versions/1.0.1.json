@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.0.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v1.0.1/fliks.tmdb-1.0.1.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "4966a97662fbb0e35ff237e43a91d5f1ef1316bdcdac76663ae232d88ed60e9c"
 }
