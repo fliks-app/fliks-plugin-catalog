@@ -1,0 +1,12 @@
+{
+  "id": "fliks.comicvine",
+  "name": "Comic Vine",
+  "description": "Comic volume and issue metadata from Comic Vine, for non-commercial use only. Needs your own API key.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.1",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v1.0.1/fliks.comicvine-1.0.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

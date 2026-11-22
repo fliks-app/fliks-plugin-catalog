@@ -1,0 +1,12 @@
+{
+  "id": "fliks.tvdb",
+  "name": "TheTVDB",
+  "description": "Movie and series metadata, images, people and credits from TheTVDB.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.1",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v1.0.1/fliks.tvdb-1.0.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}
