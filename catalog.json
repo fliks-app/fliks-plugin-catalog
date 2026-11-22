@@ -149,6 +149,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v1.0.0/fliks.comicvine-1.0.0.fkplugin",
           "sha256": "77bb6770053c533e6070db4999e23eb409e7051b79f69c06b760a8fab45dc465"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/comicvine-v1.0.1/fliks.comicvine-1.0.1.fkplugin",
+          "sha256": "9382243a6464c8bd13762c43e5d4e333968df47af31b4061feebf3bd1f5827f9"
         }
       ]
     },
@@ -447,6 +454,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.1.0/fliks.download-3.1.0.fkplugin",
           "sha256": "b048162911a5193f065568a26da894da802655f625aef4291eb812d2262247bc"
+        },
+        {
+          "version": "3.1.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.1.1/fliks.download-3.1.1.fkplugin",
+          "sha256": "29e261deb62d18ebd95b3dc4249d99dc013220e967a44d994ee2612f0bf4d4f4"
         }
       ]
     },
@@ -974,6 +988,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v1.0.0/fliks.tmdb-1.0.0.fkplugin",
           "sha256": "0ac3d463766e6ef0df82aca834a861e99df174613ca376906196abfacc50a74b"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tmdb-v1.0.1/fliks.tmdb-1.0.1.fkplugin",
+          "sha256": "4966a97662fbb0e35ff237e43a91d5f1ef1316bdcdac76663ae232d88ed60e9c"
         }
       ]
     },
@@ -1019,6 +1040,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v1.0.0/fliks.tvdb-1.0.0.fkplugin",
           "sha256": "fa1b964ea95001eaaf3b720df358df892556a842ed6950a37a8c7747a65d2ba5"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/tvdb-v1.0.1/fliks.tvdb-1.0.1.fkplugin",
+          "sha256": "15ac9680859124de3a0b76ca31f2e15c59abdd534d76c6616055227cd65a8cf7"
         }
       ]
     }
