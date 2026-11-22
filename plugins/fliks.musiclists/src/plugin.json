@@ -29,7 +29,7 @@
   "description": "Follow the albums and tracks of ListenBrainz, Last.fm, Spotify, Deezer and MusicBrainz lists.",
   "files": {
     "logo.svg": "65f52a6d256d4c29bd3342ae78b81400d804f1d5342db919e72710e7abf7a6aa",
-    "plugin.wasm": "4cb0169ceae718a635715ef859d589ae4280aa07b28bab282abd6ab688c23c7f"
+    "plugin.wasm": "d754b8826729b09b5acafd8faa392add1d90d6e35ccae5fbb322bbd3126725cf"
   },
   "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
@@ -275,5 +275,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.0.1"
 }

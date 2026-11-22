@@ -1,0 +1,12 @@
+{
+  "id": "fliks.fanarttv",
+  "name": "Fanart.tv",
+  "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "1.0.1",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v1.0.1/fliks.fanarttv-1.0.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

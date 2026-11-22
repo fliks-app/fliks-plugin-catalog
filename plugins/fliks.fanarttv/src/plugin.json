@@ -7,7 +7,7 @@
   "description": "Artist images and album covers from Fanart.tv, keyed by MusicBrainz ids.",
   "files": {
     "logo.svg": "4db8b44752ed30780c060568836e22e21d9dfe2eef0e8c58106afe95b1db93a6",
-    "plugin.wasm": "9599dcab142c95f029432f56ad6cb06aec48e797a0464fbfa7b97fc3da8a1475"
+    "plugin.wasm": "0731837879663abdd92f97e07a65b0fe081b7ca5acaa1429efcdca9a5d84a34c"
   },
   "fliks": ">=7.0.0 <8.0.0",
   "homepage": "https://fanart.tv",
@@ -80,7 +80,6 @@
       "apiKey"
     ],
     "snapshotTtlSecs": {
-      "person": 2592000,
       "work": 2592000
     }
   },
@@ -129,5 +128,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
