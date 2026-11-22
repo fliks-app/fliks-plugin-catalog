@@ -461,6 +461,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.1.1/fliks.download-3.1.1.fkplugin",
           "sha256": "29e261deb62d18ebd95b3dc4249d99dc013220e967a44d994ee2612f0bf4d4f4"
+        },
+        {
+          "version": "3.1.2",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.1.2/fliks.download-3.1.2.fkplugin",
+          "sha256": "8194359722e3162a8bb06deccdf8b0fcd8bfac05b03e5116ffa10affae7851ab"
         }
       ]
     },
