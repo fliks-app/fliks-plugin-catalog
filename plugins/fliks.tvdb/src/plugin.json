@@ -7,7 +7,7 @@
   "description": "Movie and series metadata, images, people and credits from TheTVDB.",
   "files": {
     "logo.svg": "4e1ebd85099e941eb71aa419a6334a1365dd4e310220b3968e0d011e95d227a8",
-    "plugin.wasm": "ac4b157d55654ff469e65916f3b03ff299df0f046baf548424dd6e756676560c"
+    "plugin.wasm": "9717fa215a39e6ac9e9d6deef55db09fc5bb3ff90b085611c8c7d36b89719b76"
   },
   "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
@@ -122,5 +122,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.0.1"
 }

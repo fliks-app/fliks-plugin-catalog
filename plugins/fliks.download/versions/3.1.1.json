@@ -1,0 +1,12 @@
+{
+  "id": "fliks.download",
+  "name": "Torrent manager",
+  "description": "Torrent search on Torznab indexers, torrent client management and the acquisition grab pipeline for Fliks.",
+  "author": "Fliks",
+  "kind": "process",
+  "version": "3.1.1",
+  "pluginApi": 3,
+  "fliks": ">=7.0.0 <8.0.0",
+  "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.1.1/fliks.download-3.1.1.fkplugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

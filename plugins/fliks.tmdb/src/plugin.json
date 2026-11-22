@@ -7,7 +7,7 @@
   "description": "Movie and series metadata, images, people and lists from The Movie Database.",
   "files": {
     "logo.svg": "d60f944647afd24f2c4917f767ce787afa6cc7de10ff588bc94c481de1353f9a",
-    "plugin.wasm": "af6793a9dbcce9ea18b3eef8201404f6caa2f1a7f3fe60d4f5f170d01034b911"
+    "plugin.wasm": "c33eac2f31b114d9fbe45d1cabccb6ea77f18fcd6e4dbcea88322f8a6e6e52ea"
   },
   "fliks": ">=7.0.0 <8.0.0",
   "i18n": {
@@ -125,5 +125,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
