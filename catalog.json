@@ -520,6 +520,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v1.0.0/fliks.fanarttv-1.0.0.fkplugin",
           "sha256": "6b37aadfbdbb97cbe05e0f8b68d3e71a52f318b0352b4846d6a96607d82e386d"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/fanarttv-v1.0.1/fliks.fanarttv-1.0.1.fkplugin",
+          "sha256": "d179520eda65ba43bf35e4706848c22bf156418158ef165d6ee45a5003a75194"
         }
       ]
     },
@@ -811,6 +818,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v1.0.0/fliks.musicbrainz-1.0.0.fkplugin",
           "sha256": "7b9dc585271df3df478b608ec4ce1564b96f5f7d253a03a18f393f7042d4bc51"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/musicbrainz-v1.0.1/fliks.musicbrainz-1.0.1.fkplugin",
+          "sha256": "544cba4b07d414fa8657acf523c0d26a258a0389c98c06e28c18ee264000c7bf"
         }
       ]
     },
