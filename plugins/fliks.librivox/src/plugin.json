@@ -7,9 +7,9 @@
   "description": "Search LibriVox and add its free audiobooks to the library.",
   "files": {
     "logo.svg": "8c66d78df1a00526c898582fb7c5318a31f4eb6492a7d41b79f9930c1695add9",
-    "plugin.wasm": "bc4a1be04653277c4bafd36da5a6e28c5d9fd825798acac8f3a1180ce8ef361c"
+    "plugin.wasm": "69733d937c269a4ee1f68d702d809a2c427f53f18fb3af8d050f4f5d1cdeb5e1"
   },
-  "fliks": ">=7.0.0 <8.0.0",
+  "fliks": ">=7.2.0 <8.0.0",
   "i18n": {
     "de": {
       "librivox.description": "Durchsucht LibriVox und fügt dessen kostenlose Hörbücher der Bibliothek hinzu."
@@ -181,5 +181,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

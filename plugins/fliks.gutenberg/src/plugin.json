@@ -7,9 +7,9 @@
   "description": "Search Project Gutenberg and add its free ebooks to the library.",
   "files": {
     "logo.svg": "5d48d01a8fdeeb4235d5f33dcbcf47077d05d0ca8bb55b05b157638b7649aca1",
-    "plugin.wasm": "f1ab3f2faca971db1722564308880967a25a837d7952fe2420d60b81ac01de12"
+    "plugin.wasm": "6271a8b184d242f6833c2d58cba4087f52d866e0e81722324caf2e1e429c664d"
   },
-  "fliks": ">=7.0.0 <8.0.0",
+  "fliks": ">=7.2.0 <8.0.0",
   "i18n": {
     "de": {
       "gutenberg.description": "Durchsucht Project Gutenberg und fügt dessen kostenlose E-Books der Bibliothek hinzu."
@@ -181,5 +181,5 @@
       }
     ]
   },
-  "version": "1.0.0"
+  "version": "1.1.0"
 }
