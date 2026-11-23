@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Walks plugins/*/versions/*.json, validates each, and writes catalog.json in the
 // shape backend/src/modules/plugins/catalog/catalog.ts's parseCatalogDocument
-// accepts. Key order and sort order are fixed so an unchanged input tree produces
-// byte-identical output — see docs/key-rotation.md for the determinism proof.
+// accepts. Key order and sort order are fixed so an unchanged input tree and an unchanged
+// SOURCE_DATE_EPOCH produce byte-identical output — see docs/key-rotation.md for the determinism proof.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +32,18 @@ export function isPlaceholderChecksum(sha256) {
 /** Exported for `build-catalog.test.mjs`: a rename shows from the newest published version on. */
 export function newestEntry(entries) {
   return entries.reduce((a, b) => (compareSemver(a.version, b.version) >= 0 ? a : b));
+}
+
+/**
+ * The signed generation time: a host refuses a catalog older than the one it cached, which is what
+ * stops a replay of an earlier signed document. SOURCE_DATE_EPOCH pins it for reproducible builds.
+ * Exported for `build-catalog.test.mjs`.
+ */
+export function generatedAt(env = process.env, now = new Date()) {
+  const epoch = env.SOURCE_DATE_EPOCH;
+  if (epoch === undefined || epoch === '') return now.toISOString();
+  if (!/^\d+$/.test(epoch)) throw new Error(`SOURCE_DATE_EPOCH must be whole seconds, got ${JSON.stringify(epoch)}`);
+  return new Date(Number(epoch) * 1000).toISOString();
 }
 
 /** @returns {{ path: string, pluginDir: string }[]} */
@@ -132,7 +144,7 @@ function main() {
     process.exit(1);
   }
 
-  const document = { plugins };
+  const document = { generatedAt: generatedAt(), plugins };
   writeFileSync(OUT_FILE, JSON.stringify(document, null, 2) + '\n', 'utf8');
   const versionCount = plugins.reduce((n, p) => n + p.versions.length, 0);
   console.log(`wrote ${OUT_FILE} (${plugins.length} plugin${plugins.length === 1 ? '' : 's'}, ${versionCount} version(s))`);
