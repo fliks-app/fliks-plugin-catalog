@@ -177,6 +177,7 @@ test('checkManifest (rules 3-4): the required process keys', () => {
   refuses(srcDir({ manifest: { routes: [{ method: 'GET', path: '/x' }] } }), /"routes"/);
   refuses(srcDir({ manifest: { scopes: [] } }), /"scopes"/);
   refuses(srcDir({ manifest: { scopes: ['root'] } }), /"scopes"/);
+  buildArchive('fliks.x', srcDir({ manifest: { scopes: ['config:rw', 'events:receive'] } }), KEY, entryFor);
   for (const root of ['downloads', '/a/../b', '/', 'C:\\']) refuses(srcDir({ manifest: { ingestRoots: [root] } }), /"ingestRoots"/);
   buildArchive('fliks.x', srcDir({ manifest: { ingestRoots: ['/downloads', 'D:\\media'] } }), KEY, entryFor);
   refuses(srcDir({ manifest: { network: { internal: false } } }), /"network"/);
