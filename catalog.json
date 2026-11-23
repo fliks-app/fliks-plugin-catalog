@@ -603,6 +603,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v1.0.0/fliks.gutenberg-1.0.0.fkplugin",
           "sha256": "69c703d482e1f0519486f1ca2ee329980ab88fd4fba0d42a67fe99df18795376"
+        },
+        {
+          "version": "1.1.0",
+          "pluginApi": 3,
+          "fliks": ">=7.2.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v1.1.0/fliks.gutenberg-1.1.0.fkplugin",
+          "sha256": "0417ac4dd9a67ea828b5b78c9ea541974e0e5ef3ff0997f32db241531e3680be"
         }
       ]
     },
@@ -634,6 +641,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v1.0.0/fliks.librivox-1.0.0.fkplugin",
           "sha256": "3c5a48b52ca584e8f2d0352ef55adc85b7dc78bd1af20522419b0a39bb0b8405"
+        },
+        {
+          "version": "1.1.0",
+          "pluginApi": 3,
+          "fliks": ">=7.2.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/librivox-v1.1.0/fliks.librivox-1.1.0.fkplugin",
+          "sha256": "3851f62fe801a9588050bb6b19fa75f5fa24869447f44816afbb40baeaea9a5c"
         }
       ]
     },
