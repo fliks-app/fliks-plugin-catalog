@@ -8,5 +8,5 @@
   "pluginApi": 3,
   "fliks": ">=7.2.0 <8.0.0",
   "zipUrl": "https://github.com/fliks-app/plugins/releases/download/gutenberg-v1.1.0/fliks.gutenberg-1.1.0.fkplugin",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "0417ac4dd9a67ea828b5b78c9ea541974e0e5ef3ff0997f32db241531e3680be"
 }
