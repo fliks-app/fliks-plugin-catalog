@@ -7,9 +7,9 @@
   "description": "Forwards Fliks domain events to an admin-configured HTTPS webhook, with bounded retry.",
   "files": {
     "logo.svg": "255f3e87b86c533d70a21763aa231c9d8a639be0f70c075172b656c54898d5f8",
-    "plugin.wasm": "ce6885b2651a123cfb061fb48d57162d5facda214aeba4919582507329485e46"
+    "plugin.wasm": "fc3a8c028e16a2e2140dd5a394f646974bf804bbd19f4945e55263d764f4b99d"
   },
-  "fliks": ">=7.0.0 <8.0.0",
+  "fliks": ">=7.2.0 <8.0.0",
   "i18n": {
     "de": {
       "notify.config.subtitle": "Leitet jedes Ereignis an einen Webhook weiter.",
@@ -79,7 +79,8 @@
   ],
   "runtime": "wasm",
   "scopes": [
-    "config:rw"
+    "config:rw",
+    "events:receive"
   ],
   "ui": {
     "configPages": [
@@ -111,5 +112,5 @@
       }
     ]
   },
-  "version": "3.0.0"
+  "version": "3.0.1"
 }
