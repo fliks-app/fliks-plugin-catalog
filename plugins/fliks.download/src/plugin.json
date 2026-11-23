@@ -37,9 +37,9 @@
   "description": "Torrent search on Torznab indexers, torrent client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "213962ccb54321787a228cdce1f1c1d81132d451a2248120f65ad289a0ffe9ec"
+    "plugin.wasm": "4cba0aaa96f1dd84275cd9a9254d292ae544d9a354e2f344693a79a32522c51c"
   },
-  "fliks": ">=7.1.1 <8.0.0",
+  "fliks": ">=7.2.0 <8.0.0",
   "i18n": {
     "de": {
       "download.description": "Torrent-Suche auf Torznab-Indexern, Verwaltung der Torrent-Clients und die Beschaffungskette von Fliks."
@@ -175,7 +175,8 @@
       "download.queue.errors.not_controllable": "This download can no longer be controlled",
       "download.queue.errors.not_retryable": "Only a failed import can be retried",
       "download.queue.removed_by_user": "Removed from the queue by a user",
-      "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it"
+      "download.queue.retired_unverifiable": "Retired from the queue, no download client could confirm it",
+      "download.search.errors.all_indexers_cooling": "Every indexer is in cooldown: try again later"
     },
     "es": {
       "download.description": "Búsqueda de torrents en indexadores Torznab, gestión de clientes torrent y cadena de adquisición de Fliks."
@@ -312,7 +313,8 @@
       "download.queue.errors.not_controllable": "Ce téléchargement ne peut plus être piloté",
       "download.queue.errors.not_retryable": "Seul un import en échec peut être relancé",
       "download.queue.removed_by_user": "Retiré de la file d'attente par un utilisateur",
-      "download.queue.retired_unverifiable": "Retiré de la file d'attente, aucun client de téléchargement n'a pu le confirmer"
+      "download.queue.retired_unverifiable": "Retiré de la file d'attente, aucun client de téléchargement n'a pu le confirmer",
+      "download.search.errors.all_indexers_cooling": "Tous les indexeurs sont en pause : réessayez plus tard"
     },
     "it": {
       "download.description": "Ricerca di torrent sugli indicizzatori Torznab, gestione dei client torrent e catena di acquisizione di Fliks."
@@ -840,5 +842,5 @@
       }
     }
   },
-  "version": "3.1.4"
+  "version": "3.2.0"
 }
