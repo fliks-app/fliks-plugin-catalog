@@ -36,6 +36,8 @@ jobs:
         run: node scripts/ci/check-fliks-upper-bound.mjs
 
       - name: Catalog regenerates deterministically
+        env:
+          SOURCE_DATE_EPOCH: '1795428000'
         run: |
           node scripts/build-catalog.mjs
           sha256sum catalog.json > /tmp/catalog.sha256.1
