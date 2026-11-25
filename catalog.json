@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T13:55:58.152Z",
+  "generatedAt": "2026-11-25T13:57:55.859Z",
   "plugins": [
     {
       "id": "fliks.audible",
@@ -548,7 +548,7 @@
     {
       "id": "fliks.googlebooks",
       "name": "Google Books",
-      "description": "Book metadata from Google Books: search and editions by ISBN or volume id.",
+      "description": "Book metadata from Google Books: search and editions by ISBN or volume id. Needs a Google Cloud API key.",
       "author": "Fliks",
       "kind": "process",
       "category": "metadata",
@@ -580,6 +580,13 @@
           "fliks": ">=7.0.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v1.0.0/fliks.googlebooks-1.0.0.fkplugin",
           "sha256": "576618432c00a953ced91964335a290f535d74e76e90c95a8df22ec3f15e16c8"
+        },
+        {
+          "version": "1.0.1",
+          "pluginApi": 3,
+          "fliks": ">=7.0.0 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/googlebooks-v1.0.1/fliks.googlebooks-1.0.1.fkplugin",
+          "sha256": "85b165c2344b90c4c428d55914bf4c1b12b94d6953e4a3e0794b90f56fb3e08e"
         }
       ]
     },
