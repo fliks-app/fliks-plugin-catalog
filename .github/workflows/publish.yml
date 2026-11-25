@@ -8,25 +8,19 @@ on:
   push:
     branches: [main]
   # Republish on demand: the catalog is regenerated from the tree, so a rerun
-  # after a Pages or key change needs no commit. Rerunning a *failed* job
-  # instead uploads a second artifact and the deploy refuses it.
+  # after a Pages or key change needs no commit. A failed deploy job reruns alone.
   workflow_dispatch:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: publish-catalog
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -97,5 +91,15 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - uses: actions/deploy-pages@v4
         id: deployment
