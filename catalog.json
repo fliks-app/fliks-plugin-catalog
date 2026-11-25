@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T00:28:44.922Z",
+  "generatedAt": "2026-11-25T00:29:38.060Z",
   "plugins": [
     {
       "id": "fliks.audible",
@@ -497,6 +497,13 @@
           "fliks": ">=7.2.0 <8.0.0",
           "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.2.0/fliks.download-3.2.0.fkplugin",
           "sha256": "c0b5ab9065c9c89bafd1ba6fa0fdcbf4c816bdf188967c80ca7a8c3aa16e446e"
+        },
+        {
+          "version": "3.2.1",
+          "pluginApi": 3,
+          "fliks": ">=7.2.1 <8.0.0",
+          "zipUrl": "https://github.com/fliks-app/plugins/releases/download/download-v3.2.1/fliks.download-3.2.1.fkplugin",
+          "sha256": "d77ea5761498aa0ed64895760bedb702420d1820b765c39fa11ac7be549ae0c0"
         }
       ]
     },
