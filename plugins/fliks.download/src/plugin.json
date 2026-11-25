@@ -37,9 +37,9 @@
   "description": "Torrent search on Torznab indexers, torrent client management and the acquisition grab pipeline for Fliks.",
   "files": {
     "logo.svg": "a99e06113fe7eb26d4ad9b060015f78d61d1d51810985e089126702d67da5d7e",
-    "plugin.wasm": "4cba0aaa96f1dd84275cd9a9254d292ae544d9a354e2f344693a79a32522c51c"
+    "plugin.wasm": "5a5ab8b71864ed705e6d010e7040f57c40a235b23b820b9536e16afa0bfd0ea2"
   },
-  "fliks": ">=7.2.0 <8.0.0",
+  "fliks": ">=7.2.1 <8.0.0",
   "i18n": {
     "de": {
       "download.description": "Torrent-Suche auf Torznab-Indexern, Verwaltung der Torrent-Clients und die Beschaffungskette von Fliks."
@@ -842,5 +842,5 @@
       }
     }
   },
-  "version": "3.2.0"
+  "version": "3.2.1"
 }
